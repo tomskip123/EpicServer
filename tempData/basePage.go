@@ -26,11 +26,11 @@ type PageBaseData struct {
 	BackUrl string
 }
 
-func NewPageData(app *structs.App, user *structs.UserMemoryCacheItem, title, content, seoTitle, backUrl, canonical string) PageBaseData {
+func NewPageData(app *structs.App, user *structs.UserMemoryCacheItem, title, content, seoTitle, backUrl, canonical string, entry string) PageBaseData {
 	return PageBaseData{
 		App:        app,
 		User:       user,
-		AssetEntry: "index", // we couold have this as a static var
+		AssetEntry: entry, // we couold have this as a static var
 		PageHeading: PageHeading{
 			Title:   title,
 			Content: content,

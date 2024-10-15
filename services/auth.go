@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"os"
 
 	"github.com/coreos/go-oidc"
@@ -50,6 +51,11 @@ func CheckAndSetKeys() {
 	// Get the base64-encoded keys from environment variables
 	hashKeyBase64 := os.Getenv("SECURE_COOKIE_HASH_KEY")
 	blockKeyBase64 := os.Getenv("SECURE_COOKIE_BLOCK_KEY")
+
+	if len(hashKeyBase64) <= 0 || len(blockKeyBase64) <= 0 {
+		fmt.Println("Secure cookies keys not set")
+		return
+	}
 
 	// Decode the base64-encoded keys
 	hashKey, err := base64.StdEncoding.DecodeString(hashKeyBase64)

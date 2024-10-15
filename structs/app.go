@@ -89,9 +89,7 @@ func BuildAssets(filePath string) *Assets {
 	var assets = &Assets{}
 
 	for key, manAsset := range manifest {
-		if len(manAsset.Name) > 0 {
-			(*assets)[key] = &manAsset
-		}
+		(*assets)[key] = &manAsset
 	}
 
 	return assets

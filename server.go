@@ -33,6 +33,7 @@ func StartServer(
 		os.Getenv("OAUTH_CALLBACK"),
 		serverConfig,
 		dbConfig,
+		staticConfig,
 	)
 
 	// this is bypassing all the middleware that the app uses.
@@ -44,12 +45,11 @@ func StartServer(
 	}
 
 	middleware.RegisterBaseMiddleware(r, app)
-
-	gin.SetMode(gin.ReleaseMode)
-
 	static.RegisterStaticRoutes(r, staticConfig)
 	handlers.RegisterAuthRoutes(r, app)
 	handlers.RegisterNotificationsRoutes(r, app)
+
+	gin.SetMode(gin.ReleaseMode)
 
 	for _, handler := range Routes {
 
