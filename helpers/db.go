@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"context"
+	"path"
 	"time"
 
 	"github.com/cyberthy/server/db"
@@ -31,15 +32,19 @@ func SetupDatabase(ctx context.Context, databaseRef *structs.DB, dbConfig *struc
 	user.CheckIndexes(ctx)
 }
 
-func RouteSkipsAuthMiddleware(app *structs.App, path string, staticRoutes []string) bool {
+func RouteSkipsAuthMiddleware(app *structs.App, pathMatch string, staticRoutes []string) bool {
 	for _, route := range staticRoutes {
-		if path == route {
+		if pathMatch == route {
+			return true
+		} else if match, _ := path.Match(route, pathMatch); match {
 			return true
 		}
 	}
 
 	for _, route := range app.ServerConfig.RouteSkipAuth {
-		if path == route {
+		if pathMatch == route {
+			return true
+		} else if match, _ := path.Match(route, pathMatch); match {
 			return true
 		}
 	}
