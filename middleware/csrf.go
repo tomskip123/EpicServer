@@ -44,22 +44,24 @@ func VerifyCSRFToken() gin.HandlerFunc {
 			return
 		}
 
-		csrfCookie, err := ctx.Cookie("csrf_token")
-		if err != nil {
-			fmt.Printf("csrf_token_error: %v \n", err)
-			ctx.AbortWithStatus(http.StatusForbidden)
-			return
-		}
+		if ctx.Request.Method != http.MethodGet {
+			csrfCookie, err := ctx.Cookie("csrf_token")
+			if err != nil {
+				fmt.Printf("csrf_token_error: %v \n", err)
+				ctx.AbortWithStatus(http.StatusForbidden)
+				return
+			}
 
-		csrfToken := ctx.GetHeader("X-CSRF-Token")
-		if csrfToken == "" {
-			csrfToken = ctx.PostForm("csrf_token")
-		}
+			csrfToken := ctx.GetHeader("X-CSRF-Token")
+			if csrfToken == "" {
+				csrfToken = ctx.PostForm("csrf_token")
+			}
 
-		if csrfToken != csrfCookie {
-			fmt.Printf("csrf_token_not_equal_to_cookie: %v \n", err)
-			ctx.AbortWithStatus(http.StatusForbidden)
-			return
+			if csrfToken != csrfCookie {
+				fmt.Printf("csrf_token_not_equal_to_cookie: %v \n", err)
+				ctx.AbortWithStatus(http.StatusForbidden)
+				return
+			}
 		}
 
 		ctx.Next()

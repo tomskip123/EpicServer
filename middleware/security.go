@@ -18,7 +18,7 @@ func init() {
 func OtherSecurity(app *structs.App) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Get the app struct from the context
-		ctx.SetSameSite(http.SameSiteLaxMode)
+		ctx.SetSameSite(http.SameSiteStrictMode)
 
 		if len(app.Config.CSP) > 0 {
 			ctx.Header("Content-Security-Policy", app.Config.CSP)
