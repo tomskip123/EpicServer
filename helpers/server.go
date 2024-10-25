@@ -70,10 +70,17 @@ func InitApp(
 	r.SetFuncMap(structs.TemplateFuncMap)
 
 	var paths []string
-	paths = append(paths, BuildFileList(serverConfig.TemplatesDir)...)
-	paths = append(paths, BuildFileList(serverConfig.PackageTemplatesDir)...)
+	if serverConfig.TemplatesDir != "" {
+		paths = append(paths, BuildFileList(serverConfig.TemplatesDir)...)
+	}
 
-	r.LoadHTMLFiles(paths...)
+	if serverConfig.PackageTemplatesDir != "" {
+		paths = append(paths, BuildFileList(serverConfig.PackageTemplatesDir)...)
+	}
+
+	if len(paths) > 0 {
+		r.LoadHTMLFiles(paths...)
+	}
 
 	return r, app
 }
