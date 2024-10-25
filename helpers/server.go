@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/cyberthy/server/services"
-	"github.com/cyberthy/server/static"
 	"github.com/cyberthy/server/structs"
 	"github.com/gin-gonic/gin"
 )
@@ -40,7 +39,6 @@ func InitApp(
 	googleOAuthCallback string,
 	serverConfig *structs.ServerConfig,
 	dbConfig *structs.DbConfig,
-	staticConfig *static.Config,
 ) (*gin.Engine, *structs.App) {
 	r := gin.Default()
 	ctx := context.Background()

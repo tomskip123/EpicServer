@@ -12,9 +12,6 @@ import (
 )
 
 func RegisterAuthRoutes(r *gin.Engine, app *structs.App) {
-	r.Use(middleware.AuthMiddleware(app))
-	r.Use(middleware.AnalyticsMiddleware())
-
 	// r.Use(middleware.RateLimitMiddleware())
 
 	r.GET("/auth/google", HandleAuthGoogle(app))

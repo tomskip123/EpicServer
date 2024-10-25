@@ -31,6 +31,12 @@ func AuthMiddleware(app *structs.App) gin.HandlerFunc {
 				return
 			}
 
+			// Check if the Content-Type header is present
+			if ctx.Request.Header.Get("Content-Type") == "application/json" {
+				// ctx.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+				return
+			}
+
 			// Add a log here to capture context status
 			ctx.Redirect(http.StatusSeeOther, "/")
 			return

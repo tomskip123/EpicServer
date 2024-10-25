@@ -11,6 +11,7 @@ type Auth struct {
 	Verifier       *oidc.IDTokenVerifier
 	CookieHandler  *CookieHandler
 	AuthCookieName string
+	RedirectOnFail string
 }
 
 type Claims struct {

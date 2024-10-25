@@ -18,12 +18,12 @@ var (
 )
 
 func GetAuthenticatedUser(ctx *gin.Context, app *structs.App) (*structs.UserMemoryCacheItem, error) {
-	authUser, exists := ctx.MustGet("auth_user").(*structs.CookieContents)
+	authUser, exists := ctx.Get("auth_user")
 	if !exists {
 		return nil, ErrNoAuthUserContext
 	}
 
-	return determineCache(authUser, app)
+	return determineCache(authUser.(*structs.CookieContents), app)
 }
 
 func UpdateMemoryCache(ctx *gin.Context, app *structs.App, updated structs.UserMemoryCacheItem) (*structs.UserMemoryCacheItem, error) {

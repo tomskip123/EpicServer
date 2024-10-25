@@ -36,6 +36,7 @@ func CorsMiddleware(app *structs.App) gin.HandlerFunc {
 		}
 
 		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+		ctx.Header("Access-Control-Allow-Credentials", "true")
 		ctx.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Cache-Control, X-Requested-With, X-CSRF-Token, Accept-Encoding")
 		if ctx.Request.Method == http.MethodOptions {
 			ctx.AbortWithStatus(http.StatusOK)
