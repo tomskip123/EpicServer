@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/cyberthy/server/services"
@@ -45,6 +46,7 @@ func VerifyCSRFToken() gin.HandlerFunc {
 
 		csrfCookie, err := ctx.Cookie("csrf_token")
 		if err != nil {
+			fmt.Printf("csrf_token_error: %v \n", err)
 			ctx.AbortWithStatus(http.StatusForbidden)
 			return
 		}
@@ -55,6 +57,7 @@ func VerifyCSRFToken() gin.HandlerFunc {
 		}
 
 		if csrfToken != csrfCookie {
+			fmt.Printf("csrf_token_not_equal_to_cookie: %v \n", err)
 			ctx.AbortWithStatus(http.StatusForbidden)
 			return
 		}
