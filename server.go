@@ -5,9 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cyberthy/server/handlers"
 	"github.com/cyberthy/server/helpers"
-	"github.com/cyberthy/server/middleware"
 	"github.com/cyberthy/server/structs"
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
@@ -57,23 +55,23 @@ func (s *Server) AddHealthChecker() {
 }
 
 func (s *Server) RegisterBaseMiddleware() {
-	middleware.RegisterBaseMiddleware(s.Gin, s.App)
+	// middleware.RegisterBaseMiddleware(s.Gin, s.App)
 }
 
 func (s *Server) RegisterAuthMiddleware() {
-	s.Gin.Use(middleware.AuthMiddleware(s.App))
+	// s.Gin.Use(middleware.AuthMiddleware(s.App))
 }
 
 func (s *Server) RegisterAnalyticsMiddleware() {
-	s.Gin.Use(middleware.AnalyticsMiddleware())
+	// s.Gin.Use(middleware.AnalyticsMiddleware())
 }
 
 func (s *Server) RegisterAuthRoutes() {
-	handlers.RegisterAuthRoutes(s.Gin, s.App)
+	// handlers.RegisterAuthRoutes(s.Gin, s.App)
 }
 
 func (s *Server) RegisterNotifcationRoutes() {
-	handlers.RegisterNotificationsRoutes(s.Gin, s.App)
+	// handlers.RegisterNotificationsRoutes(s.Gin, s.App)
 }
 
 func (s *Server) RegisterRoutes() {

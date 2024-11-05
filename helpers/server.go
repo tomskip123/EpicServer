@@ -2,7 +2,7 @@ package helpers
 
 import (
 	"context"
-	"errors"
+	"crypto/tls"
 	"io/fs"
 	"log"
 	"net/http"
@@ -14,15 +14,48 @@ import (
 	"github.com/cyberthy/server/services"
 	"github.com/cyberthy/server/structs"
 	"github.com/gin-gonic/gin"
+	"github.com/quic-go/quic-go/http3"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 func StartServer(r *gin.Engine, app *structs.App) {
 	defer app.Database.HandleDbDisconnect(context.Background(), app.Database)
 
-	// Start the HTTP server in a goroutine
-	if err := r.Run(app.ServerConfig.Host); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Fatalf("Failed to start HTTP server: %s\n", err)
+	// Setup autocert manager
+	m := &autocert.Manager{
+		Cache:      autocert.DirCache("certs"), // Folder for storing certificates
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(app.ServerConfig.Host), // Your domain here
 	}
+
+	// Create TLS config
+	tlsConfig := &tls.Config{
+		GetCertificate: m.GetCertificate,
+		NextProtos:     []string{http3.NextProtoH3},
+	}
+
+	server := &http3.Server{
+		Addr:      app.ServerConfig.Host,
+		Handler:   r,
+		TLSConfig: tlsConfig,
+	}
+
+	go func() {
+		if err := server.ListenAndServeTLS("", ""); err != nil {
+			log.Fatalf("Failed to start HTTP/3 server: %v", err)
+		}
+	}()
+
+	// Start HTTP server for autocert
+	go func() {
+		httpServer := &http.Server{
+			Addr:    ":http",
+			Handler: m.HTTPHandler(nil),
+		}
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Failed to start HTTP server: %v", err)
+		}
+	}()
 
 	// Wait for interrupt signal to gracefully shut down the server
 	quit := make(chan os.Signal, 1)
@@ -30,6 +63,7 @@ func StartServer(r *gin.Engine, app *structs.App) {
 	<-quit
 
 	log.Println("Shutting down server...")
+	server.Close()
 	log.Println("Server exiting")
 }
 
@@ -40,7 +74,9 @@ func InitApp(
 	serverConfig *structs.ServerConfig,
 	dbConfig *structs.DbConfig,
 ) (*gin.Engine, *structs.App) {
-	r := gin.Default()
+	r := gin.New()
+	r.UseH2C = true
+
 	ctx := context.Background()
 	r.SetTrustedProxies(nil)
 	database := &structs.DB{}
