@@ -165,8 +165,7 @@ func (u *User) AddNotificationSubscriptions(ctx context.Context, userId string, 
 	}
 
 	// Perform the update
-	result, err := u.Collection.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
-	fmt.Println(result)
+	_, err := u.Collection.UpdateOne(ctx, filter, update, options.Update().SetUpsert(true))
 	if err != nil {
 		return err
 	}

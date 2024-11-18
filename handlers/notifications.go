@@ -80,7 +80,7 @@ func HandleUserSubscribe(app *structs.App) gin.HandlerFunc {
 			return
 		}
 
-		fmt.Println("user is" + user.UserId)
+		// fmt.Println("user is" + user.UserId)
 
 		// now we need to securely save this against the user data
 		err := userDb.AddNotificationSubscriptions(ctx, user.UserId, db.UserNotificationSubscriptionModel(userSubscribeRequest))

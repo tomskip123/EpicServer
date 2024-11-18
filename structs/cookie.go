@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"time"
 
@@ -84,7 +83,7 @@ func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) 
 	cookie, err := ctx.Cookie(cookieName)
 	if err == nil {
 		var value []byte
-		fmt.Println("cookie: ", cookie)
+		// fmt.Println("cookie: ", cookie)
 		err = ch.SecureCookie.Decode(cookieName, cookie, &value)
 		if err == nil {
 			valueStr := string(value)

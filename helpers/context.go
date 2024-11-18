@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/cyberthy/server/structs"
@@ -62,7 +61,7 @@ func getCacheItem(authUser *structs.CookieContents) *structs.UserMemoryCacheItem
 	cacheItem := UserMemoryCache[authUser.UserId]
 	if cacheItem != nil {
 		if time.Now().Before(cacheItem.Expiry) {
-			fmt.Println("Using cache")
+			// fmt.Println("Using cache")
 			return cacheItem
 		} else {
 			// Remove expired cache item
