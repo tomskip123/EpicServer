@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/cyberthy/server/db"
+	"go.mongodb.org/mongo-driver/event"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -36,8 +38,22 @@ func (db *DB) GetCollectionOrPanic(colName string) CollectionInterface {
 }
 
 func (db *DB) Connect(ctx context.Context, uri string) {
+	cmdMonitor := &event.CommandMonitor{
+		Started: func(_ context.Context, evt *event.CommandStartedEvent) {
+			if os.Getenv("DEBUG") != "" {
+				log.Print(evt.Command)
+			}
+		},
+		Succeeded: func(ctx context.Context, cse *event.CommandSucceededEvent) {
+			if os.Getenv("DEBUG") != "" {
+				log.Printf("name: %v \n", cse.CommandName)
+				log.Printf("duration: %v \n", cse.Duration)
+			}
+		},
+	}
+
 	// Set client options
-	clientOptions := options.Client().ApplyURI(uri)
+	clientOptions := options.Client().ApplyURI(uri).SetMonitor(cmdMonitor)
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(ctx, clientOptions)

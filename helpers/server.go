@@ -4,10 +4,13 @@ import (
 	"context"
 	"io/fs"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/cyberthy/server/services"
 	"github.com/cyberthy/server/structs"
@@ -16,16 +19,28 @@ import (
 )
 
 func StartServer(r *gin.Engine, app *structs.App) {
-	defer app.Database.HandleDbDisconnect(context.Background(), app.Database)
-
-	r.Run(app.ServerConfig.Host)
-
-	// Wait for interrupt signal to gracefully shut down the server
+	// Create a channel to listen for interrupt or terminate signals
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
+	// Start the server in a goroutine
+	go func() {
+		if err := r.Run(app.ServerConfig.Host); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server run error: %v", err)
+		}
+	}()
+
+	// Wait for a signal to quit
+	<-quit
 	log.Println("Shutting down server...")
+
+	// Create a context with a timeout to allow for graceful shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Disconnect from the database
+	app.Database.HandleDbDisconnect(ctx, app.Database)
+
 	log.Println("Server exiting")
 }
 
