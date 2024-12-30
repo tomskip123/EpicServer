@@ -54,6 +54,27 @@ func AuthMiddleware(app *structs.App) gin.HandlerFunc {
 	}
 }
 
+func WithAuthRedirect(app *structs.App, requiredFeatures []string, redirectDestination string, handler func(ctx *gin.Context, user *structs.UserMemoryCacheItem)) gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		authUser, err := helpers.GetAuthenticatedUser(ctx, app)
+		if err != nil {
+			ctx.Redirect(http.StatusTemporaryRedirect, redirectDestination)
+			return
+		}
+
+		if len(requiredFeatures) > 0 {
+			for _, feature := range requiredFeatures {
+				if !authUser.HasFeature(feature) {
+					ctx.Redirect(http.StatusSeeOther, "/")
+					return
+				}
+			}
+		}
+
+		handler(ctx, authUser)
+	}
+}
+
 func WithAuth(app *structs.App, requiredFeatures []string, handler func(ctx *gin.Context, user *structs.UserMemoryCacheItem)) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authUser, err := helpers.GetAuthenticatedUser(ctx, app)
