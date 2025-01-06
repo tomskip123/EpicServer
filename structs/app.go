@@ -7,12 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Logger interface defines the logging behavior
+type Logger interface {
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
+}
+
 type App struct {
 	Auth         *Auth
 	Database     *DB
 	Assets       *Assets
 	Config       *AppConfig
 	ServerConfig *ServerConfig
+	Logger       Logger
 }
 
 type AppConfig struct {
@@ -45,6 +54,7 @@ func NewApp(
 	cookieDomain string,
 	csp string,
 	notificationHost string,
+	logger Logger,
 ) *App {
 	// also setup the db stuff
 
@@ -61,6 +71,7 @@ func NewApp(
 			NotificationHost: notificationHost,
 		},
 		ServerConfig: serverConfig,
+		Logger:       logger,
 	}
 }
 

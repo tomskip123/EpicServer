@@ -40,6 +40,7 @@ func (s *Server) SetupServer() {
 		os.Getenv("OAUTH_CALLBACK"),
 		s.App.ServerConfig,
 		s.DbConfig,
+		s.App.Logger,
 	)
 
 	s.App = app

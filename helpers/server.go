@@ -50,6 +50,7 @@ func InitApp(
 	googleOAuthCallback string,
 	serverConfig *structs.ServerConfig,
 	dbConfig *structs.DbConfig,
+	logger structs.Logger,
 ) (*gin.Engine, *structs.App) {
 	r := gin.New()
 	r.UseH2C = true
@@ -78,6 +79,7 @@ func InitApp(
 		serverConfig.CookieDomain,
 		serverConfig.CSPHeader,
 		serverConfig.NotificationHost,
+		logger,
 	)
 
 	r.SetFuncMap(structs.TemplateFuncMap)
