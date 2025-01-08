@@ -23,3 +23,9 @@ func SetHost(host string, port int) Option {
 		c.Server.Port = port
 	}
 }
+
+func SetSecretKey(secretKey []byte) Option {
+	return func(c *Config) {
+		c.SecretKey = secretKey
+	}
+}

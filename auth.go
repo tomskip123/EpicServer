@@ -62,18 +62,29 @@ type PublicPathConfig struct {
 
 // the Authentication is going to be a large configurable ServerOption
 func WithOAuth(
-	ctx context.Context,
 	providers []Provider,
 	cookiename string,
 	cookieDomain string,
 	cookieSecure bool,
 ) AppLayer {
 	return func(s *Server) {
-		// lets loop through and make sure that each provider is valid
+		s.authConfigs = make(map[string]*Auth)
+
+		// Create auth configs once
 		for _, provider := range providers {
 			if provider.ClientId == "" || provider.ClientSecret == "" || provider.Name == "" || provider.Callback == "" {
 				panic("Make sure that providers have valid fields.")
 			}
+
+			authConfig := NewAuthConfig(
+				context.Background(),
+				provider.ClientId,
+				provider.ClientSecret,
+				cookiename,
+				provider.Callback,
+				provider.Name,
+			)
+			s.authConfigs[provider.Name] = authConfig
 		}
 
 		RegisterAuthRoutes(s, providers, cookiename, cookieDomain, cookieSecure)
@@ -178,115 +189,93 @@ func WithAuthHooks(hooks AuthenticationHooks) AppLayer {
 }
 
 func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
-	s.engine.GET("/auth/:provider", HandleAuthGoogle(providers, cookieName))
-	s.engine.GET("/auth/:provider/callback", HandleAuthGoogleCallback(providers, cookieName, domain, secure, s.hooks.Auth))
+	s.engine.GET("/auth/:provider", HandleAuthGoogle(s, providers, cookieName))
+	s.engine.GET("/auth/:provider/callback", HandleAuthGoogleCallback(s, providers, cookieName, domain, secure, s.hooks.Auth))
 	s.engine.GET("/auth/logout", HandleAuthLogout(domain, secure))
 }
 
-func HandleAuthGoogle(providers []Provider, cookieName string) gin.HandlerFunc {
+func HandleAuthGoogle(s *Server, providers []Provider, cookieName string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		providerParam := ctx.Param("provider")
 
-		for _, provider := range providers {
-			if provider.Name == providerParam {
-				c := NewAuthConfig(
-					ctx,
-					provider.ClientId,
-					provider.ClientSecret,
-					cookieName,
-					provider.Callback,
-					provider.Name,
-				)
-
-				// we take the generated config and return
-				// we need to add some kind of error handling somewhere here in the new auth config.
-				ctx.Redirect(http.StatusSeeOther, c.Config.AuthCodeURL("state"))
-			}
+		if authConfig, exists := s.authConfigs[providerParam]; exists {
+			ctx.Redirect(http.StatusSeeOther, authConfig.Config.AuthCodeURL("state"))
+			return
 		}
 
 		ctx.JSON(http.StatusNotFound, gin.H{"provider": "doesn't exist"})
-
 	}
 }
 
-func HandleAuthGoogleCallback(providers []Provider, cookiename string, domain string, secure bool, hooks AuthenticationHooks) gin.HandlerFunc {
+func HandleAuthGoogleCallback(s *Server, providers []Provider, cookiename string, domain string, secure bool, hooks AuthenticationHooks) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		prov := ctx.Param("provider")
 
-		for _, provider := range providers {
-			if provider.Name == prov {
-				c := NewAuthConfig(
-					ctx,
-					provider.ClientId,
-					provider.ClientSecret,
-					cookiename,
-					provider.Callback,
-					provider.Name,
-				)
-
-				// Verify state and errors.
-				oauth2Token, err := c.Config.Exchange(ctx, ctx.Query("code"))
-				if err != nil {
-					// handle
-					ctx.AbortWithError(http.StatusInternalServerError, err)
-					return
-				}
-
-				// Extract the ID Token from OAuth2 token.
-				rawIDToken, ok := oauth2Token.Extra("id_token").(string)
-				if !ok {
-					// handle missing token
-					ctx.AbortWithStatus(http.StatusInternalServerError)
-					return
-				}
-
-				// Parse and verify ID Token payload.
-				idToken, err := c.Verifier.Verify(ctx, rawIDToken)
-				if err != nil {
-					// handle error
-					ctx.AbortWithError(http.StatusInternalServerError, err)
-					return
-				}
-
-				// Extract custom claims
-				var claims Claims
-
-				if err := idToken.Claims(&claims); err != nil {
-					// handle error
-					ctx.AbortWithError(http.StatusInternalServerError, err)
-					return
-				}
-
-				cookieContents := &CookieContents{
-					Email: claims.Email,
-				}
-
-				// event hook needs to be called here
-				userId, err := hooks.OnUserCreate(claims)
-				if err != nil {
-					fmt.Println(err)
-				}
-
-				if userId != "" {
-					cookieContents.UserId = userId
-				}
-
-				err = c.CookieHandler.SetCookieHandler(
-					ctx,
-					cookieContents,
-					"sesh_name",
-					domain,
-					secure,
-				)
-
-				if err != nil {
-					return
-				}
-
-				ctx.Redirect(http.StatusSeeOther, "/")
-			}
+		authConfig, exists := s.authConfigs[prov]
+		if !exists {
+			ctx.JSON(http.StatusNotFound, gin.H{"provider": "doesn't exist"})
+			return
 		}
 
+		// Use the stored auth config
+		oauth2Token, err := authConfig.Config.Exchange(ctx, ctx.Query("code"))
+		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		// Extract the ID Token from OAuth2 token.
+		rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+		if !ok {
+			// handle missing token
+			ctx.AbortWithStatus(http.StatusInternalServerError)
+			return
+		}
+
+		// Parse and verify ID Token payload.
+		idToken, err := authConfig.Verifier.Verify(ctx, rawIDToken)
+		if err != nil {
+			// handle error
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		// Extract custom claims
+		var claims Claims
+
+		if err := idToken.Claims(&claims); err != nil {
+			// handle error
+			ctx.AbortWithError(http.StatusInternalServerError, err)
+			return
+		}
+
+		cookieContents := &CookieContents{
+			Email: claims.Email,
+		}
+
+		// event hook needs to be called here
+		userId, err := hooks.OnUserCreate(claims)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if userId != "" {
+			cookieContents.UserId = userId
+		}
+
+		err = authConfig.CookieHandler.SetCookieHandler(
+			ctx,
+			cookieContents,
+			"sesh_name",
+			domain,
+			secure,
+		)
+
+		if err != nil {
+			return
+		}
+
+		ctx.Redirect(http.StatusSeeOther, "/")
 	}
 }
 
@@ -328,7 +317,9 @@ func NewAuthConfig(
 		AuthCookieName: cookieName,
 	}
 
-	provider, err := oidc.NewProvider(ctx, getProviderIssuer(providerName))
+	issuer := getProviderIssuer(providerName)
+
+	provider, err := oidc.NewProvider(ctx, issuer)
 	if err != nil {
 		// handle error
 		log.Printf("error creating auth provider: %v", err)
@@ -386,11 +377,10 @@ func getProviderIssuer(provider string) string {
 
 	switch provider {
 	case "google":
+		return "https://accounts.google.com"
 	default:
 		return "https://accounts.google.com"
 	}
-
-	return ""
 }
 
 /// COOKIEEEES -----------------------

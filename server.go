@@ -14,6 +14,7 @@ type Server struct {
 	db          DatabaseProvider
 	hooks       Hooks
 	publicPaths map[string]bool
+	authConfigs map[string]*Auth
 }
 
 type NewServerParam struct {
@@ -40,6 +41,7 @@ func NewServer(p1 *NewServerParam) *Server {
 		config: config,
 		engine: gin.New(),
 		logger: defaultLogger(),
+		hooks:  defaultHooks(),
 	}
 
 	// for us to then loop through the given options that would give access to gin
@@ -74,6 +76,15 @@ func defaultConfig() *Config {
 	c.Server.Port = 3000
 
 	return c
+}
+
+// set up default hooks
+func defaultHooks() Hooks {
+	h := Hooks{}
+
+	h.Auth = &DefaultAuthHooks{}
+
+	return h
 }
 
 // Need an option to provide methods that make changes to the engine
