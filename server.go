@@ -17,8 +17,8 @@ type Server struct {
 }
 
 type NewServerParam struct {
-	Configs    []Option
-	Middleware []AppLayer
+	Configs  []Option
+	AppLayer []AppLayer
 }
 
 // build default server
@@ -45,7 +45,7 @@ func NewServer(p1 *NewServerParam) *Server {
 	// for us to then loop through the given options that would give access to gin
 	// another server features
 
-	for _, opt := range p1.Middleware {
+	for _, opt := range p1.AppLayer {
 		opt(s)
 	}
 
