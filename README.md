@@ -74,8 +74,8 @@ key := make([]byte, 32)
 				[]Provider{
 					Provider{
 						Name:         "google",
-						ClientId:     "1023893548171-5uolqrah0ive18gigggubd8h9pl3hrto.apps.googleusercontent.com",
-						ClientSecret: "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",
+						ClientId:     "",
+						ClientSecret: "",
 						Callback:     "http://localhost:3000/auth/google/callback",
 					},
 				},
