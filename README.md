@@ -27,7 +27,14 @@ go get github.com/tomskip123/EpicServer
 ## Example of standard server
 
 ```go
-key := make([]byte, 32)
+package main
+
+import (
+    . "github.com/tomskip123/EpicServer"
+)
+
+func main() {
+    key := make([]byte, 32)
 	if _, err := rand.Read(key); err != nil {
 		log.Fatal(err)
 	}
@@ -91,6 +98,7 @@ key := make([]byte, 32)
 	server := NewServer(serverParam)
 
 	server.Start()
+}
 
 ```
 
