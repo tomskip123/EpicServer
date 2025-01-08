@@ -29,8 +29,9 @@ type Auth struct {
 	RedirectOnFail string
 }
 
-type AuthConfig struct {
+type SessionConfig struct {
 	CookieName      string
+	CookieDomain    string
 	CookieMaxAge    int
 	CookieSecure    bool
 	CookieHTTPOnly  bool
@@ -63,9 +64,7 @@ type PublicPathConfig struct {
 // the Authentication is going to be a large configurable ServerOption
 func WithOAuth(
 	providers []Provider,
-	cookiename string,
-	cookieDomain string,
-	cookieSecure bool,
+	sessionConfig *SessionConfig,
 ) AppLayer {
 	return func(s *Server) {
 		s.authConfigs = make(map[string]*Auth)
@@ -80,14 +79,14 @@ func WithOAuth(
 				context.Background(),
 				provider.ClientId,
 				provider.ClientSecret,
-				cookiename,
+				sessionConfig.CookieName,
 				provider.Callback,
 				provider.Name,
 			)
 			s.authConfigs[provider.Name] = authConfig
 		}
 
-		RegisterAuthRoutes(s, providers, cookiename, cookieDomain, cookieSecure)
+		RegisterAuthRoutes(s, providers, sessionConfig.CookieName, sessionConfig.CookieDomain, sessionConfig.CookieSecure)
 
 		// 1. we need to setup oauth configs that can be used for different providers
 		// 2. we need to set up WithAuth to accept provider name, client id, secret and callback
@@ -96,14 +95,9 @@ func WithOAuth(
 	}
 }
 
-func WithAuthMiddleware(config AuthConfig) AppLayer {
+func WithAuthMiddleware(config SessionConfig) AppLayer {
 	return func(s *Server) {
 		s.engine.Use(func(c *gin.Context) {
-			if skip, exists := c.Get("skip_auth"); exists && skip.(bool) {
-				c.Next()
-				return
-			}
-
 			// Skip auth for public routes if needed
 			if s.isPublicPath(c.Request.URL.Path) {
 				c.Next()
@@ -124,15 +118,14 @@ func WithAuthMiddleware(config AuthConfig) AppLayer {
 				return
 			}
 
-			// Get user using the hooks
-			user, err := s.hooks.Auth.OnUserGet(userID)
-			if err != nil {
-				c.AbortWithStatus(http.StatusUnauthorized)
-				return
+			session := &Session{
+				UserID: userID,
+				Token:  cookie,
+				// Add other session fields as needed
 			}
 
 			// Set user in context
-			c.Set("user", user)
+			c.Set(string(sessionKey), session)
 			c.Next()
 		})
 	}
@@ -142,7 +135,7 @@ type AuthenticationHooks interface {
 	// OnUserCreate is a hook for the consumer to create their user and return the userID to be saved to the cookie
 	OnUserCreate(user Claims) (string, error)
 	OnAuthenticate(username, password string) (bool, error)
-	OnUserGet(userID string) (*string, error)
+	OnUserGet(userID string) (any, error)
 	OnSessionValidate(sessionToken string) (string, error)
 	OnSessionCreate(userID string) (string, error)
 	OnSessionDestroy(sessionToken string) error
@@ -162,8 +155,8 @@ func (d *DefaultAuthHooks) OnAuthenticate(username, password string) (bool, erro
 }
 
 // OnUserGet retrieves the user based on the userID
-func (d *DefaultAuthHooks) OnUserGet(userID string) (*string, error) {
-	return nil, fmt.Errorf("on user get hook not implemented")
+func (d *DefaultAuthHooks) OnUserGet(userID string) (any, error) {
+	return "", fmt.Errorf("on user get hook not implemented")
 }
 
 // OnSessionValidate validates the session token and returns the userID
@@ -191,7 +184,7 @@ func WithAuthHooks(hooks AuthenticationHooks) AppLayer {
 func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
 	s.engine.GET("/auth/:provider", HandleAuthGoogle(s, providers, cookieName))
 	s.engine.GET("/auth/:provider/callback", HandleAuthGoogleCallback(s, providers, cookieName, domain, secure, s.hooks.Auth))
-	s.engine.GET("/auth/logout", HandleAuthLogout(domain, secure))
+	s.engine.GET("/auth/logout", HandleAuthLogout(cookieName, domain, secure))
 }
 
 func HandleAuthGoogle(s *Server, providers []Provider, cookieName string) gin.HandlerFunc {
@@ -266,7 +259,7 @@ func HandleAuthGoogleCallback(s *Server, providers []Provider, cookiename string
 		err = authConfig.CookieHandler.SetCookieHandler(
 			ctx,
 			cookieContents,
-			"sesh_name",
+			cookiename,
 			domain,
 			secure,
 		)
@@ -280,10 +273,10 @@ func HandleAuthGoogleCallback(s *Server, providers []Provider, cookiename string
 }
 
 // HandleAuthLogout registers handler for the route that provides functionality to frontend for logging out.
-func HandleAuthLogout(cookieDomain string, cookieSecure bool) gin.HandlerFunc {
+func HandleAuthLogout(cookiename string, cookieDomain string, cookieSecure bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		ctx.SetCookie(
-			"sesh_name",
+			cookiename,
 			"",
 			-1,
 			"/",
@@ -544,48 +537,40 @@ func IsTrustedSource(r *http.Request) bool {
 	return r.Header.Get("X-Internal-Request") == "true"
 }
 
-// Internal token generation using the provided secret
-// func (s *Server) generateToken() (string, error) {
-// 	if len(s.config.SecretKey) == 0 {
-// 		return "", fmt.Errorf("server secret key not configured")
-// 	}
+// Session represents the user's session data
+type Session struct {
+	UserID string
+	Token  string
+	// Add other session fields as needed
+}
 
-// 	// Generate random bytes for the token
-// 	tokenBytes := make([]byte, 32)
-// 	if _, err := rand.Read(tokenBytes); err != nil {
-// 		return "", fmt.Errorf("failed to generate token: %w", err)
-// 	}
+// Context keys to avoid string collisions
+type contextKey string
 
-// 	// Create HMAC for token verification
-// 	h := hmac.New(sha256.New, s.config.SecretKey)
-// 	h.Write(tokenBytes)
-// 	signature := h.Sum(nil)
+const (
+	sessionKey contextKey = "session"
+)
 
-// 	// Combine token and signature
-// 	final := append(tokenBytes, signature...)
-// 	return base64.URLEncoding.EncodeToString(final), nil
-// }
+// Helper function to get session from context
+func GetSession(c *gin.Context) (*Session, error) {
+	value, exists := c.Get(string(sessionKey))
+	if !exists {
+		return nil, fmt.Errorf("no session found in context")
+	}
 
-// Internal token validation
-// func (s *Server) validateToken(token string) (bool, error) {
-// 	// Decode token
-// 	decoded, err := base64.URLEncoding.DecodeString(token)
-// 	if err != nil {
-// 		return false, fmt.Errorf("invalid token format")
-// 	}
+	session, ok := value.(*Session)
+	if !ok {
+		return nil, fmt.Errorf("invalid session type in context")
+	}
 
-// 	if len(decoded) < 64 { // 32 bytes random + 32 bytes HMAC
-// 		return false, fmt.Errorf("token too short")
-// 	}
+	return session, nil
+}
 
-// 	// Split token and signature
-// 	tokenBytes := decoded[:32]
-// 	receivedSig := decoded[32:]
-
-// 	// Verify HMAC
-// 	h := hmac.New(sha256.New, s.config.SecretKey)
-// 	h.Write(tokenBytes)
-// 	expectedSig := h.Sum(nil)
-
-// 	return hmac.Equal(receivedSig, expectedSig), nil
-// }
+// Optional: Helper for required session (panics if no session)
+func MustGetSession(c *gin.Context) *Session {
+	session, err := GetSession(c)
+	if err != nil {
+		panic("attempting to access session in non-authenticated context")
+	}
+	return session
+}
