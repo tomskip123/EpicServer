@@ -1,4 +1,4 @@
-package db
+package EpicServer
 
 import (
 	"context"
@@ -11,7 +11,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type DB interface {
+type DatabaseProvider interface {
+	Connect() error
+	Close() error
+	Ping() error
+}
+
+func WithDatabase(db DatabaseProvider) AppLayer {
+	return func(s *Server) {
+		s.db = db
+	}
 }
 
 func UpdateIndexes(ctx context.Context, collection *mongo.Collection, indexModels []mongo.IndexModel) error {

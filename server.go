@@ -1,112 +1,129 @@
-package server
+package EpicServer
 
 import (
-	"log"
-	"net/http"
-	"os"
+	"fmt"
 
-	"github.com/cyberthy/server/handlers"
-	"github.com/cyberthy/server/helpers"
-	"github.com/cyberthy/server/middleware"
-	"github.com/cyberthy/server/structs"
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
 )
 
-var Routes []*structs.HandlerDef
-
-func AddRoute(handler *structs.HandlerDef) {
-	Routes = append(Routes, handler)
-}
-
 type Server struct {
-	App      *structs.App
-	Gin      *gin.Engine
-	DbConfig *structs.DbConfig
+	config      *Config
+	engine      *gin.Engine
+	logger      Logger
+	db          DatabaseProvider
+	hooks       Hooks
+	publicPaths map[string]bool
 }
 
-func (s *Server) SetupServer() {
-	if s.App == nil {
-		panic("Please define app")
-	}
-
-	if s.App.ServerConfig == nil {
-		panic("Please add server config")
-	}
-
-	r, app := helpers.InitApp(
-		os.Getenv("GOOGLE_CLIENT_ID"),
-		os.Getenv("GOOGLE_CLIENT_SECRET"),
-		os.Getenv("OAUTH_CALLBACK"),
-		s.App.ServerConfig,
-		s.DbConfig,
-		s.App.Logger,
-	)
-
-	s.App = app
-	s.Gin = r
+type NewServerParam struct {
+	Configs    []Option
+	Middleware []AppLayer
 }
 
-func (s *Server) AddHealthChecker() {
-	// this is bypassing all the middleware that the app uses.
-	healthCheckerGroup := s.Gin.Group("/")
-	{
-		healthCheckerGroup.GET("/health_check_", func(ctx *gin.Context) {
-			ctx.Status(http.StatusOK)
+// build default server
+func NewServer(p1 *NewServerParam) *Server {
+	// generate sensible default config
+
+	config := defaultConfig()
+	for _, opt := range p1.Configs {
+		// loop through each option and apply whatever functionality has been defined
+		opt(config)
+	}
+
+	if len(config.SecretKey) == 0 {
+		panic("server secret key is required")
+	}
+
+	// We then define an initial setup for the server instance
+	s := &Server{
+		config: config,
+		engine: gin.New(),
+		logger: defaultLogger(),
+	}
+
+	// for us to then loop through the given options that would give access to gin
+	// another server features
+
+	for _, opt := range p1.Middleware {
+		opt(s)
+	}
+
+	return s
+}
+
+// method for starting the server
+func (s *Server) Start() error {
+	return s.engine.Run(fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port))
+}
+
+// DB is a method for accessing defined database providers!
+func (s *Server) DB() DatabaseProvider {
+	if s.db == nil {
+		panic("no database provider defined")
+	}
+
+	return s.db
+}
+
+// setting up default config with sensible defaults
+func defaultConfig() *Config {
+	c := &Config{}
+
+	c.Server.Host = "localhost"
+	c.Server.Port = 3000
+
+	return c
+}
+
+// Need an option to provide methods that make changes to the engine
+// We expose access to the underlying app layer to make changes directory to the config
+
+type AppLayer func(*Server)
+
+// adds a very rudimentary health checker
+// this should surfice for any checkers.
+func WithHealthCheck(path string) AppLayer {
+	return func(s *Server) {
+		s.engine.GET(path, func(ctx *gin.Context) {
+			ctx.Status(200)
 		})
 	}
 }
 
-func (s *Server) RegisterBaseMiddleware() {
-	middleware.RegisterBaseMiddleware(s.Gin, s.App)
+// We have a very basic middleware that supports compression and force https when it can
+func WithCompression() AppLayer {
+	return func(s *Server) {
+		s.engine.Use(CompressMiddleware)
+	}
 }
 
-func (s *Server) RegisterAuthMiddleware() {
-	s.Gin.Use(middleware.AuthMiddleware(s.App))
+// WithRemoveWWW adds middleware to remove the www. prefix in a domain.
+func WithRemoveWWW() AppLayer {
+	return func(s *Server) {
+		s.engine.Use(RemoveWWWMiddleware())
+	}
 }
 
-func (s *Server) RegisterAnalyticsMiddleware() {
-	s.Gin.Use(middleware.AnalyticsMiddleware())
+// WithCors registers middleware that register cors settings!
+// This should support more options like accept headers etc.
+func WithCors(origins []string) AppLayer {
+	return func(s *Server) {
+		s.engine.Use(CorsMiddleware(origins))
+	}
 }
 
-func (s *Server) RegisterAuthRoutes() {
-	handlers.RegisterAuthRoutes(s.Gin, s.App)
-}
-
-func (s *Server) RegisterNotifcationRoutes() {
-	handlers.RegisterNotificationsRoutes(s.Gin, s.App)
-}
-
-func (s *Server) RegisterRoutes() {
-	for _, handler := range Routes {
-
-		handlerAndMiddleware := helpers.MiddlewareInject(handler.Middleware, s.App)
-		handlerAndMiddleware = append(handlerAndMiddleware, handler.Handler(s.App))
-
-		// Register handlers
-		if handler.Handler != nil {
-			switch handler.Method {
-			case http.MethodGet:
-				s.Gin.GET(handler.Path, handlerAndMiddleware...)
-			case http.MethodPost:
-				s.Gin.POST(handler.Path, handlerAndMiddleware...)
-			case http.MethodPut:
-				s.Gin.PUT(handler.Path, handlerAndMiddleware...)
-			case http.MethodDelete:
-				s.Gin.DELETE(handler.Path, handlerAndMiddleware...)
-			case http.MethodPatch:
-				s.Gin.PATCH(handler.Path, handlerAndMiddleware...)
-			default:
-				log.Fatalf("Method not supported")
-			}
-		}
+// WithEnvironment sets how to run gin
+func WithEnironment(environment string) AppLayer {
+	return func(s *Server) {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
-	// scheduler := tasks.RegisterTodoTasks(app)
-	// defer scheduler.Stop()
 }
 
-func (s *Server) StartServer() {
-	gin.SetMode(gin.ReleaseMode)
-	helpers.StartServer(s.Gin, s.App)
+// With HTTP2 sets gin to allow http2
+func WithHttp2() AppLayer {
+	return func(s *Server) {
+		s.engine.UseH2C = true
+	}
 }

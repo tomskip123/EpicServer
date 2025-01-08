@@ -1,16 +1,14 @@
-module github.com/cyberthy/server
+module github.com/tomskip123/EpicServer
 
 go 1.22.5
 
 require (
-	github.com/SherClockHolmes/webpush-go v1.3.0
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/gin-gonic/gin v1.10.0
 	github.com/gorilla/securecookie v1.1.2
 	github.com/joho/godotenv v1.5.1
 	go.mongodb.org/mongo-driver v1.17.1
 	golang.org/x/oauth2 v0.23.0
-	golang.org/x/time v0.7.0
 )
 
 require (
@@ -24,7 +22,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.20.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
