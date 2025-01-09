@@ -41,8 +41,10 @@ func NewServer(p1 *NewServerParam) *Server {
 		Config: config,
 		Engine: gin.New(),
 		Logger: defaultLogger(),
-		Hooks:  defaultHooks(),
+		Db:     make(map[string]interface{}),
 	}
+
+	s.Hooks = defaultHooks(s)
 
 	// for us to then loop through the given options that would give access to gin
 	// another server features
@@ -52,6 +54,12 @@ func NewServer(p1 *NewServerParam) *Server {
 	}
 
 	return s
+}
+
+func (s *Server) UpdateAppLayer(p1 []AppLayer) {
+	for _, opt := range p1 {
+		opt(s)
+	}
 }
 
 // method for starting the server
@@ -70,10 +78,12 @@ func defaultConfig() *Config {
 }
 
 // set up default hooks
-func defaultHooks() Hooks {
+func defaultHooks(s *Server) Hooks {
 	h := Hooks{}
 
-	h.Auth = &DefaultAuthHooks{}
+	h.Auth = &DefaultAuthHooks{
+		s: s,
+	}
 
 	return h
 }

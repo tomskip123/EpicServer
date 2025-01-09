@@ -104,23 +104,30 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 				return
 			}
 
-			// Get auth cookie
-			cookie, err := c.Cookie(config.CookieName)
+			providerCookie, err := c.Cookie("provider")
+			if err != nil {
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
+
+			cookie, err := s.AuthConfigs[providerCookie].CookieHandler.ReadCookieHandler(c, config.CookieName)
 			if err != nil {
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 
 			// Validate session/token using the hooks
-			userID, err := s.Hooks.Auth.OnSessionValidate(cookie)
+			user, err := s.Hooks.Auth.OnSessionValidate(cookie)
 			if err != nil {
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
 			}
 
 			session := &Session{
-				UserID: userID,
-				Token:  cookie,
+				User:      user,
+				Token:     cookie.SessionId,
+				Email:     cookie.Email,
+				ExpiresOn: cookie.ExpiresOn,
 				// Add other session fields as needed
 			}
 
@@ -134,15 +141,33 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 type AuthenticationHooks interface {
 	// OnUserCreate is a hook for the consumer to create their user and return the userID to be saved to the cookie
 	OnUserCreate(user Claims) (string, error)
+	GetUserOrCreate(user Claims) (*CookieContents, error)
 	OnAuthenticate(username, password string) (bool, error)
 	OnUserGet(userID string) (any, error)
-	OnSessionValidate(sessionToken string) (string, error)
+	OnSessionValidate(sessionToken *CookieContents) (interface{}, error)
 	OnSessionCreate(userID string) (string, error)
 	OnSessionDestroy(sessionToken string) error
 }
 
 // Optional: Provide a base implementation with no-op methods
-type DefaultAuthHooks struct{}
+type DefaultAuthHooks struct {
+	s *Server
+}
+
+// OnUserCreate for when the session is validated and we need to check or create a user if its been created
+func (d *DefaultAuthHooks) GetUserOrCreate(user Claims) (*CookieContents, error) {
+	return &CookieContents{
+		UserId: user.UserID,
+		Email:  user.Email,
+		SessionId: func() string {
+			b := make([]byte, 32)
+			rand.Read(b)
+			return base64.StdEncoding.EncodeToString(b)
+		}(),
+		IsLoggedIn: true,
+		ExpiresOn:  time.Now().Add(time.Duration(1 * time.Hour)),
+	}, nil
+}
 
 // OnUserCreate for when the session is validated and we need to check or create a user if its been created
 func (d *DefaultAuthHooks) OnUserCreate(user Claims) (string, error) {
@@ -160,7 +185,7 @@ func (d *DefaultAuthHooks) OnUserGet(userID string) (any, error) {
 }
 
 // OnSessionValidate validates the session token and returns the userID
-func (d *DefaultAuthHooks) OnSessionValidate(sessionToken string) (string, error) {
+func (d *DefaultAuthHooks) OnSessionValidate(sessionToken *CookieContents) (interface{}, error) {
 	return "", fmt.Errorf("on session validate hook not implemented")
 }
 
@@ -242,26 +267,28 @@ func HandleAuthGoogleCallback(s *Server, providers []Provider, cookiename string
 			return
 		}
 
-		cookieContents := &CookieContents{
-			Email: claims.Email,
-		}
-
 		// event hook needs to be called here
-		userId, err := hooks.OnUserCreate(claims)
+		contents, err := hooks.GetUserOrCreate(claims)
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		if userId != "" {
-			cookieContents.UserId = userId
-		}
-
 		err = authConfig.CookieHandler.SetCookieHandler(
 			ctx,
-			cookieContents,
+			contents,
 			cookiename,
 			domain,
 			secure,
+		)
+
+		ctx.SetCookie(
+			"provider",
+			prov,
+			int((time.Hour * 24 * 7).Seconds()),
+			"/",
+			domain,
+			secure,
+			true,
 		)
 
 		if err != nil {
@@ -447,19 +474,23 @@ func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContent
 	return errors.New("error setting cookie")
 }
 
-func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) (string, error) {
+func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) (*CookieContents, error) {
 	cookie, err := ctx.Cookie(cookieName)
 	if err == nil {
 		var value []byte
-		// fmt.Println("cookie: ", cookie)
 		err = ch.SecureCookie.Decode(cookieName, cookie, &value)
 		if err == nil {
-			valueStr := string(value)
-			return valueStr, nil
+			var cookieContents CookieContents
+			err := json.Unmarshal(value, &cookieContents)
+			if err != nil {
+				return &CookieContents{}, err
+			}
+
+			return &cookieContents, nil
 		}
 	}
 
-	return "", err
+	return &CookieContents{}, err
 }
 
 // AppLayer function to configure public paths
@@ -539,8 +570,10 @@ func IsTrustedSource(r *http.Request) bool {
 
 // Session represents the user's session data
 type Session struct {
-	UserID string
-	Token  string
+	User      interface{}
+	Token     string
+	Email     string
+	ExpiresOn time.Time
 	// Add other session fields as needed
 }
 

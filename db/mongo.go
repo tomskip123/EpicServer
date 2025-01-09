@@ -35,8 +35,8 @@ func WithMongo(mongoConfig *MongoConfig) EpicServer.AppLayer {
 		}
 
 		// Cast the mongo client to the server's db interface
-		if db, ok := interface{}(client).(mongo.Client); ok {
-			mongoConfig.client = &db
+		if db, ok := interface{}(client).(*mongo.Client); ok {
+			mongoConfig.client = db
 			s.Db[mongoConfig.ConnectionName] = mongoConfig
 		} else {
 			panic("mongo client does not implement DB interface")
@@ -46,8 +46,8 @@ func WithMongo(mongoConfig *MongoConfig) EpicServer.AppLayer {
 
 // GetMongoClient safely retrieves the mongo.Client from the server
 func GetMongoClient(s *EpicServer.Server, connectionName string) *mongo.Client {
-	if client, ok := s.Db[connectionName].(*mongo.Client); ok {
-		return client
+	if config, ok := s.Db[connectionName].(*MongoConfig); ok {
+		return config.client
 	}
 	panic("server DB is not a mongo client")
 }
