@@ -74,6 +74,51 @@ return user, nil
 
 This allows for multiple database connections to be added to the server instance.
 
+## Example Hello world
+
+```go
+package main
+
+import (
+	"crypto/rand"
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	. "github.com/tomskip123/EpicServer"
+)
+
+func main() {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		log.Fatal(err)
+	}
+
+	var routes = RouteGroup{
+		Prefix: "/",
+		Routes: []Route{
+			Get("/", func(ctx *gin.Context, s *Server) {
+				ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+			}),
+		},
+	}
+
+	serverParam := &NewServerParam{
+		Configs: []Option{
+			SetSecretKey(key),
+			SetHost("localhost", 3000),
+		},
+		AppLayer: []AppLayer{
+			WithRoutes(routes),
+		},
+	}
+	server := NewServer(serverParam)
+
+	server.Start()
+}
+
+```
+
 ## Example of Minimal with auth server
 
 ```go
