@@ -15,6 +15,7 @@ type Server struct {
 	PublicPaths map[string]bool
 	AuthConfigs map[string]*Auth
 	Db          map[string]interface{}
+	Cache       map[string]interface{}
 }
 
 type NewServerParam struct {
@@ -42,6 +43,7 @@ func NewServer(p1 *NewServerParam) *Server {
 		Engine: gin.New(),
 		Logger: defaultLogger(),
 		Db:     make(map[string]interface{}),
+		Cache:  make(map[string]interface{}),
 	}
 
 	s.Hooks = defaultHooks(s)
