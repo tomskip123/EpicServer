@@ -23,8 +23,18 @@ go get github.com/tomskip123/EpicServer
 * Event Hooks for Database management on top.
 * Built In Authentication management with Cookies
 * Opt-in Features following the WithFeature methods
+* Cache Adapters.
+* Database Adapters.
 
-## Example of standard server
+* For features like Cache and Databases, we only provide instances that accessible through helper functions like
+
+```go
+userCollection := EpicServerDb.GetMongoCollection(s, dbConnectionName, os.Getenv("DATABASE_NAME"), "users")
+```
+
+This allows for multiple database connections to be added to the server instance.
+
+## Example of Minimal with auth server
 
 ```go
 package main
@@ -101,7 +111,6 @@ func main() {
 }
 
 ```
-
 
 ## Directory Structure
 
