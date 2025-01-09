@@ -19,7 +19,7 @@ func WithStaticDirectory(path string, embededFS *embed.FS, fileSystemPath string
 			panic(err)
 		}
 
-		s.engine.StaticFS(path, http.FS(assets))
+		s.Engine.StaticFS(path, http.FS(assets))
 	}
 }
 
@@ -35,7 +35,7 @@ func WithSPACatchAll(
 	spaEntryPointPath string,
 ) AppLayer {
 	return func(s *Server) {
-		s.engine.NoRoute(func(c *gin.Context) {
+		s.Engine.NoRoute(func(c *gin.Context) {
 			// if !strings.HasPrefix(c.Request.RequestURI, "/api") && !strings.HasPrefix(c.Request.RequestURI, "/auth") {
 			var fileToReturn fs.File
 
@@ -89,7 +89,7 @@ func WithSPACatchAll(
 
 func ServeEmbededFile(server *Server, embededFS *embed.FS, path string, file string, defaultContentType string) {
 	// Serve a single file from the embedded file system
-	server.engine.GET(fmt.Sprintf("/%v", path), func(c *gin.Context) {
+	server.Engine.GET(fmt.Sprintf("/%v", path), func(c *gin.Context) {
 		file, err := embededFS.Open(fmt.Sprintf("%v", file))
 		if err != nil {
 			fmt.Println("Error opening file:", err)

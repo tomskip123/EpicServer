@@ -5,7 +5,7 @@ import (
 )
 
 // Route handler type matching gin.HandlerFunc
-type HandlerFunc func(*gin.Context)
+type HandlerFunc func(*gin.Context, *Server)
 
 // Route definition structure
 type Route struct {
@@ -23,9 +23,12 @@ type RouteGroup struct {
 func WithRoutes(groups ...RouteGroup) AppLayer {
 	return func(s *Server) {
 		for _, group := range groups {
-			ginGroup := s.engine.Group(group.Prefix)
+			ginGroup := s.Engine.Group(group.Prefix)
 			for _, route := range group.Routes {
-				handlers := []gin.HandlerFunc{gin.HandlerFunc(route.Handler)}
+				handler := func(c *gin.Context) {
+					route.Handler(c, s)
+				}
+				handlers := []gin.HandlerFunc{handler}
 
 				ginGroup.Handle(route.Method, route.Path, handlers...)
 			}

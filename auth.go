@@ -67,7 +67,7 @@ func WithOAuth(
 	sessionConfig *SessionConfig,
 ) AppLayer {
 	return func(s *Server) {
-		s.authConfigs = make(map[string]*Auth)
+		s.AuthConfigs = make(map[string]*Auth)
 
 		// Create auth configs once
 		for _, provider := range providers {
@@ -83,7 +83,7 @@ func WithOAuth(
 				provider.Callback,
 				provider.Name,
 			)
-			s.authConfigs[provider.Name] = authConfig
+			s.AuthConfigs[provider.Name] = authConfig
 		}
 
 		RegisterAuthRoutes(s, providers, sessionConfig.CookieName, sessionConfig.CookieDomain, sessionConfig.CookieSecure)
@@ -97,7 +97,7 @@ func WithOAuth(
 
 func WithAuthMiddleware(config SessionConfig) AppLayer {
 	return func(s *Server) {
-		s.engine.Use(func(c *gin.Context) {
+		s.Engine.Use(func(c *gin.Context) {
 			// Skip auth for public routes if needed
 			if s.isPublicPath(c.Request.URL.Path) {
 				c.Next()
@@ -112,7 +112,7 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 			}
 
 			// Validate session/token using the hooks
-			userID, err := s.hooks.Auth.OnSessionValidate(cookie)
+			userID, err := s.Hooks.Auth.OnSessionValidate(cookie)
 			if err != nil {
 				c.AbortWithStatus(http.StatusUnauthorized)
 				return
@@ -177,21 +177,21 @@ func (d *DefaultAuthHooks) OnSessionDestroy(sessionToken string) error {
 // WithAuthHooks allows you to define hooks to listen into when creating the server and customising how the user is stored
 func WithAuthHooks(hooks AuthenticationHooks) AppLayer {
 	return func(s *Server) {
-		s.hooks.Auth = hooks
+		s.Hooks.Auth = hooks
 	}
 }
 
 func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
-	s.engine.GET("/auth/:provider", HandleAuthGoogle(s, providers, cookieName))
-	s.engine.GET("/auth/:provider/callback", HandleAuthGoogleCallback(s, providers, cookieName, domain, secure, s.hooks.Auth))
-	s.engine.GET("/auth/logout", HandleAuthLogout(cookieName, domain, secure))
+	s.Engine.GET("/auth/:provider", HandleAuthGoogle(s, providers, cookieName))
+	s.Engine.GET("/auth/:provider/callback", HandleAuthGoogleCallback(s, providers, cookieName, domain, secure, s.Hooks.Auth))
+	s.Engine.GET("/auth/logout", HandleAuthLogout(cookieName, domain, secure))
 }
 
 func HandleAuthGoogle(s *Server, providers []Provider, cookieName string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		providerParam := ctx.Param("provider")
 
-		if authConfig, exists := s.authConfigs[providerParam]; exists {
+		if authConfig, exists := s.AuthConfigs[providerParam]; exists {
 			ctx.Redirect(http.StatusSeeOther, authConfig.Config.AuthCodeURL("state"))
 			return
 		}
@@ -204,7 +204,7 @@ func HandleAuthGoogleCallback(s *Server, providers []Provider, cookiename string
 	return func(ctx *gin.Context) {
 		prov := ctx.Param("provider")
 
-		authConfig, exists := s.authConfigs[prov]
+		authConfig, exists := s.AuthConfigs[prov]
 		if !exists {
 			ctx.JSON(http.StatusNotFound, gin.H{"provider": "doesn't exist"})
 			return
@@ -465,28 +465,28 @@ func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) 
 // AppLayer function to configure public paths
 func WithPublicPaths(config PublicPathConfig) AppLayer {
 	return func(s *Server) {
-		s.publicPaths = make(map[string]bool)
+		s.PublicPaths = make(map[string]bool)
 
 		// Add exact matches
 		for _, path := range config.Exact {
-			s.publicPaths[path] = true
+			s.PublicPaths[path] = true
 		}
 
 		// Store prefix matches with special suffix
 		for _, prefix := range config.Prefix {
-			s.publicPaths[prefix+"/*"] = true
+			s.PublicPaths[prefix+"/*"] = true
 		}
 	}
 }
 
 func (s *Server) isPublicPath(path string) bool {
 	// Check exact matches first
-	if s.publicPaths[path] {
+	if s.PublicPaths[path] {
 		return true
 	}
 
 	// Check prefix matches
-	for storedPath := range s.publicPaths {
+	for storedPath := range s.PublicPaths {
 		if strings.HasSuffix(storedPath, "/*") {
 			prefix := strings.TrimSuffix(storedPath, "/*")
 			if strings.HasPrefix(path, prefix) {

@@ -8,13 +8,13 @@ import (
 )
 
 type Server struct {
-	config      *Config
-	engine      *gin.Engine
-	logger      Logger
-	db          DatabaseProvider
-	hooks       Hooks
-	publicPaths map[string]bool
-	authConfigs map[string]*Auth
+	Config      *Config
+	Engine      *gin.Engine
+	Logger      Logger
+	Hooks       Hooks
+	PublicPaths map[string]bool
+	AuthConfigs map[string]*Auth
+	Db          interface{}
 }
 
 type NewServerParam struct {
@@ -38,10 +38,10 @@ func NewServer(p1 *NewServerParam) *Server {
 
 	// We then define an initial setup for the server instance
 	s := &Server{
-		config: config,
-		engine: gin.New(),
-		logger: defaultLogger(),
-		hooks:  defaultHooks(),
+		Config: config,
+		Engine: gin.New(),
+		Logger: defaultLogger(),
+		Hooks:  defaultHooks(),
 	}
 
 	// for us to then loop through the given options that would give access to gin
@@ -56,16 +56,7 @@ func NewServer(p1 *NewServerParam) *Server {
 
 // method for starting the server
 func (s *Server) Start() error {
-	return s.engine.Run(fmt.Sprintf("%s:%d", s.config.Server.Host, s.config.Server.Port))
-}
-
-// DB is a method for accessing defined database providers!
-func (s *Server) DB() DatabaseProvider {
-	if s.db == nil {
-		panic("no database provider defined")
-	}
-
-	return s.db
+	return s.Engine.Run(fmt.Sprintf("%s:%d", s.Config.Server.Host, s.Config.Server.Port))
 }
 
 // setting up default config with sensible defaults
@@ -96,7 +87,7 @@ type AppLayer func(*Server)
 // this should surfice for any checkers.
 func WithHealthCheck(path string) AppLayer {
 	return func(s *Server) {
-		s.engine.GET(path, func(ctx *gin.Context) {
+		s.Engine.GET(path, func(ctx *gin.Context) {
 			ctx.Status(200)
 		})
 	}
@@ -105,14 +96,14 @@ func WithHealthCheck(path string) AppLayer {
 // We have a very basic middleware that supports compression and force https when it can
 func WithCompression() AppLayer {
 	return func(s *Server) {
-		s.engine.Use(CompressMiddleware)
+		s.Engine.Use(CompressMiddleware)
 	}
 }
 
 // WithRemoveWWW adds middleware to remove the www. prefix in a domain.
 func WithRemoveWWW() AppLayer {
 	return func(s *Server) {
-		s.engine.Use(RemoveWWWMiddleware())
+		s.Engine.Use(RemoveWWWMiddleware())
 	}
 }
 
@@ -120,7 +111,7 @@ func WithRemoveWWW() AppLayer {
 // This should support more options like accept headers etc.
 func WithCors(origins []string) AppLayer {
 	return func(s *Server) {
-		s.engine.Use(CorsMiddleware(origins))
+		s.Engine.Use(CorsMiddleware(origins))
 	}
 }
 
@@ -135,6 +126,6 @@ func WithEnironment(environment string) AppLayer {
 // With HTTP2 sets gin to allow http2
 func WithHttp2() AppLayer {
 	return func(s *Server) {
-		s.engine.UseH2C = true
+		s.Engine.UseH2C = true
 	}
 }
