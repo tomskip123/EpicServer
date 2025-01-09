@@ -29,6 +29,21 @@ go get github.com/tomskip123/EpicServer
 * For features like Cache and Databases, we only provide instances that accessible through helper functions like
 
 ```go
+import (
+	"context"
+	"os"
+	"time"
+	
+	"github.com/tomskip123/EpicServer"
+	EpicServerCache "github.com/tomskip123/EpicServer/cache"
+	EpicServerDb "github.com/tomskip123/EpicServer/db"
+	"go.mongodb.org/mongo-driver/bson"
+)
+
+var (
+	UserCachename = "user_cache"
+)
+
 // Example of getting a MemoryCache
 userMemoryCache := EpicServerCache.GetMemoryCache(s, UserCachename)
 
