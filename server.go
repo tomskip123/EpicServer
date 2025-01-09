@@ -14,7 +14,7 @@ type Server struct {
 	Hooks       Hooks
 	PublicPaths map[string]bool
 	AuthConfigs map[string]*Auth
-	Db          interface{}
+	Db          map[string]interface{}
 }
 
 type NewServerParam struct {

@@ -1,4 +1,4 @@
-package db
+package EpicServerDb
 
 import (
 	"database/sql"
@@ -9,11 +9,12 @@ import (
 )
 
 type MySQLConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Database string
+	ConnectionName string
+	Host           string
+	Port           int
+	User           string
+	Password       string
+	Database       string
 }
 
 func WithMySQL(config MySQLConfig) EpicServer.AppLayer {
@@ -35,12 +36,12 @@ func WithMySQL(config MySQLConfig) EpicServer.AppLayer {
 			panic(err)
 		}
 
-		s.Db = db
+		s.Db[config.ConnectionName] = db
 	}
 }
 
-func GetMySQLDB(s *EpicServer.Server) *sql.DB {
-	if db, ok := s.Db.(*sql.DB); ok {
+func GetMySQLDB(s *EpicServer.Server, connectionName string) *sql.DB {
+	if db, ok := s.Db[connectionName].(*sql.DB); ok {
 		return db
 	}
 	panic("server DB is not a MySQL connection")

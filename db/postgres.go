@@ -1,4 +1,4 @@
-package db
+package EpicServerDb
 
 import (
 	"database/sql"
@@ -9,12 +9,13 @@ import (
 )
 
 type PostgresConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Database string
-	SSLMode  string
+	ConnectionName string
+	Host           string
+	Port           int
+	User           string
+	Password       string
+	Database       string
+	SSLMode        string
 }
 
 func WithPostgres(config PostgresConfig) EpicServer.AppLayer {
@@ -37,12 +38,12 @@ func WithPostgres(config PostgresConfig) EpicServer.AppLayer {
 			panic(err)
 		}
 
-		s.Db = db
+		s.Db[config.ConnectionName] = db
 	}
 }
 
-func GetPostgresDB(s *EpicServer.Server) *sql.DB {
-	if db, ok := s.Db.(*sql.DB); ok {
+func GetPostgresDB(s *EpicServer.Server, connectionName string) *sql.DB {
+	if db, ok := s.Db[connectionName].(*sql.DB); ok {
 		return db
 	}
 	panic("server DB is not a Postgres connection")
