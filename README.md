@@ -29,7 +29,32 @@ go get github.com/tomskip123/EpicServer
 * For features like Cache and Databases, we only provide instances that accessible through helper functions like
 
 ```go
+// Example of getting a MemoryCache
+userMemoryCache := EpicServerCache.GetMemoryCache(s, UserCachename)
+
+cachedUser, exists := userMemoryCache.Get(email)
+if exists {
+	// if it exists, cast the type of the cachedUser and return
+	return cachedUser.(*db.UserModel), nil
+}
+
+// Example of getting a collection
 userCollection := EpicServerDb.GetMongoCollection(s, dbConnectionName, os.Getenv("DATABASE_NAME"), "users")
+
+// build query for fetching user by email
+result := collection.FindOne(ctx, bson.M{"email": email})
+
+var user *db.UserModel
+// decode results to variable
+err := result.Decode(&user)
+if err != nil {
+	return nil, err
+}
+
+// add user to cache
+userMemoryCache.Set(email, user, 10*time.Minute)
+
+return user, nil
 ```
 
 This allows for multiple database connections to be added to the server instance.
