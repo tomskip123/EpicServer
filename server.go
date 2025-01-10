@@ -128,7 +128,7 @@ func WithCors(origins []string) AppLayer {
 }
 
 // WithEnvironment sets how to run gin
-func WithEnironment(environment string) AppLayer {
+func WithEnvironment(environment string) AppLayer {
 	return func(s *Server) {
 		gin.SetMode(gin.ReleaseMode)
 	}
