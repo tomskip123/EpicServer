@@ -13,6 +13,7 @@ type Config struct {
 		Origins      []string
 	}
 	SecretKey []byte
+	Custom    interface{}
 }
 
 type Option func(*Config)
@@ -28,4 +29,14 @@ func SetSecretKey(secretKey []byte) Option {
 	return func(c *Config) {
 		c.SecretKey = secretKey
 	}
+}
+
+func SetCustomConfig(customConfig interface{}) Option {
+	return func(c *Config) {
+		c.Custom = customConfig
+	}
+}
+
+func GetCustomConfig(s *Server) interface{} {
+	return s.Config.Custom
 }
