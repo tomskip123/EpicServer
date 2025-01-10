@@ -130,9 +130,21 @@ func WithCors(origins []string) AppLayer {
 // WithEnvironment sets how to run gin
 func WithEnvironment(environment string) AppLayer {
 	return func(s *Server) {
-		gin.SetMode(gin.ReleaseMode)
+		if environment == "development" {
+			gin.SetMode(gin.DebugMode)
+		} else if environment == "production" {
+			gin.SetMode(gin.ReleaseMode)
+		} else {
+			gin.SetMode(gin.TestMode)
+		}
 	}
+}
 
+// WithTrustProxies sets trusted proxies
+func WithTrustedProxies(proxies []string) AppLayer {
+	return func(s *Server) {
+		s.Engine.SetTrustedProxies(proxies)
+	}
 }
 
 // With HTTP2 sets gin to allow http2
