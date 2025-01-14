@@ -96,7 +96,7 @@ func WithAuth(
 }
 
 func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
-	s.Engine.GET("/auth/:provider", HandleAuthLogin(s, providers, cookieName))
+	s.Engine.GET("/auth/:provider", HandleAuthLogin(s, providers, cookieName, domain, secure))
 	s.Engine.GET("/auth/:provider/callback", HandleAuthCallback(s, providers, cookieName, domain, secure, s.Hooks.Auth))
 	s.Engine.GET("/auth/logout", HandleAuthLogout(cookieName, domain, secure))
 }
@@ -212,7 +212,7 @@ func WithAuthHooks(hooks AuthenticationHooks) AppLayer {
 	}
 }
 
-func HandleAuthLogin(s *Server, providers []Provider, cookieName string) gin.HandlerFunc {
+func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain string, secure bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		providerParam := ctx.Param("provider")
 
@@ -234,6 +234,30 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string) gin.Han
 
 				if !authenticated {
 					ctx.AbortWithStatus(http.StatusUnauthorized)
+					return
+				}
+
+				// Create a session
+				contents, err := s.Hooks.Auth.GetUserOrCreate(Claims{
+					Email: username,
+				})
+
+				if err != nil {
+					ctx.AbortWithError(http.StatusInternalServerError, err)
+					return
+				}
+
+				err = authConfig.CookieHandler.SetCookieHandler(
+					ctx,
+					contents,
+					"basic",
+					cookieName,
+					domain,
+					secure,
+				)
+
+				if err != nil {
+					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
 
@@ -300,6 +324,7 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		err = authConfig.CookieHandler.SetCookieHandler(
 			ctx,
 			contents,
+			prov,
 			cookiename,
 			domain,
 			secure,
@@ -359,6 +384,10 @@ func NewAuthConfig(
 		Verifier:       nil,
 		CookieHandler:  ch,
 		AuthCookieName: cookieName,
+	}
+
+	if providerName == "basic" {
+		return &auth
 	}
 
 	issuer := getProviderIssuer(providerName)
@@ -471,7 +500,7 @@ func (cc *CookieContents) DeserialiseCookie(cookieString string) (*CookieContent
 	return cc, nil
 }
 
-func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContents, cookieName string, domain string, secure bool) error {
+func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContents, provider string, cookieName string, domain string, secure bool) error {
 	expiry := time.Hour * 24 * 7
 	value.ExpiresOn = time.Now().Add(expiry)
 
@@ -485,6 +514,16 @@ func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContent
 		ctx.SetCookie(
 			cookieName,
 			encoded,
+			int(expiry.Seconds()),
+			"/",
+			domain,
+			secure,
+			true,
+		)
+
+		ctx.SetCookie(
+			"provider",
+			provider,
 			int(expiry.Seconds()),
 			"/",
 			domain,
