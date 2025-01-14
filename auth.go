@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -228,11 +227,13 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 
 				authenticated, err := s.Hooks.Auth.OnAuthenticate(username, password)
 				if err != nil {
+					s.Logger.Error(err)
 					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
 
 				if !authenticated {
+					s.Logger.Error("unauthorised")
 					ctx.AbortWithStatus(http.StatusUnauthorized)
 					return
 				}
@@ -243,6 +244,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				})
 
 				if err != nil {
+					s.Logger.Error(err)
 					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
@@ -257,6 +259,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				)
 
 				if err != nil {
+					s.Logger.Error(err)
 					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
@@ -510,31 +513,32 @@ func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContent
 		return err
 	}
 
-	if encoded, err := ch.SecureCookie.Encode(cookieName, jsonValue); err == nil {
-		ctx.SetCookie(
-			cookieName,
-			encoded,
-			int(expiry.Seconds()),
-			"/",
-			domain,
-			secure,
-			true,
-		)
-
-		ctx.SetCookie(
-			"provider",
-			provider,
-			int(expiry.Seconds()),
-			"/",
-			domain,
-			secure,
-			true,
-		)
-
-		return nil
+	encoded, err := ch.SecureCookie.Encode(cookieName, jsonValue)
+	if err != nil {
+		return err
 	}
 
-	return errors.New("error setting cookie")
+	ctx.SetCookie(
+		cookieName,
+		encoded,
+		int(expiry.Seconds()),
+		"/",
+		domain,
+		secure,
+		true,
+	)
+
+	ctx.SetCookie(
+		"provider",
+		provider,
+		int(expiry.Seconds()),
+		"/",
+		domain,
+		secure,
+		true,
+	)
+
+	return nil
 }
 
 func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) (*CookieContents, error) {
