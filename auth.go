@@ -62,7 +62,7 @@ type PublicPathConfig struct {
 }
 
 // the Authentication is going to be a large configurable ServerOption
-func WithOAuth(
+func WithAuth(
 	providers []Provider,
 	sessionConfig *SessionConfig,
 ) AppLayer {
@@ -71,7 +71,7 @@ func WithOAuth(
 
 		// Create auth configs once
 		for _, provider := range providers {
-			if provider.ClientId == "" || provider.ClientSecret == "" || provider.Name == "" || provider.Callback == "" {
+			if provider.Name != "basic" && (provider.ClientId == "" || provider.ClientSecret == "" || provider.Name == "" || provider.Callback == "") {
 				panic("Make sure that providers have valid fields.")
 			}
 
@@ -93,6 +93,12 @@ func WithOAuth(
 		// 3. the with auth layer should automatically set these up including routes and
 
 	}
+}
+
+func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
+	s.Engine.GET("/auth/:provider", HandleAuthLogin(s, providers, cookieName))
+	s.Engine.GET("/auth/:provider/callback", HandleAuthCallback(s, providers, cookieName, domain, secure, s.Hooks.Auth))
+	s.Engine.GET("/auth/logout", HandleAuthLogout(cookieName, domain, secure))
 }
 
 func WithAuthMiddleware(config SessionConfig) AppLayer {
@@ -206,17 +212,35 @@ func WithAuthHooks(hooks AuthenticationHooks) AppLayer {
 	}
 }
 
-func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
-	s.Engine.GET("/auth/:provider", HandleAuthGoogle(s, providers, cookieName))
-	s.Engine.GET("/auth/:provider/callback", HandleAuthGoogleCallback(s, providers, cookieName, domain, secure, s.Hooks.Auth))
-	s.Engine.GET("/auth/logout", HandleAuthLogout(cookieName, domain, secure))
-}
-
-func HandleAuthGoogle(s *Server, providers []Provider, cookieName string) gin.HandlerFunc {
+func HandleAuthLogin(s *Server, providers []Provider, cookieName string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		providerParam := ctx.Param("provider")
 
 		if authConfig, exists := s.AuthConfigs[providerParam]; exists {
+			if providerParam == "basic" {
+				// Basic auth provider
+				username, password, ok := ctx.Request.BasicAuth()
+
+				if !ok {
+					ctx.AbortWithStatus(http.StatusUnauthorized)
+					return
+				}
+
+				authenticated, err := s.Hooks.Auth.OnAuthenticate(username, password)
+				if err != nil {
+					ctx.AbortWithError(http.StatusInternalServerError, err)
+					return
+				}
+
+				if !authenticated {
+					ctx.AbortWithStatus(http.StatusUnauthorized)
+					return
+				}
+
+				s.Logger.Debug("Basic auth provider")
+				return
+			}
+
 			ctx.Redirect(http.StatusSeeOther, authConfig.Config.AuthCodeURL("state"))
 			return
 		}
@@ -225,7 +249,7 @@ func HandleAuthGoogle(s *Server, providers []Provider, cookieName string) gin.Ha
 	}
 }
 
-func HandleAuthGoogleCallback(s *Server, providers []Provider, cookiename string, domain string, secure bool, hooks AuthenticationHooks) gin.HandlerFunc {
+func HandleAuthCallback(s *Server, providers []Provider, cookiename string, domain string, secure bool, hooks AuthenticationHooks) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		prov := ctx.Param("provider")
 
