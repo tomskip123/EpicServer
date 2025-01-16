@@ -2,10 +2,16 @@ package EpicServer
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -147,16 +153,22 @@ type AuthenticationHooks interface {
 	// OnUserCreate is a hook for the consumer to create their user and return the userID to be saved to the cookie
 	OnUserCreate(user Claims) (string, error)
 	GetUserOrCreate(user Claims) (*CookieContents, error)
-	OnAuthenticate(username, password string) (bool, error)
+	OnAuthenticate(username, password string, state OAuthState) (bool, error)
 	OnUserGet(userID string) (any, error)
 	OnSessionValidate(sessionToken *CookieContents) (interface{}, error)
 	OnSessionCreate(userID string) (string, error)
 	OnSessionDestroy(sessionToken string) error
+	OnOAuthCallbackSuccess(ctx *gin.Context, state OAuthState) error
 }
 
 // Optional: Provide a base implementation with no-op methods
 type DefaultAuthHooks struct {
 	s *Server
+}
+
+func (d *DefaultAuthHooks) OnOAuthCallbackSuccess(ctx *gin.Context, state OAuthState) error {
+	fmt.Println("default oauthcallbacksucess")
+	return nil
 }
 
 // OnUserCreate for when the session is validated and we need to check or create a user if its been created
@@ -180,7 +192,7 @@ func (d *DefaultAuthHooks) OnUserCreate(user Claims) (string, error) {
 }
 
 // OnAuthenticate should only really be used with password authentication
-func (d *DefaultAuthHooks) OnAuthenticate(username, password string) (bool, error) {
+func (d *DefaultAuthHooks) OnAuthenticate(username, password string, state OAuthState) (bool, error) {
 	return false, fmt.Errorf("on authenticate hook not implemented")
 }
 
@@ -211,9 +223,49 @@ func WithAuthHooks(hooks AuthenticationHooks) AppLayer {
 	}
 }
 
+type OAuthState struct {
+	CookieDomainOverride string                 `json:"cookie_domain_override"`
+	ReturnTo             string                 `json:"return_to"`
+	Custom               map[string]interface{} `json:"custom"`
+}
+
 func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain string, secure bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		providerParam := ctx.Param("provider")
+
+		// if there is a app callback param in the original request, pass on to the oauth
+		var options []oauth2.AuthCodeOption
+
+		state := "state"
+		var cState OAuthState
+
+		if ctx.Query("custom_state") != "" {
+			customState := ctx.Query("custom_state")
+
+			err := json.Unmarshal([]byte(customState), &cState)
+			if err != nil {
+				s.Logger.Error(err)
+				ctx.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+
+			stateJSON, err := json.Marshal(cState)
+			if err != nil {
+				s.Logger.Error(err)
+				ctx.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+
+			state = EncodeStateString(s, stateJSON)
+		}
+
+		// this allows custom authentication domain for configurable frontend,
+		// helpful for multi tennant applications on different domains.
+		// In the hook when authenticating you will want to check the domain is valid
+		// ! RESEARCH POTENTIAL SECURITY RISK AROUND MANIPULATING
+		if cState.CookieDomainOverride != "" {
+			domain = cState.CookieDomainOverride
+		}
 
 		if authConfig, exists := s.AuthConfigs[providerParam]; exists {
 			if providerParam == "basic" {
@@ -225,7 +277,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 					return
 				}
 
-				authenticated, err := s.Hooks.Auth.OnAuthenticate(username, password)
+				authenticated, err := s.Hooks.Auth.OnAuthenticate(username, password, cState)
 				if err != nil {
 					s.Logger.Error(err)
 					ctx.AbortWithError(http.StatusInternalServerError, err)
@@ -268,12 +320,82 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				return
 			}
 
-			ctx.Redirect(http.StatusSeeOther, authConfig.Config.AuthCodeURL("state"))
+			ctx.Redirect(http.StatusSeeOther, authConfig.Config.AuthCodeURL(state, options...))
 			return
 		}
 
 		ctx.JSON(http.StatusNotFound, gin.H{"provider": "doesn't exist"})
 	}
+}
+func EncodeStateString(s *Server, stateString []byte) string {
+	secret := os.Getenv("ENCRYPTION_KEY")
+	if secret == "" {
+		return base64.URLEncoding.EncodeToString(stateString)
+	}
+
+	key, _ := hex.DecodeString(secret)
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		panic(err)
+	}
+
+	ciphertext := make([]byte, aes.BlockSize+len(string(stateString)))
+	iv := ciphertext[:aes.BlockSize]
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		panic(err)
+	}
+
+	stream := cipher.NewCFBEncrypter(block, iv)
+	stream.XORKeyStream(ciphertext[aes.BlockSize:], stateString)
+
+	// make sure signed and protected using hmac
+	h := hmac.New(sha256.New, key)
+	h.Write(ciphertext)
+	mac := h.Sum(nil)
+
+	final := append(ciphertext, mac...)
+
+	return base64.RawURLEncoding.EncodeToString(final)
+}
+
+func DecodeStateString(stateString string) ([]byte, error) {
+	secret := os.Getenv("ENCRYPTION_KEY")
+	if secret == "" {
+		return base64.URLEncoding.DecodeString(stateString)
+	}
+
+	key, _ := hex.DecodeString(secret)
+	ciphertext, err := base64.RawURLEncoding.DecodeString(stateString)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode state: %v", err)
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ciphertext) < aes.BlockSize {
+		return nil, fmt.Errorf("ciphertext too short")
+	}
+
+	iv := ciphertext[:aes.BlockSize]
+	encryptedData := ciphertext[aes.BlockSize : len(ciphertext)-32]
+	messageMAC := ciphertext[len(ciphertext)-32:]
+
+	// Verify HMAC
+	h := hmac.New(sha256.New, key)
+	h.Write(ciphertext[:len(ciphertext)-32])
+	expectedMAC := h.Sum(nil)
+	if !hmac.Equal(messageMAC, expectedMAC) {
+		return nil, fmt.Errorf("invalid MAC")
+	}
+
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(encryptedData, encryptedData)
+
+	return encryptedData, nil
 }
 
 func HandleAuthCallback(s *Server, providers []Provider, cookiename string, domain string, secure bool, hooks AuthenticationHooks) gin.HandlerFunc {
@@ -344,6 +466,30 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		)
 
 		if err != nil {
+			s.Logger.Debug(err)
+			return
+		}
+
+		if ctx.Query("state") != "state" {
+			decodedString, err := DecodeStateString(ctx.Query("state"))
+			if err != nil {
+				s.Logger.Error("error decoding state string")
+				// handle error
+				ctx.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+
+			var stateStruct OAuthState
+
+			err = json.Unmarshal(decodedString, &stateStruct)
+			if err != nil {
+				s.Logger.Error("error unmarshalling string")
+				ctx.AbortWithError(http.StatusInternalServerError, err)
+				return
+			}
+
+			s.Logger.Debug("assuming consumer wants to handle redirect behavior use OnOAuthCallbackSuccess")
+			hooks.OnOAuthCallbackSuccess(ctx, stateStruct)
 			return
 		}
 
@@ -513,7 +659,20 @@ func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContent
 		return err
 	}
 
-	encoded, err := ch.SecureCookie.Encode(cookieName, jsonValue)
+	final := jsonValue
+
+	hashKey := os.Getenv("ENCRYPTION_KEY")
+	if hashKey != "" {
+		// 2. Create HMAC
+		h := hmac.New(sha256.New, []byte(hashKey))
+		h.Write(jsonValue)
+		mac := h.Sum(nil)
+
+		// 3. Combine data + HMAC
+		final = append(jsonValue, mac...)
+	}
+
+	encoded, err := ch.SecureCookie.Encode(cookieName, final)
 	if err != nil {
 		return err
 	}
@@ -548,7 +707,36 @@ func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) 
 		err = ch.SecureCookie.Decode(cookieName, cookie, &value)
 		if err == nil {
 			var cookieContents CookieContents
-			err := json.Unmarshal(value, &cookieContents)
+
+			hashKey := os.Getenv("ENCRYPTION_KEY")
+			if hashKey != "" {
+				// Split HMAC and data
+				macSize := sha256.Size
+				if len(value) < macSize {
+					return &CookieContents{}, fmt.Errorf("invalid cookie size")
+				}
+
+				data := value[:len(value)-macSize]
+				messageMAC := value[len(value)-macSize:]
+
+				// Verify HMAC
+				h := hmac.New(sha256.New, []byte(hashKey))
+				h.Write(data)
+				expectedMAC := h.Sum(nil)
+
+				if !hmac.Equal(messageMAC, expectedMAC) {
+					return &CookieContents{}, fmt.Errorf("invalid cookie signature")
+				}
+			}
+
+			var jsonData []byte
+			if hashKey != "" {
+				jsonData = value[:len(value)-sha256.Size]
+			} else {
+				jsonData = value
+			}
+
+			err := json.Unmarshal(jsonData, &cookieContents)
 			if err != nil {
 				return &CookieContents{}, err
 			}
@@ -558,6 +746,16 @@ func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) 
 	}
 
 	return &CookieContents{}, err
+}
+
+// GenerateEncryptionKey generates a 32-byte (256-bit) key suitable for AES-256 encryption
+func GenerateEncryptionKey() (string, error) {
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate random key: %v", err)
+	}
+	return hex.EncodeToString(key), nil
 }
 
 // AppLayer function to configure public paths
@@ -578,6 +776,10 @@ func WithPublicPaths(config PublicPathConfig) AppLayer {
 }
 
 func (s *Server) isPublicPath(path string) bool {
+	if strings.HasPrefix(path, "/auth") {
+		return true
+	}
+
 	// Check exact matches first
 	if s.PublicPaths[path] {
 		return true
