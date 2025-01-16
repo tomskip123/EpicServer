@@ -510,6 +510,11 @@ func HandleAuthLogout(cookiename string, cookieDomain string, cookieSecure bool)
 			true,
 		)
 
+		if ctx.Query("redirect") != "" {
+			ctx.Redirect(http.StatusSeeOther, ctx.Query("redirect"))
+			return
+		}
+
 		ctx.Redirect(http.StatusSeeOther, "/")
 	}
 }
