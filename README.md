@@ -37,18 +37,15 @@
    - [Cache Methods](#cache-methods)
    - [Authentication Methods](#authentication-methods)
 
-6. [Testing](#testing)
-   - [Unit Testing](#unit-testing)
-   - [Mocking Database](#mocking-database)
-   - [Authentication Testing](#authentication-testing)
-   - [Middleware Testing](#middleware-testing)
-   - [Integration Testing](#integration-testing)
-   - [Test Utilities](#test-utilities)
-   - [Best Practices](#best-practices)
+6. [Contributing](#contributing)
+   - [Getting Started](#getting-started-1)
+   - [Development](#development)
+   - [Testing Your Changes](#testing-your-changes)
+   - [Submitting Changes](#submitting-changes)
+   - [Code Style](#code-style)
 
-7. [Contributing](#contributing)
-8. [License](#license)
-9. [Support](#support)
+7. [License](#license)
+8. [Support](#support)
 
 ## Getting Started
 
@@ -255,11 +252,11 @@ func HandleGetUsers(c *gin.Context, s *EpicServer.Server) {
 
 #### Available Route Methods
 
-- `Get(path string, handler HandlerFunc)` - HTTP GET
-- `Post(path string, handler HandlerFunc)` - HTTP POST
-- `Put(path string, handler HandlerFunc)` - HTTP PUT
-- `Patch(path string, handler HandlerFunc)` - HTTP PATCH
-- `Delete(path string, handler HandlerFunc)` - HTTP DELETE
+* `Get(path string, handler HandlerFunc)` - HTTP GET
+* `Post(path string, handler HandlerFunc)` - HTTP POST
+* `Put(path string, handler HandlerFunc)` - HTTP PUT
+* `Patch(path string, handler HandlerFunc)` - HTTP PATCH
+* `Delete(path string, handler HandlerFunc)` - HTTP DELETE
 
 #### Route Groups
 
@@ -397,9 +394,9 @@ server.UpdateAppLayer([]EpicServer.AppLayer{
 
 #### Available Auth Providers
 
-- Google (`"google"`)
-- Basic Auth (`"basic"`)
-- Custom providers can be added by implementing the provider interface
+* Google (`"google"`)
+* Basic Auth (`"basic"`)
+* Custom providers can be added by implementing the provider interface
 
 #### Environment Variables
 
@@ -422,9 +419,9 @@ blockKey, _ := EpicServer.GenerateEncryptionKey()
 
 The following endpoints are automatically created:
 
-- `/auth/:provider` - Initiates authentication flow
-- `/auth/:provider/callback` - OAuth callback URL
-- `/auth/logout` - Handles user logout
+* `/auth/:provider` - Initiates authentication flow
+* `/auth/:provider/callback` - OAuth callback URL
+* `/auth/logout` - Handles user logout
 
 #### Session Management
 
@@ -617,17 +614,17 @@ func MyHandler(c *gin.Context) {
 
 #### Cache Features
 
-- In-memory key-value storage
-- Automatic expiration of cached items
-- Thread-safe operations
-- Zero configuration required
-- Multiple named cache instances
+* In-memory key-value storage
+* Automatic expiration of cached items
+* Thread-safe operations
+* Zero configuration required
+* Multiple named cache instances
 
 #### Cache Methods
 
-- `Set(key string, value interface{}, duration time.Duration)` - Store a value with expiration
-- `Get(key string) (interface{}, bool)` - Retrieve a value if it exists
-- `Delete(key string)` - Remove a value from the cache
+* `Set(key string, value interface{}, duration time.Duration)` - Store a value with expiration
+* `Get(key string) (interface{}, bool)` - Retrieve a value if it exists
+* `Delete(key string)` - Remove a value from the cache
 
 ### Static File Serving
 
@@ -702,23 +699,23 @@ func main() {
 
 #### Static File Features
 
-- Embedded file system support using Go 1.16+ `embed` package
-- Automatic MIME type detection
-- Custom MIME type configuration
-- SPA route fallback support
-- Directory listing prevention
-- Efficient file serving
+* Embedded file system support using Go 1.16+ `embed` package
+* Automatic MIME type detection
+* Custom MIME type configuration
+* SPA route fallback support
+* Directory listing prevention
+* Efficient file serving
 
 #### Static File Configuration
 
 The static file system supports:
 
-- Multiple static directories
-- Mixed static files and API routes
-- Custom 404 handling
-- Secure file serving
-- File type restrictions
-- Path normalization
+* Multiple static directories
+* Mixed static files and API routes
+* Custom 404 handling
+* Secure file serving
+* File type restrictions
+* Path normalization
 
 #### Example with Multiple Static Configurations
 
@@ -761,10 +758,10 @@ func main() {
 ```
 
 Features:
-- Automatic gzip compression
-- Smart cache control headers
-- Asset-specific caching rules
-- Conditional compression based on Accept-Encoding
+* Automatic gzip compression
+* Smart cache control headers
+* Asset-specific caching rules
+* Conditional compression based on Accept-Encoding
 
 #### CORS Middleware
 
@@ -784,11 +781,11 @@ func main() {
 ```
 
 Features:
-- Origin validation
-- Configurable allowed origins
-- Preflight request handling
-- Custom headers support
-- Credential support
+* Origin validation
+* Configurable allowed origins
+* Preflight request handling
+* Custom headers support
+* Credential support
 
 #### CSRF Protection
 
@@ -816,11 +813,11 @@ func MyHandler(c *gin.Context) {
 ```
 
 Features:
-- Automatic token generation
-- Token validation
-- Trusted source bypass
-- Custom token storage
-- Header/Form support
+* Automatic token generation
+* Token validation
+* Trusted source bypass
+* Custom token storage
+* Header/Form support
 
 #### WWW Redirect Middleware
 
@@ -837,10 +834,10 @@ func main() {
 ```
 
 Features:
-- Automatic www detection
-- Permanent redirects (301)
-- HTTPS upgrade support
-- Path preservation
+* Automatic www detection
+* Permanent redirects (301)
+* HTTPS upgrade support
+* Path preservation
 
 #### Custom Middleware
 
@@ -890,11 +887,11 @@ server := EpicServer.NewServer(&EpicServer.NewServerParam{
 #### Built-in Security Headers
 
 All responses automatically include security headers:
-- X-Content-Type-Options: nosniff
-- X-Frame-Options: DENY
-- X-XSS-Protection: 1; mode=block
-- Strict-Transport-Security: max-age=31536000; includeSubDomains
-- Content-Security-Policy: configurable
+* X-Content-Type-Options: nosniff
+* X-Frame-Options: DENY
+* X-XSS-Protection: 1; mode=block
+* Strict-Transport-Security: max-age=31536000; includeSubDomains
+* Content-Security-Policy: configurable
 
 ## Advanced Usage
 
@@ -1111,11 +1108,11 @@ func MyHandler(c *gin.Context) {
 ### Security Headers
 
 All responses automatically include security headers:
-- X-Content-Type-Options: nosniff
-- X-Frame-Options: DENY
-- X-XSS-Protection: 1; mode=block
-- Strict-Transport-Security: max-age=31536000; includeSubDomains
-- Content-Security-Policy: configurable
+* X-Content-Type-Options: nosniff
+* X-Frame-Options: DENY
+* X-XSS-Protection: 1; mode=block
+* Strict-Transport-Security: max-age=31536000; includeSubDomains
+* Content-Security-Policy: configurable
 
 ### Environment Variables
 
@@ -1149,267 +1146,84 @@ blockKey, _ := EpicServer.GenerateEncryptionKey()
 ### Database Methods
 
 MongoDB specific helpers:
-- `StringToObjectID(id string)` - Convert string to MongoDB ObjectID
-- `StringArrayToObjectIDArray(ids []string)` - Convert string array to ObjectID array
-- `UpdateIndexes(ctx, collection, indexes)` - Create or update collection indexes
-- `StringArrayContains(array []string, value string)` - Check if string array contains value
+* `StringToObjectID(id string)` - Convert string to MongoDB ObjectID
+* `StringArrayToObjectIDArray(ids []string)` - Convert string array to ObjectID array
+* `UpdateIndexes(ctx, collection, indexes)` - Create or update collection indexes
+* `StringArrayContains(array []string, value string)` - Check if string array contains value
 
 ### Cache Methods
 
-- `Set(key string, value interface{}, duration time.Duration)` - Store a value with expiration
-- `Get(key string) (interface{}, bool)` - Retrieve a value if it exists
-- `Delete(key string)` - Remove a value from the cache
+* `Set(key string, value interface{}, duration time.Duration)` - Store a value with expiration
+* `Get(key string) (interface{}, bool)` - Retrieve a value if it exists
+* `Delete(key string)` - Remove a value from the cache
 
 ### Authentication Methods
 
-- `GenerateCSRFToken() (string, error)` - Generate a CSRF token
-- `IsTrustedSource(req *http.Request) bool` - Validate CSRF token
-- `GetSession(c *gin.Context) (*Session, error)` - Retrieve session data
-
-## Testing
-
-EpicServer provides testing utilities and helpers for unit testing, integration testing, and mocking server components.
-
-### Unit Testing
-
-Test your handlers and middleware using the test utilities:
-
-```go
-package handlers_test
-
-import (
-    "testing"
-    "net/http"
-    "net/http/httptest"
-    "github.com/tomskip123/EpicServer"
-    "github.com/tomskip123/EpicServer/test"
-)
-
-func TestUserHandler(t *testing.T) {
-    // Create test server
-    server := test.NewTestServer([]EpicServer.AppLayer{
-        // Add test configurations
-        EpicServer.WithEnvironment("test"),
-    })
-    
-    // Create test request
-    w := httptest.NewRecorder()
-    req := httptest.NewRequest("GET", "/users", nil)
-    
-    // Execute request
-    server.Engine.ServeHTTP(w, req)
-    
-    // Assert response
-    if w.Code != http.StatusOK {
-        t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
-    }
-}
-```
-
-### Mocking Database
-
-Mock database connections for testing:
-
-```go
-package db_test
-
-import (
-    "testing"
-    "github.com/tomskip123/EpicServer"
-    "github.com/tomskip123/EpicServer/db"
-    "github.com/tomskip123/EpicServer/test"
-)
-
-func TestWithMockMongo(t *testing.T) {
-    // Create mock database
-    mockDB := test.NewMockDB()
-    
-    server := test.NewTestServer([]EpicServer.AppLayer{
-        // Add mock database
-        test.WithMockMongo(mockDB, "default"),
-    })
-    
-    // Use mock database in tests
-    db := EpicServerDb.GetMongoClient(server, "default")
-    
-    // Assert mock calls
-    mockDB.AssertCalled(t, "Insert", "users")
-}
-```
-
-### Authentication Testing
-
-Test authentication flows:
-
-```go
-package auth_test
-
-import (
-    "testing"
-    "github.com/tomskip123/EpicServer"
-    "github.com/tomskip123/EpicServer/test"
-)
-
-func TestAuthFlow(t *testing.T) {
-    // Create mock auth provider
-    mockAuth := test.NewMockAuthProvider()
-    
-    server := test.NewTestServer([]EpicServer.AppLayer{
-        // Configure mock auth
-        EpicServer.WithAuth([]EpicServer.Provider{
-            {
-                Name: "mock",
-                ClientId: "test-id",
-                ClientSecret: "test-secret",
-                Callback: "http://localhost/auth/mock/callback",
-            },
-        }, &EpicServer.SessionConfig{
-            CookieName: "test_session",
-        }),
-    })
-    
-    // Test auth endpoints
-    test.SimulateLogin(t, server, "mock")
-    
-    // Assert session created
-    if !mockAuth.SessionExists("test-user") {
-        t.Error("Expected session to exist")
-    }
-}
-```
-
-### Middleware Testing
-
-Test custom middleware:
-
-```go
-package middleware_test
-
-import (
-    "testing"
-    "net/http"
-    "github.com/tomskip123/EpicServer"
-    "github.com/tomskip123/EpicServer/test"
-)
-
-func TestCustomMiddleware(t *testing.T) {
-    server := test.NewTestServer([]EpicServer.AppLayer{
-        // Add test middleware
-        func(s *EpicServer.Server) {
-            s.Engine.Use(func(c *gin.Context) {
-                c.Set("test-key", "test-value")
-                c.Next()
-            })
-        },
-    })
-    
-    // Test middleware
-    test.ExecuteMiddleware(t, server, func(c *gin.Context) {
-        value, exists := c.Get("test-key")
-        if !exists || value != "test-value" {
-            t.Error("Middleware did not set expected value")
-        }
-    })
-}
-```
-
-### Integration Testing
-
-Test complete API flows:
-
-```go
-package integration_test
-
-import (
-    "testing"
-    "github.com/tomskip123/EpicServer"
-    "github.com/tomskip123/EpicServer/test"
-)
-
-func TestAPIFlow(t *testing.T) {
-    // Setup test environment
-    env := test.NewTestEnvironment()
-    defer env.Cleanup()
-    
-    // Create server with test configuration
-    server := env.NewServer([]EpicServer.AppLayer{
-        EpicServer.WithEnvironment("test"),
-        // Add other test configurations
-    })
-    
-    // Execute test scenarios
-    t.Run("Create User", func(t *testing.T) {
-        // Test user creation
-        test.CreateUser(t, server, testUser)
-    })
-    
-    t.Run("Authentication", func(t *testing.T) {
-        // Test login flow
-        test.Login(t, server, testUser)
-    })
-    
-    t.Run("API Access", func(t *testing.T) {
-        // Test protected endpoints
-        test.AccessProtectedEndpoint(t, server, testUser)
-    })
-}
-```
-
-### Test Utilities
-
-The test package provides several helpers:
-
-- `test.NewTestServer()` - Create a server instance for testing
-- `test.NewMockDB()` - Create mock database implementations
-- `test.NewTestEnvironment()` - Setup complete test environment
-- `test.SimulateLogin()` - Simulate authentication flow
-- `test.ExecuteMiddleware()` - Test middleware in isolation
-
-### Best Practices
-
-1. Use test environment variables
-```go
-func init() {
-    os.Setenv("GO_ENV", "test")
-    os.Setenv("SECRET_KEY", "test-secret-key")
-}
-```
-
-2. Clean up test resources
-```go
-defer func() {
-    // Clean up test database
-    test.CleanupTestDB()
-    // Remove test files
-    test.CleanupTestFiles()
-}()
-```
-
-3. Use test configurations
-```go
-testConfig := &EpicServer.Config{
-    Server: struct {
-        Host: "localhost",
-        Port: 0, // Random port for testing
-    },
-}
-```
-
-4. Isolate test databases
-```go
-mongoConfig := &EpicServerDb.MongoConfig{
-    URI: "mongodb://localhost:27017",
-    DatabaseName: "test_db_" + randomString(),
-}
-```
+* `GenerateCSRFToken() (string, error)` - Generate a CSRF token
+* `IsTrustedSource(req *http.Request) bool` - Validate CSRF token
+* `GetSession(c *gin.Context) (*Session, error)` - Retrieve session data
 
 ## Contributing
 
+### Getting Started
+
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Clone your fork:
+```bash
+git clone https://github.com/yourusername/EpicServer.git
+```
+3. Create your feature branch:
+```bash
+git checkout -b feature/amazing-feature
+```
+
+### Development
+
+1. Ensure you have Go 1.16+ installed
+2. Run tests before making changes:
+```bash
+go test -v ./...
+```
+
+### Testing Your Changes
+
+The project includes tests for core functionality. Always run tests before submitting a PR:
+
+```bash
+# Run all tests
+go test -v ./...
+
+# Run specific tests (examples)
+go test -run TestVerifyCSRFToken     # Test CSRF middleware
+go test -run TestCompressMiddleware  # Test compression
+go test -run TestServer_Start       # Test server startup
+```
+
+Key areas covered by tests:
+- Server initialization and configuration
+- Built-in middleware (CSRF, Compression, CORS, WWW redirect)
+- Environment settings
+- Server lifecycle
+- Logger functionality
+
+### Submitting Changes
+
+1. Commit your changes:
+```bash
+git commit -m 'Add some amazing feature'
+```
+2. Push to your fork:
+```bash
+git push origin feature/amazing-feature
+```
+3. Open a Pull Request
+
+### Code Style
+
+- Follow standard Go formatting (`go fmt`)
+- Add tests for new features
+- Update documentation as needed
+- Keep commits focused and atomic
 
 ## License
 
