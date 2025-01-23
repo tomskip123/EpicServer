@@ -2,6 +2,9 @@
 
 > A powerful, flexible, and production-ready Go web server built on top of Gin framework.
 
+![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.16-blue)
+![Version](https://img.shields.io/badge/version-2.0.3-blue)
+
 ## Table of Contents
 
 1. [Getting Started](#getting-started)
