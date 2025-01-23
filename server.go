@@ -7,6 +7,7 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
+// Server represents the main server instance containing all necessary dependencies
 type Server struct {
 	Config      *Config
 	Engine      *gin.Engine
@@ -18,12 +19,15 @@ type Server struct {
 	Cache       map[string]interface{}
 }
 
+// NewServerParam defines the parameters needed to create a new server instance
 type NewServerParam struct {
 	Configs  []Option
 	AppLayer []AppLayer
 }
 
-// build default server
+// NewServer creates and initializes a new server instance with the provided configuration
+// It applies all configurations and app layers in the order they are provided
+// Panics if no secret key is set
 func NewServer(p1 *NewServerParam) *Server {
 	// generate sensible default config
 
@@ -58,13 +62,14 @@ func NewServer(p1 *NewServerParam) *Server {
 	return s
 }
 
+// UpdateAppLayer allows adding new application layers to an existing server instance
 func (s *Server) UpdateAppLayer(p1 []AppLayer) {
 	for _, opt := range p1 {
 		opt(s)
 	}
 }
 
-// method for starting the server
+// Start initiates the server on the configured host and port
 func (s *Server) Start() error {
 	return s.Engine.Run(fmt.Sprintf("%s:%d", s.Config.Server.Host, s.Config.Server.Port))
 }
@@ -93,10 +98,11 @@ func defaultHooks(s *Server) Hooks {
 // Need an option to provide methods that make changes to the engine
 // We expose access to the underlying app layer to make changes directory to the config
 
+// AppLayer defines a function type that can modify the server configuration
 type AppLayer func(*Server)
 
-// adds a very rudimentary health checker
-// this should surfice for any checkers.
+// WithHealthCheck creates a basic health check endpoint at the specified path
+// Returns 200 OK when the server is running
 func WithHealthCheck(path string) AppLayer {
 	return func(s *Server) {
 		s.Engine.GET(path, func(ctx *gin.Context) {
@@ -105,29 +111,29 @@ func WithHealthCheck(path string) AppLayer {
 	}
 }
 
-// We have a very basic middleware that supports compression and force https when it can
+// WithCompression adds compression middleware to the server
 func WithCompression() AppLayer {
 	return func(s *Server) {
 		s.Engine.Use(CompressMiddleware)
 	}
 }
 
-// WithRemoveWWW adds middleware to remove the www. prefix in a domain.
+// WithRemoveWWW adds middleware to remove the www. prefix from domain names
 func WithRemoveWWW() AppLayer {
 	return func(s *Server) {
 		s.Engine.Use(RemoveWWWMiddleware())
 	}
 }
 
-// WithCors registers middleware that register cors settings!
-// This should support more options like accept headers etc.
+// WithCors configures CORS settings for the specified origins
 func WithCors(origins []string) AppLayer {
 	return func(s *Server) {
 		s.Engine.Use(CorsMiddleware(origins))
 	}
 }
 
-// WithEnvironment sets how to run gin
+// WithEnvironment sets the Gin framework's running mode
+// Accepts: "development", "production", or "test"
 func WithEnvironment(environment string) AppLayer {
 	return func(s *Server) {
 		if environment == "development" {
@@ -140,14 +146,14 @@ func WithEnvironment(environment string) AppLayer {
 	}
 }
 
-// WithTrustProxies sets trusted proxies
+// WithTrustedProxies configures the trusted proxy addresses for the server
 func WithTrustedProxies(proxies []string) AppLayer {
 	return func(s *Server) {
 		s.Engine.SetTrustedProxies(proxies)
 	}
 }
 
-// With HTTP2 sets gin to allow http2
+// WithHttp2 enables HTTP/2 support for the server
 func WithHttp2() AppLayer {
 	return func(s *Server) {
 		s.Engine.UseH2C = true
