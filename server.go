@@ -1,7 +1,10 @@
 package EpicServer
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/joho/godotenv/autoload"
@@ -17,6 +20,8 @@ type Server struct {
 	AuthConfigs map[string]*Auth
 	Db          map[string]interface{}
 	Cache       map[string]interface{}
+	srv         *http.Server
+	cancel      context.CancelFunc
 }
 
 // NewServerParam defines the parameters needed to create a new server instance
@@ -71,7 +76,30 @@ func (s *Server) UpdateAppLayer(p1 []AppLayer) {
 
 // Start initiates the server on the configured host and port
 func (s *Server) Start() error {
-	return s.Engine.Run(fmt.Sprintf("%s:%d", s.Config.Server.Host, s.Config.Server.Port))
+	ctx, cancel := context.WithCancel(context.Background())
+	s.cancel = cancel
+
+	s.srv = &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", s.Config.Server.Host, s.Config.Server.Port),
+		Handler: s.Engine,
+	}
+
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		s.srv.Shutdown(shutdownCtx)
+	}()
+
+	return s.srv.ListenAndServe()
+}
+
+// Stop gracefully stops the server
+func (s *Server) Stop() error {
+	if s.cancel != nil {
+		s.cancel()
+	}
+	return nil
 }
 
 // setting up default config with sensible defaults

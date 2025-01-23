@@ -37,9 +37,18 @@
    - [Cache Methods](#cache-methods)
    - [Authentication Methods](#authentication-methods)
 
-6. [Contributing](#contributing)
-7. [License](#license)
-8. [Support](#support)
+6. [Testing](#testing)
+   - [Unit Testing](#unit-testing)
+   - [Mocking Database](#mocking-database)
+   - [Authentication Testing](#authentication-testing)
+   - [Middleware Testing](#middleware-testing)
+   - [Integration Testing](#integration-testing)
+   - [Test Utilities](#test-utilities)
+   - [Best Practices](#best-practices)
+
+7. [Contributing](#contributing)
+8. [License](#license)
+9. [Support](#support)
 
 ## Getting Started
 
@@ -1156,6 +1165,243 @@ MongoDB specific helpers:
 - `GenerateCSRFToken() (string, error)` - Generate a CSRF token
 - `IsTrustedSource(req *http.Request) bool` - Validate CSRF token
 - `GetSession(c *gin.Context) (*Session, error)` - Retrieve session data
+
+## Testing
+
+EpicServer provides testing utilities and helpers for unit testing, integration testing, and mocking server components.
+
+### Unit Testing
+
+Test your handlers and middleware using the test utilities:
+
+```go
+package handlers_test
+
+import (
+    "testing"
+    "net/http"
+    "net/http/httptest"
+    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/test"
+)
+
+func TestUserHandler(t *testing.T) {
+    // Create test server
+    server := test.NewTestServer([]EpicServer.AppLayer{
+        // Add test configurations
+        EpicServer.WithEnvironment("test"),
+    })
+    
+    // Create test request
+    w := httptest.NewRecorder()
+    req := httptest.NewRequest("GET", "/users", nil)
+    
+    // Execute request
+    server.Engine.ServeHTTP(w, req)
+    
+    // Assert response
+    if w.Code != http.StatusOK {
+        t.Errorf("Expected status %d, got %d", http.StatusOK, w.Code)
+    }
+}
+```
+
+### Mocking Database
+
+Mock database connections for testing:
+
+```go
+package db_test
+
+import (
+    "testing"
+    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/db"
+    "github.com/tomskip123/EpicServer/test"
+)
+
+func TestWithMockMongo(t *testing.T) {
+    // Create mock database
+    mockDB := test.NewMockDB()
+    
+    server := test.NewTestServer([]EpicServer.AppLayer{
+        // Add mock database
+        test.WithMockMongo(mockDB, "default"),
+    })
+    
+    // Use mock database in tests
+    db := EpicServerDb.GetMongoClient(server, "default")
+    
+    // Assert mock calls
+    mockDB.AssertCalled(t, "Insert", "users")
+}
+```
+
+### Authentication Testing
+
+Test authentication flows:
+
+```go
+package auth_test
+
+import (
+    "testing"
+    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/test"
+)
+
+func TestAuthFlow(t *testing.T) {
+    // Create mock auth provider
+    mockAuth := test.NewMockAuthProvider()
+    
+    server := test.NewTestServer([]EpicServer.AppLayer{
+        // Configure mock auth
+        EpicServer.WithAuth([]EpicServer.Provider{
+            {
+                Name: "mock",
+                ClientId: "test-id",
+                ClientSecret: "test-secret",
+                Callback: "http://localhost/auth/mock/callback",
+            },
+        }, &EpicServer.SessionConfig{
+            CookieName: "test_session",
+        }),
+    })
+    
+    // Test auth endpoints
+    test.SimulateLogin(t, server, "mock")
+    
+    // Assert session created
+    if !mockAuth.SessionExists("test-user") {
+        t.Error("Expected session to exist")
+    }
+}
+```
+
+### Middleware Testing
+
+Test custom middleware:
+
+```go
+package middleware_test
+
+import (
+    "testing"
+    "net/http"
+    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/test"
+)
+
+func TestCustomMiddleware(t *testing.T) {
+    server := test.NewTestServer([]EpicServer.AppLayer{
+        // Add test middleware
+        func(s *EpicServer.Server) {
+            s.Engine.Use(func(c *gin.Context) {
+                c.Set("test-key", "test-value")
+                c.Next()
+            })
+        },
+    })
+    
+    // Test middleware
+    test.ExecuteMiddleware(t, server, func(c *gin.Context) {
+        value, exists := c.Get("test-key")
+        if !exists || value != "test-value" {
+            t.Error("Middleware did not set expected value")
+        }
+    })
+}
+```
+
+### Integration Testing
+
+Test complete API flows:
+
+```go
+package integration_test
+
+import (
+    "testing"
+    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/test"
+)
+
+func TestAPIFlow(t *testing.T) {
+    // Setup test environment
+    env := test.NewTestEnvironment()
+    defer env.Cleanup()
+    
+    // Create server with test configuration
+    server := env.NewServer([]EpicServer.AppLayer{
+        EpicServer.WithEnvironment("test"),
+        // Add other test configurations
+    })
+    
+    // Execute test scenarios
+    t.Run("Create User", func(t *testing.T) {
+        // Test user creation
+        test.CreateUser(t, server, testUser)
+    })
+    
+    t.Run("Authentication", func(t *testing.T) {
+        // Test login flow
+        test.Login(t, server, testUser)
+    })
+    
+    t.Run("API Access", func(t *testing.T) {
+        // Test protected endpoints
+        test.AccessProtectedEndpoint(t, server, testUser)
+    })
+}
+```
+
+### Test Utilities
+
+The test package provides several helpers:
+
+- `test.NewTestServer()` - Create a server instance for testing
+- `test.NewMockDB()` - Create mock database implementations
+- `test.NewTestEnvironment()` - Setup complete test environment
+- `test.SimulateLogin()` - Simulate authentication flow
+- `test.ExecuteMiddleware()` - Test middleware in isolation
+
+### Best Practices
+
+1. Use test environment variables
+```go
+func init() {
+    os.Setenv("GO_ENV", "test")
+    os.Setenv("SECRET_KEY", "test-secret-key")
+}
+```
+
+2. Clean up test resources
+```go
+defer func() {
+    // Clean up test database
+    test.CleanupTestDB()
+    // Remove test files
+    test.CleanupTestFiles()
+}()
+```
+
+3. Use test configurations
+```go
+testConfig := &EpicServer.Config{
+    Server: struct {
+        Host: "localhost",
+        Port: 0, // Random port for testing
+    },
+}
+```
+
+4. Isolate test databases
+```go
+mongoConfig := &EpicServerDb.MongoConfig{
+    URI: "mongodb://localhost:27017",
+    DatabaseName: "test_db_" + randomString(),
+}
+```
 
 ## Contributing
 

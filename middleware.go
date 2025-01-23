@@ -86,41 +86,60 @@ func CorsMiddleware(origins []string) gin.HandlerFunc {
 	}
 }
 
-func VerifyCSRFToken() gin.HandlerFunc {
+func WithCSRFProtection(cfg *SessionConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// Bypass CSRF check for trusted sources or internal requests
 		if IsTrustedSource(ctx.Request) {
 			ctx.Next()
 			return
 		}
 
-		_, exists := ctx.Get("auth_user")
-		if !exists {
-			ctx.Next()
-			return
-		}
-
-		if ctx.Request.Method != http.MethodGet {
-			csrfCookie, err := ctx.Cookie("csrf_token")
+		if ctx.Request.Method == http.MethodGet {
+			token, err := GenerateCSRFToken()
 			if err != nil {
 				fmt.Printf("csrf_token_error: %v \n", err)
-				ctx.AbortWithStatus(http.StatusForbidden)
+				ctx.AbortWithStatus(http.StatusInternalServerError)
 				return
 			}
 
-			csrfToken := ctx.GetHeader("X-CSRF-Token")
-			if csrfToken == "" {
-				csrfToken = ctx.PostForm("csrf_token")
-			}
-
-			if csrfToken != csrfCookie {
-				fmt.Printf("csrf_token_not_equal_to_cookie: %v \n", err)
-				ctx.AbortWithStatus(http.StatusForbidden)
-				return
-			}
+			ctx.SetCookie("csrf_token", token, cfg.CookieMaxAge, "/", cfg.CookieDomain, cfg.CookieSecure, cfg.CookieHTTPOnly)
+			ctx.Set("csrf_token", token)
 		}
 
 		ctx.Next()
+	}
+}
+
+func VerifyCSRFToken() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Allow safe HTTP methods to pass through without CSRF check
+		if c.Request.Method == "GET" ||
+			c.Request.Method == "HEAD" ||
+			c.Request.Method == "OPTIONS" {
+			c.Next()
+			return
+		}
+
+		// Get token from cookie
+		cookie, err := c.Cookie("csrf_token")
+		if err != nil {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		// Get token from header
+		token := c.GetHeader("X-CSRF-Token")
+		if token == "" {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		// Verify tokens match
+		if token != cookie {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		c.Next()
 	}
 }
 
