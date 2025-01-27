@@ -41,6 +41,7 @@ type SessionConfig struct {
 	CookieSecure    bool
 	CookieHTTPOnly  bool
 	SessionDuration time.Duration
+	ErrorHandler    AuthErrorHandler
 }
 
 type Claims struct {
@@ -100,6 +101,26 @@ func WithAuth(
 	}
 }
 
+type RedirectError struct {
+	RedirectURL string
+	StatusCode  int
+}
+
+func (e *RedirectError) Error() string {
+	return fmt.Sprintf("redirect required to: %s", e.RedirectURL)
+}
+
+type AuthErrorHandler func(*gin.Context, error)
+
+func DefaultAuthErrorHandler(c *gin.Context, err error) {
+	if redirectErr, ok := err.(*RedirectError); ok {
+		c.Redirect(redirectErr.StatusCode, redirectErr.RedirectURL)
+		c.Abort()
+		return
+	}
+	c.AbortWithStatus(http.StatusUnauthorized)
+}
+
 func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
 	s.Engine.GET("/auth/:provider", HandleAuthLogin(s, providers, cookieName, domain, secure))
 	s.Engine.GET("/auth/:provider/callback", HandleAuthCallback(s, providers, cookieName, domain, secure, s.Hooks.Auth))
@@ -115,31 +136,12 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 				return
 			}
 
-			providerCookie, err := c.Cookie("provider")
+			session, err := GetSessionFromCookie(s, c, config.CookieName)
 			if err != nil {
-				c.AbortWithStatus(http.StatusUnauthorized)
+				if config.ErrorHandler != nil {
+					config.ErrorHandler(c, err)
+				}
 				return
-			}
-
-			cookie, err := s.AuthConfigs[providerCookie].CookieHandler.ReadCookieHandler(c, config.CookieName)
-			if err != nil {
-				c.AbortWithStatus(http.StatusUnauthorized)
-				return
-			}
-
-			// Validate session/token using the hooks
-			user, err := s.Hooks.Auth.OnSessionValidate(cookie)
-			if err != nil {
-				c.AbortWithStatus(http.StatusUnauthorized)
-				return
-			}
-
-			session := &Session{
-				User:      user,
-				Token:     cookie.SessionId,
-				Email:     cookie.Email,
-				ExpiresOn: cookie.ExpiresOn,
-				// Add other session fields as needed
 			}
 
 			// Set user in context
@@ -147,6 +149,35 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 			c.Next()
 		})
 	}
+}
+
+func GetSessionFromCookie(s *Server, c *gin.Context, cookieName string) (*Session, error) {
+	providerCookie, err := c.Cookie("provider")
+	if err != nil {
+		return nil, err
+	}
+
+	cookie, err := s.AuthConfigs[providerCookie].CookieHandler.ReadCookieHandler(c, cookieName)
+	if err != nil {
+		return nil, err
+
+	}
+
+	// Validate session/token using the hooks
+	user, err := s.Hooks.Auth.OnSessionValidate(cookie)
+	if err != nil {
+		return nil, err
+	}
+
+	session := &Session{
+		User:      user,
+		Token:     cookie.SessionId,
+		Email:     cookie.Email,
+		ExpiresOn: cookie.ExpiresOn,
+		// Add other session fields as needed
+	}
+
+	return session, nil
 }
 
 type AuthenticationHooks interface {
