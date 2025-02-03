@@ -15,16 +15,15 @@ import (
 func TestNewServer(t *testing.T) {
 	tests := []struct {
 		name       string
-		params     *NewServerParam
+		configs    []Option
+		appLayers  []AppLayer
 		wantErr    bool
 		assertions func(*testing.T, *Server)
 	}{
 		{
 			name: "valid default configuration",
-			params: &NewServerParam{
-				Configs: []Option{
-					SetSecretKey([]byte("test-secret-key")),
-				},
+			configs: []Option{
+				SetSecretKey([]byte("test-secret-key")),
 			},
 			assertions: func(t *testing.T, s *Server) {
 				if s.Config.Server.Host != "localhost" {
@@ -43,11 +42,9 @@ func TestNewServer(t *testing.T) {
 		},
 		{
 			name: "custom host and port",
-			params: &NewServerParam{
-				Configs: []Option{
-					SetHost("127.0.0.1", 8080),
-					SetSecretKey([]byte("test-secret-key")),
-				},
+			configs: []Option{
+				SetHost("127.0.0.1", 8080),
+				SetSecretKey([]byte("test-secret-key")),
 			},
 			assertions: func(t *testing.T, s *Server) {
 				if s.Config.Server.Host != "127.0.0.1" {
@@ -60,22 +57,18 @@ func TestNewServer(t *testing.T) {
 		},
 		{
 			name: "missing secret key",
-			params: &NewServerParam{
-				Configs: []Option{
-					SetHost("localhost", 8080),
-				},
+			configs: []Option{
+				SetHost("localhost", 8080),
 			},
 			wantErr: true,
 		},
 		{
 			name: "with custom config",
-			params: &NewServerParam{
-				Configs: []Option{
-					SetSecretKey([]byte("test-secret-key")),
-					SetCustomConfig(map[string]interface{}{
-						"test": "value",
-					}),
-				},
+			configs: []Option{
+				SetSecretKey([]byte("test-secret-key")),
+				SetCustomConfig(map[string]interface{}{
+					"test": "value",
+				}),
 			},
 			assertions: func(t *testing.T, s *Server) {
 				custom := GetCustomConfig(s).(map[string]interface{})
@@ -86,15 +79,13 @@ func TestNewServer(t *testing.T) {
 		},
 		{
 			name: "with multiple app layers",
-			params: &NewServerParam{
-				Configs: []Option{
-					SetSecretKey([]byte("test-secret-key")),
-				},
-				AppLayer: []AppLayer{
-					WithHealthCheck("/health"),
-					WithCompression(),
-					WithEnvironment("test"),
-				},
+			configs: []Option{
+				SetSecretKey([]byte("test-secret-key")),
+			},
+			appLayers: []AppLayer{
+				WithHealthCheck("/health"),
+				WithCompression(),
+				WithEnvironment("test"),
 			},
 			assertions: func(t *testing.T, s *Server) {
 				// Test health endpoint
@@ -124,7 +115,10 @@ func TestNewServer(t *testing.T) {
 						panicked = true
 					}
 				}()
-				server = NewServer(tt.params)
+				server = NewServer(tt.configs)
+				if tt.appLayers != nil {
+					server.UpdateAppLayer(tt.appLayers)
+				}
 			}()
 
 			if panicked != tt.wantErr {
@@ -142,7 +136,7 @@ func TestNewServer(t *testing.T) {
 func TestAppLayers(t *testing.T) {
 	tests := []struct {
 		name       string
-		layers     []AppLayer
+		appLayers  []AppLayer
 		testPath   string
 		wantStatus int
 		wantHeader string
@@ -150,7 +144,7 @@ func TestAppLayers(t *testing.T) {
 	}{
 		{
 			name: "health check layer",
-			layers: []AppLayer{
+			appLayers: []AppLayer{
 				WithHealthCheck("/health"),
 			},
 			testPath:   "/health",
@@ -158,7 +152,7 @@ func TestAppLayers(t *testing.T) {
 		},
 		{
 			name: "compression layer",
-			layers: []AppLayer{
+			appLayers: []AppLayer{
 				WithCompression(),
 			},
 			testPath:   "/test",
@@ -168,7 +162,7 @@ func TestAppLayers(t *testing.T) {
 		},
 		{
 			name: "cors layer",
-			layers: []AppLayer{
+			appLayers: []AppLayer{
 				WithCors([]string{"http://example.com"}),
 			},
 			testPath:   "/test",
@@ -178,7 +172,7 @@ func TestAppLayers(t *testing.T) {
 		},
 		{
 			name: "www redirect layer",
-			layers: []AppLayer{
+			appLayers: []AppLayer{
 				WithRemoveWWW(),
 			},
 			testPath:   "/test",
@@ -188,12 +182,8 @@ func TestAppLayers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := NewServer(&NewServerParam{
-				Configs: []Option{
-					SetSecretKey([]byte("test-secret-key")),
-				},
-				AppLayer: tt.layers,
-			})
+			s := NewServer([]Option{SetSecretKey([]byte("test-secret-key"))})
+			s.UpdateAppLayer(tt.appLayers)
 
 			// Add test endpoint if not health check
 			if !strings.Contains(tt.testPath, "health") {
@@ -206,6 +196,8 @@ func TestAppLayers(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.testPath, nil)
 			if tt.wantHeader == "Access-Control-Allow-Origin" {
 				req.Header.Set("Origin", "http://example.com")
+			} else if tt.wantHeader == "Content-Encoding" {
+				req.Header.Set("Accept-Encoding", "gzip")
 			}
 
 			s.Engine.ServeHTTP(w, req)
@@ -224,11 +216,7 @@ func TestAppLayers(t *testing.T) {
 }
 
 func TestUpdateAppLayer(t *testing.T) {
-	s := NewServer(&NewServerParam{
-		Configs: []Option{
-			SetSecretKey([]byte("test-secret-key")),
-		},
-	})
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret-key"))})
 
 	called := false
 	s.UpdateAppLayer([]AppLayer{
@@ -267,13 +255,9 @@ func TestEnvironmentSettings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			NewServer(&NewServerParam{
-				Configs: []Option{
-					SetSecretKey([]byte("test-secret-key")),
-				},
-				AppLayer: []AppLayer{
-					WithEnvironment(tt.environment),
-				},
+			s := NewServer([]Option{SetSecretKey([]byte("test-secret-key"))})
+			s.UpdateAppLayer([]AppLayer{
+				WithEnvironment(tt.environment),
 			})
 
 			if gin.Mode() != tt.wantMode {
@@ -285,13 +269,9 @@ func TestEnvironmentSettings(t *testing.T) {
 
 func TestTrustedProxies(t *testing.T) {
 	proxies := []string{"127.0.0.1", "10.0.0.0/8"}
-	s := NewServer(&NewServerParam{
-		Configs: []Option{
-			SetSecretKey([]byte("test-secret-key")),
-		},
-		AppLayer: []AppLayer{
-			WithTrustedProxies(proxies),
-		},
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret-key"))})
+	s.UpdateAppLayer([]AppLayer{
+		WithTrustedProxies(proxies),
 	})
 
 	// Test proxy configuration
@@ -308,11 +288,7 @@ func TestTrustedProxies(t *testing.T) {
 }
 
 func TestDefaultHooks(t *testing.T) {
-	s := NewServer(&NewServerParam{
-		Configs: []Option{
-			SetSecretKey([]byte("test-secret-key")),
-		},
-	})
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret-key"))})
 
 	if s.Hooks.Auth == nil {
 		t.Error("default auth hooks not initialized")
@@ -355,11 +331,9 @@ func TestServer_Start(t *testing.T) {
 				t.Skip("Port not available")
 			}
 
-			s := NewServer(&NewServerParam{
-				Configs: []Option{
-					SetHost(tt.host, tt.port),
-					SetSecretKey([]byte("test-secret")),
-				},
+			s := NewServer([]Option{
+				SetHost(tt.host, tt.port),
+				SetSecretKey([]byte("test-secret")),
 			})
 
 			errChan := make(chan error, 1)
@@ -382,7 +356,6 @@ func TestServer_Start(t *testing.T) {
 	}
 }
 
-// Add helper function to check if port is available
 func isPortAvailable(host string, port int) bool {
 	addr := fmt.Sprintf("%s:%d", host, port)
 	ln, err := net.Listen("tcp", addr)
@@ -394,13 +367,9 @@ func isPortAvailable(host string, port int) bool {
 }
 
 func TestServer_WithHttp2(t *testing.T) {
-	s := NewServer(&NewServerParam{
-		Configs: []Option{
-			SetSecretKey([]byte("test-secret")),
-		},
-		AppLayer: []AppLayer{
-			WithHttp2(),
-		},
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret"))})
+	s.UpdateAppLayer([]AppLayer{
+		WithHttp2(),
 	})
 
 	if !s.Engine.UseH2C {
@@ -409,17 +378,16 @@ func TestServer_WithHttp2(t *testing.T) {
 }
 
 func TestServer_Initialization(t *testing.T) {
-	// Test server initialization with various configurations
 	tests := []struct {
 		name       string
-		config     []Option
-		layers     []AppLayer
+		configs    []Option
+		appLayers  []AppLayer
 		wantErr    bool
 		assertions func(*testing.T, *Server)
 	}{
 		{
 			name: "with custom logger",
-			config: []Option{
+			configs: []Option{
 				SetSecretKey([]byte("test-secret")),
 			},
 			assertions: func(t *testing.T, s *Server) {
@@ -430,7 +398,7 @@ func TestServer_Initialization(t *testing.T) {
 		},
 		{
 			name: "with database initialization",
-			config: []Option{
+			configs: []Option{
 				SetSecretKey([]byte("test-secret")),
 			},
 			assertions: func(t *testing.T, s *Server) {
@@ -444,7 +412,7 @@ func TestServer_Initialization(t *testing.T) {
 		},
 		{
 			name: "with cache initialization",
-			config: []Option{
+			configs: []Option{
 				SetSecretKey([]byte("test-secret")),
 			},
 			assertions: func(t *testing.T, s *Server) {
@@ -458,7 +426,7 @@ func TestServer_Initialization(t *testing.T) {
 		},
 		{
 			name: "with hooks initialization",
-			config: []Option{
+			configs: []Option{
 				SetSecretKey([]byte("test-secret")),
 			},
 			assertions: func(t *testing.T, s *Server) {
@@ -478,10 +446,10 @@ func TestServer_Initialization(t *testing.T) {
 				}
 			}()
 
-			s = NewServer(&NewServerParam{
-				Configs:  tt.config,
-				AppLayer: tt.layers,
-			})
+			s = NewServer(tt.configs)
+			if tt.appLayers != nil {
+				s.UpdateAppLayer(tt.appLayers)
+			}
 
 			if !tt.wantErr && tt.assertions != nil {
 				tt.assertions(t, s)
@@ -504,11 +472,7 @@ func TestServer_DefaultConfig(t *testing.T) {
 
 func TestServer_UpdateAppLayerOrder(t *testing.T) {
 	executionOrder := []string{}
-	s := NewServer(&NewServerParam{
-		Configs: []Option{
-			SetSecretKey([]byte("test-secret")),
-		},
-	})
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret"))})
 
 	// Add layers in specific order
 	s.UpdateAppLayer([]AppLayer{
@@ -528,11 +492,7 @@ func TestServer_UpdateAppLayerOrder(t *testing.T) {
 
 func TestServer_MultipleLayerUpdates(t *testing.T) {
 	count := 0
-	s := NewServer(&NewServerParam{
-		Configs: []Option{
-			SetSecretKey([]byte("test-secret")),
-		},
-	})
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret"))})
 
 	// Add layers multiple times
 	updates := [][]AppLayer{

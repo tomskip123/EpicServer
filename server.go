@@ -24,20 +24,14 @@ type Server struct {
 	cancel      context.CancelFunc
 }
 
-// NewServerParam defines the parameters needed to create a new server instance
-type NewServerParam struct {
-	Configs  []Option
-	AppLayer []AppLayer
-}
-
 // NewServer creates and initializes a new server instance with the provided configuration
 // It applies all configurations and app layers in the order they are provided
 // Panics if no secret key is set
-func NewServer(p1 *NewServerParam) *Server {
+func NewServer(p1 []Option) *Server {
 	// generate sensible default config
 
 	config := defaultConfig()
-	for _, opt := range p1.Configs {
+	for _, opt := range p1 {
 		// loop through each option and apply whatever functionality has been defined
 		opt(config)
 	}
@@ -56,13 +50,6 @@ func NewServer(p1 *NewServerParam) *Server {
 	}
 
 	s.Hooks = defaultHooks(s)
-
-	// for us to then loop through the given options that would give access to gin
-	// another server features
-
-	for _, opt := range p1.AppLayer {
-		opt(s)
-	}
 
 	return s
 }

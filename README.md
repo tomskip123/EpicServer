@@ -3,7 +3,10 @@
 > A powerful, flexible, and production-ready Go web server built on top of Gin framework.
 
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.16-blue)
-![Version](https://img.shields.io/badge/version-2.0.3-blue)
+
+![Version](https://img.shields.io/badge/version-1.0.2-blue)
+
+There is a version for 1.0.3, but readme hasn't been updated for it.
 
 ## Table of Contents
 
@@ -68,11 +71,13 @@ package main
 import "github.com/tomskip123/EpicServer"
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            EpicServer.WithHealthCheck("/health"),
-            EpicServer.WithEnvironment("development"),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        EpicServer.WithHealthCheck("/health"),
+        EpicServer.WithEnvironment("development"),
     })
 
     server.Start()
@@ -92,33 +97,10 @@ import (
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        Configs: []EpicServer.Option{
+    server := EpicServer.NewServer([]EpicServer.Option{
             EpicServer.SetHost("localhost", 8080),
             EpicServer.SetSecretKey([]byte("your-secret-key")),
-        },
-        AppLayer: []EpicServer.AppLayer{
-            // Basic setup
-            EpicServer.WithEnvironment("development"),
-            EpicServer.WithCompression(),
-            
-            // Database
-            EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
-                ConnectionName: "default",
-                URI: "mongodb://localhost:27017",
-                DatabaseName: "myapp",
-            }),
-            
-            // Routes
-            EpicServer.WithRoutes(
-                EpicServer.RouteGroup{
-                    Prefix: "/api",
-                    Routes: []EpicServer.Route{
-                        EpicServer.Get("/users", HandleUsers),
-                    },
-                },
-            ),
-        },
+        }
     })
 
     server.Start()
@@ -146,11 +128,9 @@ import (
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        Configs: []EpicServer.Option{
-            EpicServer.SetHost("localhost", 8080),
-            EpicServer.SetSecretKey([]byte("your-secret-key")),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetHost("localhost", 8080),
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
 }
 ```
@@ -1024,21 +1004,22 @@ server := EpicServer.NewServer(&EpicServer.NewServerParam{
 Configure the server to handle SPA routing:
 
 ```go
-//go:embed dist/*
-var spaFiles embed.FS
-
-func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure SPA handling
-            EpicServer.WithSPACatchAll(
-                &spaFiles,              // Embedded filesystem
-                "dist",                 // Static files directory
-                "dist/index.html",      // SPA entry point
-            ),
-        },
-    })
-}
+ //go:embed dist/*
+ var spaFiles embed.FS
+ 
+ func main() {
+     server := EpicServer.NewServer([]EpicServer.Option{
+         EpicServer.SetSecretKey([]byte("your-secret-key")),
+     })
+     server.UpdateAppLayer([]EpicServer.AppLayer{
+         // Configure SPA handling
+         EpicServer.WithSPACatchAll(
+             &spaFiles,              // Embedded filesystem
+             "dist",                 // Static files directory
+             "dist/index.html",      // SPA entry point
+         ),
+     })
+ }
 ```
 
 ## Security
@@ -1172,10 +1153,13 @@ MongoDB specific helpers:
 
 1. Fork the repository
 2. Clone your fork:
+
 ```bash
 git clone https://github.com/yourusername/EpicServer.git
 ```
+
 3. Create your feature branch:
+
 ```bash
 git checkout -b feature/amazing-feature
 ```
@@ -1184,6 +1168,7 @@ git checkout -b feature/amazing-feature
 
 1. Ensure you have Go 1.16+ installed
 2. Run tests before making changes:
+
 ```bash
 go test -v ./...
 ```
@@ -1203,30 +1188,34 @@ go test -run TestServer_Start       # Test server startup
 ```
 
 Key areas covered by tests:
-- Server initialization and configuration
-- Built-in middleware (CSRF, Compression, CORS, WWW redirect)
-- Environment settings
-- Server lifecycle
-- Logger functionality
+* Server initialization and configuration
+* Built-in middleware (CSRF, Compression, CORS, WWW redirect)
+* Environment settings
+* Server lifecycle
+* Logger functionality
 
 ### Submitting Changes
 
 1. Commit your changes:
+
 ```bash
 git commit -m 'Add some amazing feature'
 ```
+
 2. Push to your fork:
+
 ```bash
 git push origin feature/amazing-feature
 ```
+
 3. Open a Pull Request
 
 ### Code Style
 
-- Follow standard Go formatting (`go fmt`)
-- Add tests for new features
-- Update documentation as needed
-- Keep commits focused and atomic
+* Follow standard Go formatting (`go fmt`)
+* Add tests for new features
+* Update documentation as needed
+* Keep commits focused and atomic
 
 ## License
 
