@@ -905,10 +905,10 @@ func GetSession(c *gin.Context) (*Session, error) {
 }
 
 // Optional: Helper for required session (panics if no session)
-func MustGetSession(c *gin.Context) *Session {
+func MustGetSession(c *gin.Context) (*Session, error) {
 	session, err := GetSession(c)
 	if err != nil {
-		panic("attempting to access session in non-authenticated context")
+		return nil, err
 	}
-	return session
+	return session, nil
 }
