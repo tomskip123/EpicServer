@@ -6,9 +6,26 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+var gzipWriterPool = sync.Pool{
+	New: func() interface{} {
+		return gzip.NewWriter(nil)
+	},
+}
+
+type gzipResponseWriter struct {
+	gin.ResponseWriter
+	Writer *gzip.Writer
+}
+
+func (w gzipResponseWriter) Write(b []byte) (int, error) {
+	return w.Writer.Write(b)
+}
 
 func CompressMiddleware(ctx *gin.Context) {
 	// Check if the request is for an asset
@@ -27,9 +44,13 @@ func CompressMiddleware(ctx *gin.Context) {
 		return
 	}
 
-	// Create a gzip writer
-	gz := gzip.NewWriter(ctx.Writer)
-	defer gz.Close()
+	// Get a writer from the pool
+	gz := gzipWriterPool.Get().(*gzip.Writer)
+	gz.Reset(ctx.Writer)
+	defer func() {
+		gz.Close()
+		gzipWriterPool.Put(gz)
+	}()
 
 	// Set the Content-Encoding header
 	ctx.Header("Content-Encoding", "gzip")
@@ -39,41 +60,21 @@ func CompressMiddleware(ctx *gin.Context) {
 	ctx.Next()
 }
 
-type gzipResponseWriter struct {
-	gin.ResponseWriter
-	Writer *gzip.Writer
-}
-
-func (w gzipResponseWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
-}
-
 func CorsMiddleware(origins []string) gin.HandlerFunc {
+	// Build a map for O(1) lookups.
+	allowedOrigins := make(map[string]struct{})
+	for _, origin := range origins {
+		allowedOrigins[origin] = struct{}{}
+	}
 	return func(ctx *gin.Context) {
 		origin := ctx.Request.Header.Get("Origin")
-
-		if _, ok := ctx.Request.Header["Origin"]; ok {
-			valid := false
-			for _, v := range origins {
-				if strings.HasPrefix(origin, v) {
-					valid = true
-					break
-				}
-			}
-			if !valid {
-				fmt.Println("Origin is not valid: " + origin)
+		if origin != "" {
+			if _, ok := allowedOrigins[origin]; !ok {
 				ctx.AbortWithStatus(http.StatusForbidden)
 				return
 			}
+			ctx.Header("Access-Control-Allow-Origin", origin)
 		}
-
-		for _, allowedOrigin := range origins {
-			if origin == allowedOrigin {
-				ctx.Header("Access-Control-Allow-Origin", origin)
-				break
-			}
-		}
-
 		ctx.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
 		ctx.Header("Access-Control-Allow-Credentials", "true")
 		ctx.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, Cache-Control, X-Requested-With, X-CSRF-Token, Accept-Encoding")
@@ -81,7 +82,6 @@ func CorsMiddleware(origins []string) gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusOK)
 			return
 		}
-
 		ctx.Next()
 	}
 }
@@ -155,5 +155,62 @@ func RemoveWWWMiddleware() gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+type RateLimiter struct {
+	mu     sync.Mutex
+	tokens int
+	max    int
+	refill int
+	ticker *time.Ticker
+}
+
+func NewRateLimiter(maxTokens, refillRate int, interval time.Duration) *RateLimiter {
+	rl := &RateLimiter{
+		tokens: maxTokens,
+		max:    maxTokens,
+		refill: refillRate,
+		ticker: time.NewTicker(interval),
+	}
+	go func() {
+		for range rl.ticker.C {
+			rl.mu.Lock()
+			rl.tokens += rl.refill
+			if rl.tokens > rl.max {
+				rl.tokens = rl.max
+			}
+			rl.mu.Unlock()
+		}
+	}()
+	return rl
+}
+
+func (rl *RateLimiter) Allow() bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	if rl.tokens > 0 {
+		rl.tokens--
+		return true
+	}
+	return false
+}
+
+func RateLimiterMiddleware(rl *RateLimiter) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !rl.Allow() {
+			c.AbortWithStatus(http.StatusTooManyRequests)
+			return
+		}
+		c.Next()
+	}
+}
+
+func RequestTimingMiddleware(logger Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		duration := time.Since(start)
+		logger.Info("Request", c.Request.Method, c.Request.URL.Path, "took", duration)
 	}
 }
