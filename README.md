@@ -6,8 +6,6 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.2-blue)
 
-There is a version for 1.0.3, but readme hasn't been updated for it.
-
 ## Table of Contents
 
 1. [Getting Started](#getting-started)
@@ -92,23 +90,42 @@ Here's a complete example with routing, database, and authentication:
 package main
 
 import (
+    "github.com/gin-gonic/gin"
     "github.com/tomskip123/EpicServer"
     "github.com/tomskip123/EpicServer/db"
 )
 
 func main() {
     server := EpicServer.NewServer([]EpicServer.Option{
-            EpicServer.SetHost("localhost", 8080),
-            EpicServer.SetSecretKey([]byte("your-secret-key")),
-        }
+        EpicServer.SetHost("localhost", 8080),
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        EpicServer.WithRoutes(
+            EpicServer.RouteGroup{
+                Prefix: "/api/v1",
+                Routes: []EpicServer.Route{
+                    EpicServer.Get("/users", HandleUsers),
+                },
+            },
+        ),
+        EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
+            ConnectionName: "default",
+            URI:           "mongodb://localhost:27017",
+            DatabaseName:  "myapp",
+        }),
     })
 
     server.Start()
 }
 
 func HandleUsers(c *gin.Context, s *EpicServer.Server) {
-    db := EpicServerDb.GetMongoClient(s, "default")
-    // Handle request...
+    client := EpicServerDb.GetMongoClient(s, "default")
+    db := client.Database("myapp")
+    collection := db.Collection("users")
+    // Handle request using MongoDB...
+    c.JSON(200, gin.H{"message": "users endpoint"})
 }
 ```
 
@@ -439,38 +456,27 @@ import (
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure MongoDB
-            EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
-                ConnectionName: "default",
-                URI:           "mongodb://localhost:27017",
-                DatabaseName:  "myapp",
-            }),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
 
-    // Use MongoDB in your handlers
-    func MyHandler(c *gin.Context) {
-        // Get MongoDB client
-        client := EpicServerDb.GetMongoClient(server, "default")
-        
-        // Get specific collection
-        collection := EpicServerDb.GetMongoCollection(server, "default", "myapp", "users")
-        
-        // Use MongoDB helper functions
-        objectID := EpicServerDb.StringToObjectID("507f1f77bcf86cd799439011")
-        ids := EpicServerDb.StringArrayToObjectIDArray([]string{"507f1f77bcf86cd799439011"})
-        
-        // Create indexes
-        indexes := []mongo.IndexModel{
-            {
-                Keys: bson.D{{Key: "email", Value: 1}},
-                Options: options.Index().SetUnique(true),
-            },
-        }
-        EpicServerDb.UpdateIndexes(context.Background(), collection, indexes)
-    }
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure MongoDB
+        EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
+            ConnectionName: "default",
+            URI:           "mongodb://localhost:27017",
+            DatabaseName:  "myapp",
+        }),
+    })
+
+    server.Start()
+}
+
+func HandleUsers(c *gin.Context, s *EpicServer.Server) {
+    client := EpicServerDb.GetMongoClient(s, "default")
+    db := client.Database("myapp")
+    collection := db.Collection("users")
+    // Handle request using MongoDB...
 }
 ```
 
@@ -485,26 +491,29 @@ import (
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure PostgreSQL
-            EpicServerDb.WithPostgres(EpicServerDb.PostgresConfig{
-                ConnectionName: "default",
-                Host:          "localhost",
-                Port:          5432,
-                User:          "postgres",
-                Password:      "password",
-                Database:      "myapp",
-                SSLMode:       "disable",
-            }),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
 
-    // Use PostgreSQL in your handlers
-    func MyHandler(c *gin.Context) {
-        db := EpicServerDb.GetPostgresDB(server, "default")
-        rows, err := db.Query("SELECT * FROM users")
-    }
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure PostgreSQL
+        EpicServerDb.WithPostgres(EpicServerDb.PostgresConfig{
+            ConnectionName: "default",
+            Host:          "localhost",
+            Port:          5432,
+            User:          "postgres",
+            Password:      "password",
+            Database:      "myapp",
+            SSLMode:       "disable",
+        }),
+    })
+
+    server.Start()
+}
+
+func HandleUsers(c *gin.Context, s *EpicServer.Server) {
+    db := EpicServerDb.GetPostgresDB(s, "default")
+    // Handle request using PostgreSQL...
 }
 ```
 
@@ -519,25 +528,61 @@ import (
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure MySQL
-            EpicServerDb.WithMySQL(EpicServerDb.MySQLConfig{
-                ConnectionName: "default",
-                Host:          "localhost",
-                Port:          3306,
-                User:          "root",
-                Password:      "password",
-                Database:      "myapp",
-            }),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
 
-    // Use MySQL in your handlers
-    func MyHandler(c *gin.Context) {
-        db := EpicServerDb.GetMySQLDB(server, "default")
-        rows, err := db.Query("SELECT * FROM users")
-    }
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure MySQL
+        EpicServerDb.WithMySQL(EpicServerDb.MySQLConfig{
+            ConnectionName: "default",
+            Host:          "localhost",
+            Port:          3306,
+            User:          "root",
+            Password:      "password",
+            Database:      "myapp",
+        }),
+    })
+
+    server.Start()
+}
+
+func HandleUsers(c *gin.Context, s *EpicServer.Server) {
+    db := EpicServerDb.GetMySQLDB(s, "default")
+    // Handle request using MySQL...
+}
+```
+
+#### GORM
+
+```go
+package main
+
+import (
+	"github.com/tomskip123/EpicServer"
+	"github.com/tomskip123/EpicServer/db"
+)
+
+func main() {
+	server := EpicServer.NewServer([]EpicServer.Option{
+		EpicServer.SetSecretKey([]byte("your-secret-key")),
+	})
+
+	server.UpdateAppLayer([]EpicServer.AppLayer{
+		// Configure GORM
+		EpicServerDb.WithGorm(&EpicServerDb.GormConfig{
+			ConnectionName: "default",
+			Dialect:        "mysql", // "mysql", "postgres", or "sqlite"
+			DSN:            "user:password@tcp(localhost:3306)/dbname",
+		}),
+	})
+
+	server.Start()
+}
+
+func HandleUsers(c *gin.Context, s *EpicServer.Server) {
+	db := EpicServerDb.GetGormDB(s, "default")
+	// Handle request using GORM...
 }
 ```
 
@@ -575,7 +620,7 @@ func main() {
 
 #### Using the Cache
 
-The memory cache provides simple key-value storage with expiration:
+The cache provides simple key-value storage with expiration:
 
 ```go
 func MyHandler(c *gin.Context) {
@@ -600,7 +645,7 @@ func MyHandler(c *gin.Context) {
 * In-memory key-value storage
 * Automatic expiration of cached items
 * Thread-safe operations
-* Zero configuration required
+* Zero configuration required for memory cache
 * Multiple named cache instances
 
 #### Cache Methods
@@ -611,31 +656,27 @@ func MyHandler(c *gin.Context) {
 
 ### Static File Serving
 
-EpicServer provides flexible options for serving static files and Single Page Applications (SPAs).
+EpicServer provides efficient static file serving with support for embedded files.
 
-#### Serving Static Directories
+#### Basic Static File Serving
 
-Serve an entire directory of static files:
+Serve static files from a directory:
 
 ```go
-//go:embed assets/*
-var assets embed.FS
+//go:embed static/*
+var staticFiles embed.FS
 
 func main() {
     server := EpicServer.NewServer(&EpicServer.NewServerParam{
         AppLayer: []EpicServer.AppLayer{
-            // Serve static files from the embedded assets directory
-            EpicServer.WithStaticDirectory(
-                "/static",         // URL path
-                &assets,          // Embedded filesystem
-                "assets",         // Directory in embedded filesystem
-            ),
+            // Serve static files
+            EpicServer.WithStaticDirectory("/static", &staticFiles, "static"),
         },
     })
 }
 ```
 
-#### Serving Individual Static Files
+#### Custom MIME Types
 
 Serve specific static files with custom MIME types:
 
@@ -1134,6 +1175,9 @@ MongoDB specific helpers:
 * `StringArrayToObjectIDArray(ids []string)` - Convert string array to ObjectID array
 * `UpdateIndexes(ctx, collection, indexes)` - Create or update collection indexes
 * `StringArrayContains(array []string, value string)` - Check if string array contains value
+
+GORM specific helpers:
+* `AutoMigrateModels(s *EpicServer.Server, connectionName string, models ...interface{}) error` - Run GORM AutoMigrate for the given models
 
 ### Cache Methods
 
