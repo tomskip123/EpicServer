@@ -140,6 +140,8 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 			if err != nil {
 				if config.ErrorHandler != nil {
 					config.ErrorHandler(c, err)
+				} else {
+					c.AbortWithStatus(http.StatusUnauthorized)
 				}
 				return
 			}
@@ -311,7 +313,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				authenticated, err := s.Hooks.Auth.OnAuthenticate(username, password, cState)
 				if err != nil {
 					s.Logger.Error(err)
-					ctx.AbortWithError(http.StatusInternalServerError, err)
+					ctx.AbortWithError(http.StatusUnauthorized, err)
 					return
 				}
 
@@ -358,6 +360,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 		ctx.JSON(http.StatusNotFound, gin.H{"provider": "doesn't exist"})
 	}
 }
+
 func EncodeStateString(s *Server, stateString []byte) string {
 	secret := os.Getenv("ENCRYPTION_KEY")
 	if secret == "" {
@@ -686,102 +689,40 @@ func (cc *CookieContents) DeserialiseCookie(cookieString string) (*CookieContent
 }
 
 func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContents, provider string, cookieName string, domain string, secure bool) error {
-	expiry := time.Hour * 24 * 7
-	value.ExpiresOn = time.Now().Add(expiry)
-
-	// set cookie contents to json
-	jsonValue, err := json.Marshal(value)
+	// Encode the cookie using securecookie
+	encoded, err := ch.SecureCookie.Encode(cookieName, value)
 	if err != nil {
 		return err
 	}
 
-	final := jsonValue
-
-	hashKey := os.Getenv("ENCRYPTION_KEY")
-	if hashKey != "" {
-		// 2. Create HMAC
-		h := hmac.New(sha256.New, []byte(hashKey))
-		h.Write(jsonValue)
-		mac := h.Sum(nil)
-
-		// 3. Combine data + HMAC
-		final = append(jsonValue, mac...)
-	}
-
-	encoded, err := ch.SecureCookie.Encode(cookieName, final)
-	if err != nil {
-		return err
-	}
-
-	ctx.SetCookie(
-		cookieName,
-		encoded,
-		int(expiry.Seconds()),
-		"/",
-		domain,
-		secure,
-		true,
-	)
-
-	ctx.SetCookie(
-		"provider",
-		provider,
-		int(expiry.Seconds()),
-		"/",
-		domain,
-		secure,
-		true,
-	)
-
+	// Set cookie with the encoded value
+	http.SetCookie(ctx.Writer, &http.Cookie{
+		Name:     cookieName,
+		Value:    encoded,
+		Path:     "/",
+		Domain:   domain,
+		Expires:  value.ExpiresOn,
+		Secure:   secure,
+		HttpOnly: true,
+	})
 	return nil
 }
 
 func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) (*CookieContents, error) {
+	// Retrieve the cookie
 	cookie, err := ctx.Cookie(cookieName)
-	if err == nil {
-		var value []byte
-		err = ch.SecureCookie.Decode(cookieName, cookie, &value)
-		if err == nil {
-			var cookieContents CookieContents
-
-			hashKey := os.Getenv("ENCRYPTION_KEY")
-			if hashKey != "" {
-				// Split HMAC and data
-				macSize := sha256.Size
-				if len(value) < macSize {
-					return &CookieContents{}, fmt.Errorf("invalid cookie size")
-				}
-
-				data := value[:len(value)-macSize]
-				messageMAC := value[len(value)-macSize:]
-
-				// Verify HMAC
-				h := hmac.New(sha256.New, []byte(hashKey))
-				h.Write(data)
-				expectedMAC := h.Sum(nil)
-
-				if !hmac.Equal(messageMAC, expectedMAC) {
-					return &CookieContents{}, fmt.Errorf("invalid cookie signature")
-				}
-			}
-
-			var jsonData []byte
-			if hashKey != "" {
-				jsonData = value[:len(value)-sha256.Size]
-			} else {
-				jsonData = value
-			}
-
-			err := json.Unmarshal(jsonData, &cookieContents)
-			if err != nil {
-				return &CookieContents{}, err
-			}
-
-			return &cookieContents, nil
-		}
+	if err != nil {
+		return nil, err
 	}
 
-	return &CookieContents{}, err
+	// Decode the cookie
+	var value CookieContents
+	err = ch.SecureCookie.Decode(cookieName, cookie, &value)
+	if err != nil {
+		return nil, err
+	}
+
+	return &value, nil
 }
 
 // GenerateEncryptionKey generates a 32-byte (256-bit) key suitable for AES-256 encryption
@@ -840,7 +781,7 @@ func GenerateCSRFToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(token), nil
+	return base64.URLEncoding.EncodeToString(token), nil
 }
 
 // IsTrustedSource IsTrustedSource checks if the request is from a trusted source

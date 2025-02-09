@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -44,7 +45,7 @@ func NewServer(p1 []Option) *Server {
 	s := &Server{
 		Config: config,
 		Engine: gin.New(),
-		Logger: defaultLogger(),
+		Logger: defaultLogger(os.Stdout),
 		Db:     make(map[string]interface{}),
 		Cache:  make(map[string]interface{}),
 	}

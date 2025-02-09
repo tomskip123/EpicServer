@@ -274,15 +274,15 @@ func TestTrustedProxies(t *testing.T) {
 		WithTrustedProxies(proxies),
 	})
 
-	// Test proxy configuration
+	// Test proxy configuration indirectly: since Gin's trusted proxies
+	// settings are internal, we run a request to verify default route 404.
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/", nil)
 	req.Header.Set("X-Forwarded-For", "127.0.0.1")
 
 	s.Engine.ServeHTTP(w, req)
 
-	// Gin's trusted proxies are internal, so we can only test indirectly
-	if w.Code != http.StatusNotFound { // Default 404 for undefined route
+	if w.Code != http.StatusNotFound {
 		t.Errorf("expected status 404, got %d", w.Code)
 	}
 }
@@ -507,5 +507,41 @@ func TestServer_MultipleLayerUpdates(t *testing.T) {
 
 	if count != 3 {
 		t.Errorf("expected 3 layer executions, got %d", count)
+	}
+}
+
+// New test: calling Stop without having started the server should be safe.
+func TestServer_StopWithoutStart(t *testing.T) {
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret"))})
+	if err := s.Stop(); err != nil {
+		t.Errorf("Stop() returned error on a non-started server: %v", err)
+	}
+}
+
+// New test: WithRemoveWWW redirect behavior.
+// This assumes that the WithRemoveWWW middleware triggers a redirect when the host starts with "www.".
+func TestRemoveWWWRedirectBehavior(t *testing.T) {
+	s := NewServer([]Option{SetSecretKey([]byte("test-secret-key"))})
+	s.UpdateAppLayer([]AppLayer{
+		WithRemoveWWW(),
+	})
+
+	// Dummy handler for test route.
+	s.Engine.GET("/test", func(c *gin.Context) {
+		c.String(http.StatusOK, "hello")
+	})
+
+	// Simulate request from a host using "www."
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "http://www.example.com/test", nil)
+	s.Engine.ServeHTTP(w, req)
+
+	// Depending on your middleware implementation, expect a redirect.
+	// Here we check for a 301 or 302 status and a non-empty Location header.
+	if w.Code != http.StatusMovedPermanently && w.Code != http.StatusFound {
+		t.Errorf("expected redirect status (301 or 302), got %d", w.Code)
+	}
+	if location := w.Header().Get("Location"); location == "" {
+		t.Error("expected Location header to be set for www redirect")
 	}
 }

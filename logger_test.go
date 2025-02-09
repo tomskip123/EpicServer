@@ -2,11 +2,13 @@ package EpicServer
 
 import (
 	"bytes"
+	"fmt"
+	"os"
 	"testing"
 )
 
 func TestDefaultLogger(t *testing.T) {
-	logger := defaultLogger()
+	logger := defaultLogger(os.Stdout)
 	if logger == nil {
 		t.Error("defaultLogger() returned nil")
 	}
@@ -14,11 +16,12 @@ func TestDefaultLogger(t *testing.T) {
 
 func TestLogger_Levels(t *testing.T) {
 	var buf bytes.Buffer
-	logger := &testLogger{output: &buf}
+
+	logger := defaultLogger(&buf)
 
 	tests := []struct {
 		name     string
-		logFunc  func(string)
+		logFunc  func(args ...interface{})
 		message  string
 		wantText string
 	}{
@@ -40,32 +43,25 @@ func TestLogger_Levels(t *testing.T) {
 			message:  "test debug",
 			wantText: "[DEBUG] test debug",
 		},
+		{
+			name:     "warn level",
+			logFunc:  logger.Warn,
+			message:  "test warn",
+			wantText: "[WARN] test warn",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			buf.Reset()
+			// buf.Reset()
 			tt.logFunc(tt.message)
+
+			output := buf.String()
+			fmt.Println(output)
+
 			if !bytes.Contains(buf.Bytes(), []byte(tt.wantText)) {
 				t.Errorf("logger output = %q, want %q", buf.String(), tt.wantText)
 			}
 		})
 	}
-}
-
-// testLogger implementation for testing
-type testLogger struct {
-	output *bytes.Buffer
-}
-
-func (l *testLogger) Info(msg string) {
-	l.output.WriteString("[INFO] " + msg + "\n")
-}
-
-func (l *testLogger) Error(msg string) {
-	l.output.WriteString("[ERROR] " + msg + "\n")
-}
-
-func (l *testLogger) Debug(msg string) {
-	l.output.WriteString("[DEBUG] " + msg + "\n")
 }

@@ -39,6 +39,12 @@ func CompressMiddleware(ctx *gin.Context) {
 		ctx.Header("Cache-Control", "no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0")
 	}
 
+	// Prevent compression for certain content types
+	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".svg" {
+		ctx.Next()
+		return
+	}
+
 	if !strings.Contains(ctx.GetHeader("Accept-Encoding"), "gzip") {
 		ctx.Next()
 		return
@@ -211,6 +217,6 @@ func RequestTimingMiddleware(logger Logger) gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		duration := time.Since(start)
-		logger.Info("Request", c.Request.Method, c.Request.URL.Path, "took", duration)
+		logger.Info("Request ", c.Request.Method+" ", c.Request.URL.Path+" ", "took ", duration)
 	}
 }

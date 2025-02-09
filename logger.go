@@ -1,8 +1,8 @@
 package EpicServer
 
 import (
+	"io"
 	"log"
-	"os"
 )
 
 type Logger interface {
@@ -17,24 +17,24 @@ type AppLogger struct {
 	logger *log.Logger
 }
 
-func defaultLogger() *AppLogger {
+func defaultLogger(output io.Writer) *AppLogger {
 	return &AppLogger{
-		logger: log.New(os.Stdout, "", log.LstdFlags),
+		logger: log.New(output, "", log.LstdFlags),
 	}
 }
 
 func (l *AppLogger) Debug(args ...interface{}) {
-	l.logger.Println(append([]interface{}{"DEBUG:"}, args...)...)
+	l.logger.Println(append([]interface{}{"[DEBUG]"}, args...)...)
 }
 
 func (l *AppLogger) Info(args ...interface{}) {
-	l.logger.Println(append([]interface{}{"INFO:"}, args...)...)
+	l.logger.Println(append([]interface{}{"[INFO]"}, args...)...)
 }
 
 func (l *AppLogger) Warn(args ...interface{}) {
-	l.logger.Println(append([]interface{}{"WARN:"}, args...)...)
+	l.logger.Println(append([]interface{}{"[WARN]"}, args...)...)
 }
 
 func (l *AppLogger) Error(args ...interface{}) {
-	l.logger.Println(append([]interface{}{"ERROR:"}, args...)...)
+	l.logger.Println(append([]interface{}{"[ERROR]"}, args...)...)
 }
