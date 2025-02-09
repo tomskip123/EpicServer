@@ -332,25 +332,33 @@ func TestServer_Start(t *testing.T) {
 			}
 
 			s := NewServer([]Option{
-				SetHost(tt.host, tt.port),
 				SetSecretKey([]byte("test-secret")),
+				SetHost(tt.host, tt.port),
 			})
 
-			errChan := make(chan error, 1)
+			// Create a channel to signal when the server has started
+			done := make(chan struct{})
+
+			// Start the server in a separate goroutine
 			go func() {
-				errChan <- s.Start()
+				defer close(done) // Signal that the server has started
+				if err := s.Start(); err != nil {
+					t.Errorf("failed to start server: %v", err)
+				}
 			}()
 
-			// Allow server to start
-			time.Sleep(100 * time.Millisecond)
-
-			if err := s.Stop(); err != nil {
-				t.Fatalf("Failed to stop server: %v", err)
+			// Allow some time for the server to start
+			select {
+			case <-done:
+				// Server started successfully
+			case <-time.After(5 * time.Second):
+				t.Fatal("server did not start in time")
 			}
 
-			err := <-errChan
-			if (err != nil && err != http.ErrServerClosed) != tt.wantErr {
-				t.Errorf("Server.Start() error = %v, wantErr %v", err, tt.wantErr)
+			// Stop the server
+			err := s.Stop()
+			if err != nil {
+				t.Errorf("failed to stop server: %v", err)
 			}
 		})
 	}

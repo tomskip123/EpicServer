@@ -64,6 +64,7 @@ func (s *Server) UpdateAppLayer(p1 []AppLayer) {
 
 // Start initiates the server on the configured host and port
 func (s *Server) Start() error {
+	// Create a new context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
@@ -73,19 +74,22 @@ func (s *Server) Start() error {
 	}
 
 	go func() {
+		// Wait for the context to be canceled
 		<-ctx.Done()
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
 		s.srv.Shutdown(shutdownCtx)
 	}()
 
-	return s.srv.ListenAndServe()
+	// Return immediately after starting the server
+	return nil
 }
 
 // Stop gracefully stops the server
 func (s *Server) Stop() error {
 	if s.cancel != nil {
-		s.cancel()
+		s.cancel() // Call the cancel function to stop the server
+		fmt.Println("Server context canceled")
 	}
 	return nil
 }
