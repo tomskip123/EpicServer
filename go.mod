@@ -2,6 +2,8 @@ module github.com/tomskip123/EpicServer
 
 go 1.23
 
+toolchain go1.23.2
+
 require (
 	github.com/a-h/templ v0.3.819
 	github.com/coreos/go-oidc v2.2.1+incompatible
