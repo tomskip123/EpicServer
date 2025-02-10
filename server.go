@@ -81,8 +81,8 @@ func (s *Server) Start() error {
 		s.srv.Shutdown(shutdownCtx)
 	}()
 
-	// Return immediately after starting the server
-	return nil
+	// Start the server and return any errors
+	return s.srv.ListenAndServe()
 }
 
 // Stop gracefully stops the server
