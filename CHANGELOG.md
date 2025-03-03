@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
+- **Thread Safety Improvements**:
+  - Fixed data race condition in Server struct by adding a mutex to protect concurrent access to the `srv` field
+  - Updated `Start()` and `Stop()` methods to use mutex protection when accessing the HTTP server
+  - Enhanced tests to properly handle concurrent access to server resources
+
 - **Test Improvements**:
   - Fixed `TestRateLimiterAllow` and `TestRateLimiterConcurrency` tests by implementing a simplified test-specific RateLimiter
   - Fixed `TestLogger_Levels` to properly set the debug log level before testing
