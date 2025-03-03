@@ -10,6 +10,9 @@ jobs:
   test:
     name: Test with Coverage
     runs-on: ubuntu-latest
+    env:
+      COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD || 80 }}
+      FAIL_ON_THRESHOLD: ${{ vars.FAIL_ON_THRESHOLD || 'true' }}
     steps:
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -27,6 +30,9 @@ jobs:
           mkdir -p ./coverage
           go test -race -coverprofile=./coverage/coverage.out -covermode=atomic ./...
           
+      - name: Generate HTML Coverage Report
+        run: go tool cover -html=./coverage/coverage.out -o ./coverage/coverage.html
+          
       - name: Generate Coverage Report
         run: go tool cover -func=./coverage/coverage.out
         
@@ -34,13 +40,29 @@ jobs:
         run: |
           COVERAGE_PCT=$(go tool cover -func=./coverage/coverage.out | grep total | awk '{print $3}')
           COVERAGE_NUM=$(echo $COVERAGE_PCT | tr -d '%')
-          MIN_COVERAGE=80
+          MIN_COVERAGE=$COVERAGE_THRESHOLD
           
           echo "Total coverage: $COVERAGE_PCT"
           
+          # Define quality level
+          if (( $(echo "$COVERAGE_NUM < 70" | bc -l) )); then
+              echo "Coverage Quality: insufficient"
+          elif (( $(echo "$COVERAGE_NUM < 80" | bc -l) )); then
+              echo "Coverage Quality: acceptable"
+          elif (( $(echo "$COVERAGE_NUM < 90" | bc -l) )); then
+              echo "Coverage Quality: good"
+          else
+              echo "Coverage Quality: excellent"
+          fi
+          
+          # Check against threshold
           if (( $(echo "$COVERAGE_NUM < $MIN_COVERAGE" | bc -l) )); then
-            echo "::error::Test coverage ($COVERAGE_PCT) is below the minimum threshold of $MIN_COVERAGE%"
-            exit 1
+            echo "::warning::Test coverage ($COVERAGE_PCT) is below the minimum threshold of $MIN_COVERAGE%"
+            
+            if [ "$FAIL_ON_THRESHOLD" = "true" ]; then
+              echo "::error::Failing build due to insufficient coverage"
+              exit 1
+            fi
           else
             echo "Coverage meets minimum threshold of $MIN_COVERAGE%"
           fi

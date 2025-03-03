@@ -2,92 +2,96 @@ package EpicServerDb
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/tomskip123/EpicServer"
 )
 
-func TestWithPostgres(t *testing.T) {
-	// Skip if we're not running in a CI environment with proper DB access
-	if os.Getenv("CI_TEST_DB") != "true" {
-		t.Skip("Skipping database tests in non-CI environment")
-	}
-
-	tests := []struct {
-		name           string
-		postgresConfig PostgresConfig
-		wantPanic      bool
-	}{
-		{
-			name: "invalid connection string",
-			postgresConfig: PostgresConfig{
-				ConnectionName: "test_invalid",
-				Host:           "nonexistent-host",
-				Port:           5432,
-				User:           "user",
-				Password:       "password",
-				Database:       "nonexistent",
-				SSLMode:        "disable",
-			},
-			wantPanic: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &EpicServer.Server{
-				Db: make(map[string]interface{}),
-			}
-
-			appLayer := WithPostgres(tt.postgresConfig)
-
-			if tt.wantPanic {
-				assert.Panics(t, func() {
-					appLayer(s)
-				})
-				return
-			}
-
-			// Should not panic
-			assert.NotPanics(t, func() {
-				appLayer(s)
-			})
-
-			// Verify the connection was stored
-			assert.Contains(t, s.Db, tt.postgresConfig.ConnectionName)
-		})
-	}
-}
-
+// TestGetPostgresDB tests the GetPostgresDB function
 func TestGetPostgresDB(t *testing.T) {
+	// Create a server
 	s := &EpicServer.Server{
 		Db: make(map[string]interface{}),
 	}
 
-	// Create a mock connection name
-	connectionName := "test_get"
+	// Add a mock DB
+	mockDB := &sql.DB{}
+	s.Db["test-postgres"] = mockDB
 
-	// Store a mock DB
-	db := &sql.DB{}
-	s.Db[connectionName] = db
+	// Test retrieving the DB
+	db := GetPostgresDB(s, "test-postgres")
+	assert.Equal(t, mockDB, db, "Should return the correct DB")
 
-	t.Run("valid connection", func(t *testing.T) {
-		result := GetPostgresDB(s, connectionName)
-		assert.Equal(t, db, result)
-	})
+	// Test with non-existent DB
+	assert.Panics(t, func() {
+		GetPostgresDB(s, "non-existent")
+	}, "Should panic for non-existent DB")
 
-	t.Run("panic on invalid connection name", func(t *testing.T) {
-		assert.Panics(t, func() {
-			GetPostgresDB(s, "nonexistent")
-		})
-	})
+	// Test with wrong type
+	s.Db["wrong-type"] = "not a DB"
+	assert.Panics(t, func() {
+		GetPostgresDB(s, "wrong-type")
+	}, "Should panic for wrong type")
+}
 
-	t.Run("panic on incompatible type", func(t *testing.T) {
-		s.Db["wrong_type"] = "not a sql.DB"
-		assert.Panics(t, func() {
-			GetPostgresDB(s, "wrong_type")
-		})
-	})
+func TestWithPostgresErrorCases(t *testing.T) {
+	// Save the original functions
+	originalOpen := sqlOpen
+	originalPing := sqlPing
+
+	// Restore them after the test
+	defer func() {
+		sqlOpen = originalOpen
+		sqlPing = originalPing
+	}()
+
+	// Create a mock server
+	s := &EpicServer.Server{
+		Db:     make(map[string]interface{}),
+		Logger: &testLogger{},
+	}
+
+	// Test case 1: SQL Open error
+	sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
+		return nil, sql.ErrConnDone
+	}
+
+	sqlPing = func(db *sql.DB) error {
+		return nil // This should not be called
+	}
+
+	// Create the config
+	config := PostgresConfig{
+		ConnectionName: "test-postgres-error",
+		Host:           "localhost",
+		Port:           5432,
+		User:           "user",
+		Password:       "password",
+		Database:       "testdb",
+		SSLMode:        "disable",
+	}
+
+	// Create and apply the app layer
+	appLayer := WithPostgres(config)
+
+	// This should panic with the SQL Open error
+	assert.Panics(t, func() {
+		appLayer(s)
+	}, "Should panic when SQL Open fails")
+
+	// Test case 2: Ping error
+	mockDB := &sql.DB{}
+	sqlOpen = func(driverName, dataSourceName string) (*sql.DB, error) {
+		return mockDB, nil
+	}
+
+	sqlPing = func(db *sql.DB) error {
+		return sql.ErrConnDone
+	}
+
+	// This should panic with the Ping error
+	assert.Panics(t, func() {
+		appLayer(s)
+	}, "Should panic when Ping fails")
 }

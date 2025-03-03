@@ -1,15 +1,18 @@
 package EpicServerCache
 
 import (
+	"io"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tomskip123/EpicServer"
 )
 
 // TestServer is a simplified version of EpicServer.Server for testing
 type TestServer struct {
-	Cache map[string]interface{}
+	Cache  map[string]interface{}
+	Logger EpicServer.Logger
 }
 
 // Implementation of the minimal necessary interface for the cache tests
@@ -202,66 +205,102 @@ func TestMemoryCache_DeleteExpired(t *testing.T) {
 	assert.False(t, found)
 }
 
-// Test GetMemoryCache tests the GetMemoryCache function
-func TestGetMemoryCache(t *testing.T) {
-	// Create a test server with initialization
-	testServer := &TestServer{
-		Cache: make(map[string]interface{}),
-	}
+// Mock logger for testing
+type testLogger struct{}
 
-	// Create and add a cache config
-	config := &MemoryCacheConfig{
-		Name:       "test-cache",
-		DefaultTTL: 5 * time.Minute,
-		Cache:      NewMemoryCache(5*time.Minute, time.Minute, 0),
-	}
-
-	// Add the cache to the server
-	testServer.AddCache("test-cache", config)
-
-	// Test getting the cache
-	cache := getMemoryCacheForTest(testServer, "test-cache")
-	assert.NotNil(t, cache)
-
-	// Test panic on invalid cache
-	testServer.AddCache("invalid-cache", "not a memory cache")
-	assert.Panics(t, func() {
-		getMemoryCacheForTest(testServer, "invalid-cache")
-	})
-}
+func (l *testLogger) Debug(msg string, fields ...EpicServer.LogField)            {}
+func (l *testLogger) Info(msg string, fields ...EpicServer.LogField)             {}
+func (l *testLogger) Warn(msg string, fields ...EpicServer.LogField)             {}
+func (l *testLogger) Error(msg string, fields ...EpicServer.LogField)            {}
+func (l *testLogger) Fatal(msg string, fields ...EpicServer.LogField)            {}
+func (l *testLogger) WithFields(fields ...EpicServer.LogField) EpicServer.Logger { return l }
+func (l *testLogger) SetOutput(io.Writer)                                        {}
+func (l *testLogger) SetLevel(EpicServer.LogLevel)                               {}
+func (l *testLogger) SetFormat(EpicServer.LogFormat)                             {}
 
 // TestWithMemoryCache tests the WithMemoryCache function
 func TestWithMemoryCache(t *testing.T) {
-	// Create a test server with initialization
-	testServer := &TestServer{
+	// Test with default values
+	config := &MemoryCacheConfig{
+		Name: "testCache",
+		Type: "memory",
+	}
+
+	// Create the app layer
+	appLayer := WithMemoryCache(config)
+
+	// Create a server to apply the layer to
+	s := &EpicServer.Server{
+		Cache:  make(map[string]interface{}),
+		Logger: &testLogger{},
+	}
+
+	// Apply the layer
+	appLayer(s)
+
+	// Verify that the cache was added to the server
+	cachedConfig, ok := s.Cache["testCache"].(*MemoryCacheConfig)
+	assert.True(t, ok, "Should add a MemoryCacheConfig to the server")
+	assert.NotNil(t, cachedConfig.Cache, "Should initialize the cache")
+
+	// Verify default values were set
+	assert.Equal(t, 5*time.Minute, cachedConfig.DefaultTTL, "Should set default TTL")
+	assert.Equal(t, time.Minute, cachedConfig.CleanupInterval, "Should set default cleanup interval")
+
+	// Test with custom values
+	customConfig := &MemoryCacheConfig{
+		Name:            "customCache",
+		Type:            "memory",
+		DefaultTTL:      10 * time.Minute,
+		CleanupInterval: 2 * time.Minute,
+		MaxItems:        100,
+	}
+
+	customAppLayer := WithMemoryCache(customConfig)
+	customAppLayer(s)
+
+	// Verify that the cache was added with custom settings
+	customCachedConfig, ok := s.Cache["customCache"].(*MemoryCacheConfig)
+	assert.True(t, ok, "Should add a custom MemoryCacheConfig to the server")
+	assert.Equal(t, 10*time.Minute, customCachedConfig.DefaultTTL, "Should respect custom TTL")
+	assert.Equal(t, 2*time.Minute, customCachedConfig.CleanupInterval, "Should respect custom cleanup interval")
+	assert.Equal(t, 100, customCachedConfig.MaxItems, "Should respect custom max items")
+}
+
+// TestGetMemoryCache tests the GetMemoryCache function
+func TestGetMemoryCache(t *testing.T) {
+	// Create a server with a memory cache
+	s := &EpicServer.Server{
 		Cache: make(map[string]interface{}),
 	}
 
-	// Test with default TTL
-	config1 := &MemoryCacheConfig{
-		Name: "default-ttl-cache",
+	// Create and add a memory cache
+	cacheConfig := &MemoryCacheConfig{
+		Name:            "testCache",
+		Type:            "memory",
+		DefaultTTL:      5 * time.Minute,
+		CleanupInterval: time.Minute,
 	}
 
-	// Apply the app layer
-	layer := withMemoryCacheForTest(config1)
-	layer(testServer)
+	// Initialize the cache
+	cacheConfig.Cache = NewMemoryCache(cacheConfig.DefaultTTL, cacheConfig.CleanupInterval, cacheConfig.MaxItems)
 
-	// Verify the cache was created with default TTL
-	cache1 := getMemoryCacheForTest(testServer, "default-ttl-cache")
-	assert.NotNil(t, cache1)
-	assert.Equal(t, 5*time.Minute, cache1.defaultTTL)
+	// Add it to the server
+	s.Cache["testCache"] = cacheConfig
 
-	// Test with custom TTL
-	config2 := &MemoryCacheConfig{
-		Name:       "custom-ttl-cache",
-		DefaultTTL: 10 * time.Minute,
-	}
+	// Test retrieving the cache
+	cache := GetMemoryCache(s, "testCache")
+	assert.NotNil(t, cache, "Should retrieve the memory cache")
+	assert.Equal(t, cacheConfig.Cache, cache, "Should retrieve the correct cache instance")
 
-	layer = withMemoryCacheForTest(config2)
-	layer(testServer)
+	// Test panic for non-existent cache
+	assert.Panics(t, func() {
+		GetMemoryCache(s, "nonExistentCache")
+	}, "Should panic for non-existent cache")
 
-	// Verify the cache was created with custom TTL
-	cache2 := getMemoryCacheForTest(testServer, "custom-ttl-cache")
-	assert.NotNil(t, cache2)
-	assert.Equal(t, 10*time.Minute, cache2.defaultTTL)
+	// Test panic for wrong cache type
+	s.Cache["wrongType"] = "not a memory cache"
+	assert.Panics(t, func() {
+		GetMemoryCache(s, "wrongType")
+	}, "Should panic for wrong cache type")
 }

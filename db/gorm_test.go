@@ -7,6 +7,38 @@ import (
 	"github.com/tomskip123/EpicServer"
 )
 
+// Variable to allow mocking in tests
+var gormDBFunc = GetGormDB
+
+// TestAutoMigrateModels tests the AutoMigrateModels function
+func TestAutoMigrateModels(t *testing.T) {
+	// Create a server
+	s := &EpicServer.Server{
+		Db: make(map[string]interface{}),
+	}
+
+	// Set up mocking for GetGormDB
+	// Rather than mocking the function, we'll mock the database in the server
+
+	// Set up test models
+	type TestModel1 struct {
+		ID   uint
+		Name string
+	}
+
+	type TestModel2 struct {
+		ID    uint
+		Email string
+	}
+
+	// Test case: DB not found
+	// This should trigger the GetGormDB panic path
+	assert.Panics(t, func() {
+		_ = AutoMigrateModels(s, "nonexistent", &TestModel1{}, &TestModel2{})
+	}, "Should panic when DB not found")
+}
+
+// Mock the GetGormDB function
 // TestWithGorm tests the WithGorm function with SQLite in-memory database
 // which doesn't require external database connections
 func TestWithGorm(t *testing.T) {
@@ -140,10 +172,4 @@ func TestGetGormDB(t *testing.T) {
 			GetGormDB(s, "wrong_type")
 		})
 	})
-}
-
-func TestAutoMigrateModels(t *testing.T) {
-	// This test is problematic because it tries to use a nil gorm.DB
-	// Let's skip it since we've already tested the WithGorm function
-	t.Skip("Skipping AutoMigrateModels test since it requires a real DB connection")
 }
