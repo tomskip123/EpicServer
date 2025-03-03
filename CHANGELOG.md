@@ -15,17 +15,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `TestNewServer` to check for errors using `HasErrors()` instead of expecting panics
   - Fixed `TestDefaultAuthHooks_OnUserCreate` and `TestDefaultHooks` to align with the updated implementation of `OnUserCreate`
 
-## [2.0.2] - 2023-06-15
-
-### Improvements
-
-- **Test Coverage**:
-  - Added test files for MongoDB integration in `db/mongo_test.go`
-  - Added test files for memory cache in `cache/memory_test.go`
-  - Added test files for template rendering in `template/templ_test.go`
-  - Added tests for hooks functionality in `hooks_test.go`
-  - Improved overall test coverage across the codebase
-
 ## [2.0.1] - 2023-06-10
 
 ### Improvements
