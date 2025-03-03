@@ -25,7 +25,7 @@ jobs:
         # Exclude test helper files from coverage calculation
         go test -race -covermode atomic -coverprofile=covprofile.raw ./...
         # Filter out test helper files from coverage report
-        cat covprofile.raw | grep -v "test_helpers.go" > covprofile
+        cat covprofile.raw | grep -v "helpers_test.go" > covprofile
     - name: Install goveralls
       run: go install github.com/mattn/goveralls@latest
     - name: Send coverage
