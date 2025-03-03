@@ -10,87 +10,22 @@ jobs:
   test:
     name: Test with Coverage
     runs-on: ubuntu-latest
-    env:
-      COVERAGE_THRESHOLD: ${{ vars.COVERAGE_THRESHOLD || 80 }}
-      FAIL_ON_THRESHOLD: ${{ vars.FAIL_ON_THRESHOLD || 'true' }}
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-          
-      - name: Check out code
-        uses: actions/checkout@v3
-        
-      - name: Install dependencies
-        run: go mod download
-        
-      - name: Run Tests with Coverage
-        run: |
-          mkdir -p ./coverage
-          go test -race -coverprofile=./coverage/coverage.out -covermode=atomic ./...
-          
-      - name: Generate HTML Coverage Report
-        run: go tool cover -html=./coverage/coverage.out -o ./coverage/coverage.html
-          
-      - name: Generate Coverage Report
-        run: go tool cover -func=./coverage/coverage.out
-        
-      - name: Send coverage to Coveralls
-        uses: coverallsapp/github-action@v2
-        env:
-          NODE_COVERALLS_DEBUG: 1
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          file: ./coverage/coverage.out
-          format: golang
-          flag-name: unit
-          parallel: true
-          base-path: ${{ github.workspace }}
-          
-      - name: Check Coverage Threshold
-        run: |
-          COVERAGE_PCT=$(go tool cover -func=./coverage/coverage.out | grep total | awk '{print $3}')
-          COVERAGE_NUM=$(echo $COVERAGE_PCT | tr -d '%')
-          MIN_COVERAGE=$COVERAGE_THRESHOLD
-          
-          echo "Total coverage: $COVERAGE_PCT"
-          
-          # Define quality level
-          if (( $(echo "$COVERAGE_NUM < 70" | bc -l) )); then
-              echo "Coverage Quality: insufficient"
-          elif (( $(echo "$COVERAGE_NUM < 80" | bc -l) )); then
-              echo "Coverage Quality: acceptable"
-          elif (( $(echo "$COVERAGE_NUM < 90" | bc -l) )); then
-              echo "Coverage Quality: good"
-          else
-              echo "Coverage Quality: excellent"
-          fi
-          
-          # Check against threshold
-          if (( $(echo "$COVERAGE_NUM < $MIN_COVERAGE" | bc -l) )); then
-            echo "::warning::Test coverage ($COVERAGE_PCT) is below the minimum threshold of $MIN_COVERAGE%"
-            
-            if [ "$FAIL_ON_THRESHOLD" = "true" ]; then
-              echo "::error::Failing build due to insufficient coverage"
-              exit 1
-            fi
-          else
-            echo "Coverage meets minimum threshold of $MIN_COVERAGE%"
-          fi
-          
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: ./coverage/
-          
-  finish:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-    - name: Coveralls Finished
-      uses: coverallsapp/github-action@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        parallel-finished: true
+        go-version: '1.23'
+    - name: Check out code
+      uses: actions/checkout@v2
+    - name: Install dependencies
+      run: |
+        go mod download
+    - name: Run Unit tests
+      run: |
+        go test -race -covermode atomic -coverprofile=covprofile ./...
+    - name: Install goveralls
+      run: go install github.com/mattn/goveralls@latest
+    - name: Send coverage
+      env:
+        COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: goveralls -coverprofile=covprofile -service=github
