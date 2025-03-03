@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -46,7 +47,8 @@ type Server struct {
 	Cache       map[string]interface{}
 	srv         *http.Server
 	cancel      context.CancelFunc
-	errors      []error // Store initialization errors
+	errors      []error    // Store initialization errors
+	mu          sync.Mutex // Mutex to protect access to srv
 }
 
 // ServerOption represents a configuration option for the server
@@ -143,10 +145,12 @@ func (s *Server) Start() error {
 		F("address", addr),
 		F("environment", s.Config.Server.Environment))
 
+	s.mu.Lock()
 	s.srv = &http.Server{
 		Addr:    addr,
 		Handler: s.Engine,
 	}
+	s.mu.Unlock()
 
 	go func() {
 		// Wait for the context to be canceled
@@ -154,21 +158,43 @@ func (s *Server) Start() error {
 		s.Logger.Info("Server shutdown initiated")
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
-		if err := s.srv.Shutdown(shutdownCtx); err != nil {
-			s.Logger.Error("Server shutdown error", F("error", err.Error()))
+
+		s.mu.Lock()
+		srv := s.srv
+		s.mu.Unlock()
+
+		if srv != nil {
+			if err := srv.Shutdown(shutdownCtx); err != nil {
+				s.Logger.Error("Server shutdown error", F("error", err.Error()))
+			}
 		}
 	}()
 
 	// Start the server and return any errors
-	return s.srv.ListenAndServe()
+	s.mu.Lock()
+	srv := s.srv
+	s.mu.Unlock()
+	return srv.ListenAndServe()
 }
 
 // Stop gracefully stops the server
 func (s *Server) Stop() error {
+	s.mu.Lock()
+	hasSrv := s.srv != nil
+	s.mu.Unlock()
+
 	if s.cancel != nil {
 		s.cancel() // Call the cancel function to stop the server
 		s.Logger.Info("Server stopping")
 	}
+
+	// If server was never started or already stopped
+	if !hasSrv {
+		return nil
+	}
+
+	// Wait a moment for the shutdown to complete
+	time.Sleep(100 * time.Millisecond)
 	return nil
 }
 

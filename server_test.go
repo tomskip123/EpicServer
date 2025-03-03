@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -621,9 +620,10 @@ func getFreePort() int {
 
 func TestServerStart(t *testing.T) {
 	// Skip in race detector mode as we know there's a race condition
-	if testing.Short() {
-		t.Skip("Skipping test in short mode")
-	}
+	// We can remove this after our fix
+	// if testing.Short() {
+	//	t.Skip("Skipping test in short mode")
+	// }
 
 	// Create a server with a valid port and use ephemeral port
 	s := NewServer([]Option{
@@ -644,9 +644,6 @@ func TestServerStart(t *testing.T) {
 	errChan := make(chan error, 1)
 	ready := make(chan struct{})
 
-	// Add mutex to prevent data race
-	var serverMutex sync.Mutex
-
 	go func() {
 		// Start the server
 		go func() {
@@ -657,9 +654,10 @@ func TestServerStart(t *testing.T) {
 		for i := 0; i < 10; i++ {
 			time.Sleep(50 * time.Millisecond)
 
-			serverMutex.Lock()
+			// Use the server's mutex for thread-safe access
+			s.mu.Lock()
 			srv := s.srv
-			serverMutex.Unlock()
+			s.mu.Unlock()
 
 			if srv != nil {
 				conn, err := net.Dial("tcp", srv.Addr)
@@ -683,9 +681,17 @@ func TestServerStart(t *testing.T) {
 	}
 
 	// Make a test request if the server started
-	if s.srv != nil {
+	s.mu.Lock()
+	hasSrv := s.srv != nil
+	var addr string
+	if hasSrv {
+		addr = s.srv.Addr
+	}
+	s.mu.Unlock()
+
+	if hasSrv {
 		// Get the actual port that was assigned
-		_, portStr, _ := net.SplitHostPort(s.srv.Addr)
+		_, portStr, _ := net.SplitHostPort(addr)
 		url := fmt.Sprintf("http://localhost:%s/test", portStr)
 
 		resp, err := http.Get(url)
