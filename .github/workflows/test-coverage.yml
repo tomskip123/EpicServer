@@ -36,6 +36,19 @@ jobs:
       - name: Generate Coverage Report
         run: go tool cover -func=./coverage/coverage.out
         
+      - name: Convert coverage for Coveralls
+        run: |
+          # Convert Go coverage format to Coveralls format
+          go install github.com/mattn/goveralls@latest
+          goveralls -coverprofile=./coverage/coverage.out -service=github
+
+      - name: Send coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./coverage/coverage.out
+          format: go
+          
       - name: Check Coverage Threshold
         run: |
           COVERAGE_PCT=$(go tool cover -func=./coverage/coverage.out | grep total | awk '{print $3}')
