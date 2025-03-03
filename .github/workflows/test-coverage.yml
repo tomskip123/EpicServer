@@ -36,21 +36,12 @@ jobs:
       - name: Generate Coverage Report
         run: go tool cover -func=./coverage/coverage.out
         
-      - name: Install gocov and gocov-xml
-        run: |
-          go install github.com/axw/gocov/gocov@latest
-          go install github.com/AlekSi/gocov-xml@latest
-          
-      - name: Convert coverage to LCOV format
-        run: |
-          go install github.com/jandelgado/gcov2lcov@latest
-          gcov2lcov -infile=./coverage/coverage.out -outfile=./coverage/coverage.lcov
-          
       - name: Send coverage to Coveralls
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ./coverage/coverage.lcov
+          file: ./coverage/coverage.out
+          format: golang
           flag-name: unit
           parallel: true
           
@@ -99,4 +90,4 @@ jobs:
       uses: coverallsapp/github-action@v2
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        parallel-finished: true 
+        parallel-finished: true
