@@ -38,12 +38,15 @@ jobs:
         
       - name: Send coverage to Coveralls
         uses: coverallsapp/github-action@v2
+        env:
+          NODE_COVERALLS_DEBUG: 1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: ./coverage/coverage.out
           format: golang
           flag-name: unit
           parallel: true
+          base-path: ${{ github.workspace }}
           
       - name: Check Coverage Threshold
         run: |
