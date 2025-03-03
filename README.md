@@ -3,7 +3,7 @@
 > A powerful, flexible, and production-ready Go web server built on top of Gin framework.
 
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.16-blue)
-![Version](https://img.shields.io/badge/version-2.0.1-blue)
+![Version](https://img.shields.io/badge/version-2.0.2-blue)
 [![Coverage Status](https://coveralls.io/repos/github/tomskip123/EpicServer/badge.svg?branch=main&v=1)](https://coveralls.io/github/tomskip123/EpicServer?branch=main&v=1)
 
 ## ⚠️ Breaking Changes in v2.0.0
@@ -24,7 +24,19 @@ Version 2.0.1 improves documentation with:
 - Improved integration examples with imports and context
 - Enhanced changelog maintenance
 
-See [CHANGELOG.md](CHANGELOG.md) for complete details.
+## 🔧 Recent Improvements in Unreleased Version
+
+- **Test Coverage Framework**:
+  - Added comprehensive test coverage validation with reporting tools
+  - Implemented `test-coverage.sh` script for generating detailed coverage reports
+  - Added GitHub workflow for continuous test coverage validation in CI
+  - Enhanced GitHub Actions workflow with Coveralls integration for visual coverage reporting
+  - Set minimum coverage threshold at 80% with quality indicators
+
+- **Thread Safety Improvements**:
+  - Fixed data race condition in Server struct by adding a mutex to protect concurrent access
+  - Updated `Start()` and `Stop()` methods to use mutex protection when accessing the HTTP server
+  - Enhanced tests to properly handle concurrent access to server resources
 
 ## Table of Contents
 
@@ -1129,6 +1141,58 @@ To contribute code to EpicServer:
 2. Ensure existing tests pass and coverage meets or exceeds thresholds
 3. Run `./test-coverage.sh` locally before submitting a pull request
 
+### Error Handling
+
+EpicServer v2.0.0 introduces a more robust error handling approach that replaces panics with proper error returns.
+
+#### Server Initialization Errors
+
+```go
+// Create a new server instance
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetSecretKey([]byte("your-secret-key")),
+})
+
+// Check for initialization errors
+if server.HasErrors() {
+    for _, err := range server.GetErrors() {
+        fmt.Printf("Server initialization error: %v\n", err)
+    }
+    return
+}
+
+// Proceed with server configuration
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithHealthCheck("/health"),
+})
+
+// Start the server
+if err := server.Start(); err != nil {
+    fmt.Printf("Server start error: %v\n", err)
+    return
+}
+```
+
+#### Database Connection Errors
+
+```go
+// Get MongoDB client with error checking
+client, ok := EpicServerDb.GetMongoClient(s, "default")
+if !ok {
+    // Handle error
+    c.JSON(500, gin.H{"error": "Database connection failed"})
+    return
+}
+
+// Get MongoDB collection with error checking
+collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapp", "users")
+if err != nil {
+    // Handle error
+    c.JSON(500, gin.H{"error": "Failed to access collection"})
+    return
+}
+```
+
 ## Security
 
 ### Authentication Setup
@@ -1517,6 +1581,23 @@ Key areas covered by tests:
 * Server lifecycle
 * Logger functionality
 
+### Test Coverage Requirements
+
+EpicServer maintains strict test coverage requirements:
+
+1. Run the coverage analysis before submitting changes:
+
+```bash
+./test-coverage.sh
+```
+
+2. Ensure your changes meet the following coverage thresholds:
+   - Overall coverage: minimum 80%
+   - Critical components: minimum 90%
+   - New code: aim for 100% coverage
+
+3. The CI pipeline will automatically verify coverage on pull requests
+
 ### Submitting Changes
 
 1. Commit your changes:
@@ -1536,9 +1617,12 @@ git push origin feature/amazing-feature
 ### Code Style
 
 * Follow standard Go formatting (`go fmt`)
+* Use the established code style and conventions seen in files like `server.go` and `route.go`
 * Add tests for new features
 * Update documentation as needed
 * Keep commits focused and atomic
+* Use clear, descriptive commit messages and reference any related issues
+* Ensure backward compatibility unless explicitly breaking changes
 
 ## Changelog
 
@@ -1551,3 +1635,75 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Support
 
 Project Link: [https://github.com/tomskip123/EpicServer](https://github.com/tomskip123/EpicServer)
+
+### Structured Logging
+
+EpicServer v2.0.0 introduces a powerful structured logging system that replaces the previous variadic logging approach.
+
+#### Basic Logging
+
+```go
+// Import the package
+import "github.com/tomskip123/EpicServer"
+
+// Later in your code
+s.Logger.Info("User authenticated successfully", 
+    EpicServer.F("user_id", "12345"),
+    EpicServer.F("ip", "192.168.1.1"))
+
+s.Logger.Error("Database connection failed", 
+    EpicServer.F("db_name", "users"),
+    EpicServer.F("error", err.Error()))
+```
+
+#### Log Levels
+
+The logger supports multiple log levels:
+
+```go
+// Debug level (only shown when debug mode is enabled)
+s.Logger.Debug("Processing request", 
+    EpicServer.F("path", "/api/users"),
+    EpicServer.F("method", "GET"))
+
+// Info level (general operational information)
+s.Logger.Info("Request completed", 
+    EpicServer.F("duration_ms", 42),
+    EpicServer.F("status", 200))
+
+// Warning level (potential issues that don't prevent operation)
+s.Logger.Warn("Rate limit approaching", 
+    EpicServer.F("current", 95),
+    EpicServer.F("limit", 100))
+
+// Error level (errors that affect operation but don't crash the system)
+s.Logger.Error("Failed to process request", 
+    EpicServer.F("error", err.Error()))
+
+// Fatal level (critical errors that require immediate attention)
+s.Logger.Fatal("Server cannot start", 
+    EpicServer.F("error", err.Error()))
+```
+
+#### Configuring Log Level
+
+```go
+// Set log level during server configuration
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithLogLevel(EpicServer.LogLevelDebug),
+})
+```
+
+#### Configuring Log Format
+
+```go
+// Set log format to JSON for machine parsing
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithLogFormat(EpicServer.LogFormatJSON),
+})
+
+// Set log format to text for human readability
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithLogFormat(EpicServer.LogFormatText),
+})
+```
