@@ -70,6 +70,24 @@ if (( $(echo "$COVERAGE_NUM < $MIN_COVERAGE" | bc -l) )); then
 fi
 
 echo -e "\n${GREEN}HTML coverage report generated at: ${YELLOW}$COVERAGE_DIR/coverage.html${NC}"
-echo -e "Open this file in a browser to see detailed coverage information."
+echo -e "Opening coverage report in your default browser..."
+
+# Open the coverage report in the default browser based on OS
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    open "$COVERAGE_DIR/coverage.html"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    if command -v xdg-open > /dev/null; then
+        xdg-open "$COVERAGE_DIR/coverage.html"
+    else
+        echo -e "${YELLOW}Could not automatically open the browser. Please open $COVERAGE_DIR/coverage.html manually.${NC}"
+    fi
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    # Windows with Git Bash or similar
+    start "$COVERAGE_DIR/coverage.html"
+else
+    echo -e "${YELLOW}Could not automatically open the browser. Please open $COVERAGE_DIR/coverage.html manually.${NC}"
+fi
 
 exit 0 
