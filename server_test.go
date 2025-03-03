@@ -2,14 +2,27 @@ package EpicServer
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 )
+
+// Replace the mockLogger implementation to use a real StructuredLogger to avoid interface issues
+func createMockLogger() Logger {
+	return &StructuredLogger{
+		writer: io.Discard,
+		level:  LogLevelInfo,
+		format: LogFormatText,
+		fields: []LogField{},
+	}
+}
 
 func TestNewServer(t *testing.T) {
 	tests := []struct {
@@ -556,4 +569,147 @@ func TestRemoveWWWRedirectBehavior(t *testing.T) {
 	if location := w.Header().Get("Location"); location == "" {
 		t.Error("expected Location header to be set for www redirect")
 	}
+}
+
+func TestServerGetErrors(t *testing.T) {
+	s := &Server{
+		errors: []error{
+			fmt.Errorf("test error 1"),
+			fmt.Errorf("test error 2"),
+		},
+	}
+
+	errors := s.GetErrors()
+	assert.Len(t, errors, 2)
+	assert.Equal(t, "test error 1", errors[0].Error())
+	assert.Equal(t, "test error 2", errors[1].Error())
+}
+
+func TestServerAddError(t *testing.T) {
+	s := &Server{
+		errors: []error{
+			fmt.Errorf("existing error"),
+		},
+	}
+
+	// Add a new error
+	newErr := fmt.Errorf("new error")
+	s.AddError(newErr)
+
+	// Verify the error was added
+	assert.Len(t, s.errors, 2)
+	assert.Equal(t, "existing error", s.errors[0].Error())
+	assert.Equal(t, "new error", s.errors[1].Error())
+}
+
+func TestServerStart(t *testing.T) {
+	// Create a test server with minimal required setup
+	engine := gin.New()
+	mockLog := createMockLogger()
+
+	cfg := &Config{}
+	cfg.Server.Host = "localhost"
+	cfg.Server.Port = 0 // Use port 0 to let the OS assign a free port
+	cfg.SecretKey = []byte("test-secret-key")
+
+	s := &Server{
+		Engine: engine,
+		Config: cfg,
+		Logger: mockLog,
+	}
+
+	// Add a test route
+	s.Engine.GET("/test", func(c *gin.Context) {
+		c.String(http.StatusOK, "test")
+	})
+
+	// Start the server in a goroutine with proper synchronization
+	ready := make(chan struct{})
+	errChan := make(chan error, 1)
+
+	go func() {
+		// Start the server
+		go func() {
+			errChan <- s.Start()
+		}()
+
+		// Wait for the server to be ready by checking if we can connect to it
+		for i := 0; i < 10; i++ {
+			time.Sleep(50 * time.Millisecond)
+			if s.srv != nil {
+				conn, err := net.Dial("tcp", s.srv.Addr)
+				if err == nil {
+					conn.Close()
+					close(ready)
+					return
+				}
+			}
+		}
+		// If we get here, the server didn't start properly
+		close(ready)
+	}()
+
+	// Wait for the server to be ready or timeout
+	select {
+	case <-ready:
+		// Server is ready
+	case <-time.After(2 * time.Second):
+		t.Fatal("Server didn't start in time")
+	}
+
+	// Make a test request if the server started
+	if s.srv != nil {
+		// Get the actual port that was assigned
+		_, portStr, _ := net.SplitHostPort(s.srv.Addr)
+		url := fmt.Sprintf("http://localhost:%s/test", portStr)
+
+		resp, err := http.Get(url)
+		if err == nil {
+			defer resp.Body.Close()
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+			body, _ := io.ReadAll(resp.Body)
+			assert.Equal(t, "test", string(body))
+		}
+	}
+
+	// Stop the server
+	err := s.Stop()
+	assert.NoError(t, err)
+
+	// Check for any errors from Start
+	select {
+	case err := <-errChan:
+		if err != nil && err != http.ErrServerClosed {
+			assert.NoError(t, err)
+		}
+	case <-time.After(100 * time.Millisecond):
+		// No error received yet, which is fine
+	}
+}
+
+// TestServerStartWithErrors tests that the server returns errors when started with initialization errors
+func TestServerStartWithErrors(t *testing.T) {
+	// Create a server with errors
+	s := &Server{
+		errors: []error{fmt.Errorf("test error")},
+		Logger: createMockLogger(),
+	}
+
+	// Start should return an error
+	err := s.Start()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "test error")
+}
+
+// TestServerStopWithoutStart tests that stopping a server that hasn't been started doesn't panic
+func TestServerStopWithoutStart(t *testing.T) {
+	s := &Server{
+		Logger: createMockLogger(),
+	}
+
+	// Should not panic
+	assert.NotPanics(t, func() {
+		_ = s.Stop()
+	})
 }

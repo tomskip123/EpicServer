@@ -1,6 +1,7 @@
 package EpicServer
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -803,4 +804,70 @@ func TestDefaultAuthErrorHandler_Unauthorized(t *testing.T) {
 
 	// Assertions
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+func TestHandleAuthCallback(t *testing.T) {
+	setSecureCookieKeys()
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name               string
+		provider           string
+		code               string
+		state              string
+		authConfigs        map[string]*Auth
+		mockHooks          AuthenticationHooks
+		expectStatus       int
+		expectRedirectURL  string
+		expectCookieExists bool
+	}{
+		{
+			name:         "provider not found",
+			provider:     "nonexistent",
+			expectStatus: http.StatusNotFound,
+			mockHooks:    &DefaultAuthHooks{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup
+			var buf bytes.Buffer
+			logger := NewLogger(&buf, LogLevelDebug, LogFormatText)
+			server := &Server{
+				Logger:      logger,
+				AuthConfigs: tt.authConfigs,
+			}
+
+			// Create a test HTTP request
+			req := httptest.NewRequest("GET", "/auth/callback/"+tt.provider+"?code="+tt.code+"&state="+tt.state, nil)
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = req
+			c.Params = []gin.Param{{Key: "provider", Value: tt.provider}}
+
+			// Call the handler
+			handler := HandleAuthCallback(server, []Provider{}, "auth_cookie", "example.com", false, tt.mockHooks)
+			handler(c)
+
+			// Assertions
+			assert.Equal(t, tt.expectStatus, w.Code)
+
+			if tt.expectRedirectURL != "" {
+				assert.Equal(t, tt.expectRedirectURL, w.Header().Get("Location"))
+			}
+
+			if tt.expectCookieExists {
+				cookies := w.Result().Cookies()
+				foundCookie := false
+				for _, cookie := range cookies {
+					if cookie.Name == "auth_cookie" {
+						foundCookie = true
+						break
+					}
+				}
+				assert.True(t, foundCookie, "Expected auth cookie not found")
+			}
+		})
+	}
 }

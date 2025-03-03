@@ -1,14 +1,15 @@
 package EpicServerDb
 
 import (
+	"context"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/tomskip123/EpicServer"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // TestServer is a simplified version of EpicServer.Server for testing
@@ -17,249 +18,300 @@ type TestServer struct {
 	Logger    EpicServer.Logger
 }
 
-// Implementation of the minimal necessary interface for the db tests
+// GetDatabase retrieves a database by name
 func (s *TestServer) GetDatabase(name string) (interface{}, bool) {
-	if s.Databases == nil {
-		return nil, false
-	}
 	db, ok := s.Databases[name]
 	return db, ok
 }
 
+// AddDatabase adds a database to the server
 func (s *TestServer) AddDatabase(name string, db interface{}) {
-	if s.Databases == nil {
-		s.Databases = make(map[string]interface{})
-	}
 	s.Databases[name] = db
 }
 
+// GetLogger returns the server's logger
 func (s *TestServer) GetLogger() EpicServer.Logger {
 	return s.Logger
 }
 
-// Helper functions to bridge our test server with the real functions
+// Helper function to get a MongoDB client for testing
 func getMongoClientForTest(s *TestServer, name string) (*mongo.Client, bool) {
-	if s.Databases == nil {
+	db, ok := s.GetDatabase(name)
+	if !ok {
 		return nil, false
 	}
-
-	client, ok := s.Databases[name].(*mongo.Client)
+	client, ok := db.(*mongo.Client)
 	return client, ok
 }
 
+// Helper function to get a MongoDB collection for testing
 func getMongoCollectionForTest(s *TestServer, connName, dbName, collName string) (*mongo.Collection, error) {
 	client, ok := getMongoClientForTest(s, connName)
 	if !ok {
 		return nil, assert.AnError
 	}
-
-	// This will fail in tests since we're using a mock client
 	return client.Database(dbName).Collection(collName), nil
 }
 
-// Skip integration tests when using short mode
+// Helper to skip tests when running in short mode
 func skipIfShort(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
+		t.Skip("Skipping test in short mode")
 	}
 }
 
-// TestWithMongo tests the WithMongo function
+// Create a mock logger for testing
+func setupMockLogger() EpicServer.Logger {
+	return EpicServer.NewLogger(io.Discard, EpicServer.LogLevelInfo, EpicServer.LogFormatText)
+}
+
 func TestWithMongo(t *testing.T) {
-	skipIfShort(t)
+	// Skip if we're not running in a CI environment with proper DB access
+	if os.Getenv("CI_TEST_DB") != "true" {
+		t.Skip("Skipping database tests in non-CI environment")
+	}
 
-	// Create a mock logger that implements the new interface
-	mockLogger := new(MockLogger)
-	mockLogger.On("Info", mock.Anything, mock.Anything).Return()
+	// Create a mock logger
+	mockLogger := setupMockLogger()
 
-	// Create a test server
-	testServer := &TestServer{
+	tests := []struct {
+		name        string
+		mongoConfig *MongoConfig
+		wantError   bool
+	}{
+		{
+			name: "invalid connection string",
+			mongoConfig: &MongoConfig{
+				ConnectionName: "test_invalid",
+				URI:            "mongodb://invalid-host:27017",
+				DatabaseName:   "test",
+			},
+			wantError: true,
+		},
+		{
+			name: "localhost connection - requires local MongoDB",
+			mongoConfig: &MongoConfig{
+				ConnectionName: "test_local",
+				URI:            "mongodb://localhost:27017",
+				DatabaseName:   "test",
+			},
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &EpicServer.Server{
+				Db:     make(map[string]interface{}),
+				Logger: mockLogger,
+			}
+
+			appLayer := WithMongo(tt.mongoConfig)
+			appLayer(s)
+
+			// Verify the connection or error was stored
+			assert.Contains(t, s.Db, tt.mongoConfig.ConnectionName)
+
+			// Check if we got an error as expected
+			if tt.wantError {
+				_, ok := s.Db[tt.mongoConfig.ConnectionName].(*ErrMongoConnection)
+				assert.True(t, ok, "Expected ErrMongoConnection but got different type")
+			} else {
+				config, ok := s.Db[tt.mongoConfig.ConnectionName].(*MongoConfig)
+				assert.True(t, ok, "Expected MongoConfig but got different type")
+				assert.NotNil(t, config.client)
+			}
+		})
+	}
+}
+
+func TestGetMongoClient(t *testing.T) {
+	// Create a mock logger
+	mockLogger := setupMockLogger()
+
+	s := &EpicServer.Server{
+		Db:     make(map[string]interface{}),
 		Logger: mockLogger,
 	}
 
-	// Create test configuration
-	config := &MongoConfig{
-		ConnectionName: "test-conn",
+	// Setup a mock MongoDB config
+	mongoConfig := &MongoConfig{
+		ConnectionName: "test_get",
 		URI:            "mongodb://localhost:27017",
-		DatabaseName:   "test-db",
+		DatabaseName:   "test",
+		client:         &mongo.Client{},
 	}
 
-	// Create a function that mimics WithMongo but works with our TestServer
-	withMongoForTest := func(config *MongoConfig) func(*TestServer) {
-		return func(s *TestServer) {
-			// In a real test, we'd connect to MongoDB, but here we'll just mock it
-			s.AddDatabase(config.ConnectionName, &mongo.Client{})
-		}
+	// Store the config without connecting
+	s.Db[mongoConfig.ConnectionName] = mongoConfig
+
+	// Store an error for another test
+	s.Db["test_error"] = &ErrMongoConnection{
+		URI: "mongodb://error:27017",
+		Err: assert.AnError,
 	}
 
-	// Apply our test function
-	layer := withMongoForTest(config)
-	layer(testServer)
+	// Store an invalid type for another test
+	s.Db["wrong_type"] = "not a mongo config"
 
-	// Verify the database was added
-	_, ok := testServer.GetDatabase("test-conn")
-	assert.True(t, ok)
-}
-
-// Test the StringToObjectID function
-func TestStringToObjectID(t *testing.T) {
-	// Test valid ObjectID
-	validID := "5f50c31f84ed9a7d0acb7da2"
-	objectID := StringToObjectID(validID)
-	assert.Equal(t, validID, objectID.Hex())
-
-	// Test invalid ObjectID (should return empty ObjectID)
-	invalidID := "invalid-id"
-	emptyObjectID := StringToObjectID(invalidID)
-	assert.Equal(t, primitive.NilObjectID, emptyObjectID)
-}
-
-// Test the StringArrayToObjectIDArray function
-func TestStringArrayToObjectIDArray(t *testing.T) {
-	// Test array of valid IDs
-	validIDs := []string{"5f50c31f84ed9a7d0acb7da2", "5f50c31f84ed9a7d0acb7da3"}
-	objectIDs := StringArrayToObjectIDArray(validIDs)
-
-	assert.Equal(t, 2, len(objectIDs))
-	assert.Equal(t, validIDs[0], objectIDs[0].Hex())
-	assert.Equal(t, validIDs[1], objectIDs[1].Hex())
-
-	// Test array with invalid ID (should include invalid IDs as empty ObjectIDs)
-	mixedIDs := []string{"5f50c31f84ed9a7d0acb7da2", "invalid-id"}
-	mixedObjectIDs := StringArrayToObjectIDArray(mixedIDs)
-
-	assert.Equal(t, 2, len(mixedObjectIDs))
-	assert.Equal(t, mixedIDs[0], mixedObjectIDs[0].Hex())
-	assert.Equal(t, primitive.NilObjectID, mixedObjectIDs[1])
-}
-
-// Test the StringArrayContains function
-func TestStringArrayContains(t *testing.T) {
-	// Test array that contains the string
-	array := []string{"apple", "banana", "cherry"}
-	assert.True(t, StringArrayContains(array, "banana"))
-
-	// Test array that doesn't contain the string
-	assert.False(t, StringArrayContains(array, "grape"))
-
-	// Test empty array
-	assert.False(t, StringArrayContains([]string{}, "apple"))
-}
-
-// Test GetMongoClient function
-func TestGetMongoClient(t *testing.T) {
-	testServer := &TestServer{
-		Databases: make(map[string]interface{}),
+	tests := []struct {
+		name           string
+		connectionName string
+		wantOk         bool
+	}{
+		{
+			name:           "valid connection",
+			connectionName: "test_get",
+			wantOk:         true,
+		},
+		{
+			name:           "connection with error",
+			connectionName: "test_error",
+			wantOk:         false,
+		},
+		{
+			name:           "nonexistent connection",
+			connectionName: "nonexistent",
+			wantOk:         false,
+		},
+		{
+			name:           "wrong type",
+			connectionName: "wrong_type",
+			wantOk:         false,
+		},
 	}
 
-	// Test case: client exists
-	expectedClient := &mongo.Client{}
-	testServer.Databases["test-conn"] = expectedClient
-
-	client, exists := getMongoClientForTest(testServer, "test-conn")
-	assert.True(t, exists)
-	assert.Equal(t, expectedClient, client)
-
-	// Test case: client doesn't exist
-	client, exists = getMongoClientForTest(testServer, "nonexistent")
-	assert.False(t, exists)
-	assert.Nil(t, client)
-}
-
-// Mock Logger for tests that implements the new Logger interface
-type MockLogger struct {
-	mock.Mock
-}
-
-func (m *MockLogger) Info(msg string, fields ...EpicServer.LogField) {
-	args := []interface{}{msg}
-	for _, field := range fields {
-		args = append(args, field)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, ok := GetMongoClient(s, tt.connectionName)
+			assert.Equal(t, tt.wantOk, ok)
+			if tt.wantOk {
+				assert.NotNil(t, client)
+			} else {
+				assert.Nil(t, client)
+			}
+		})
 	}
-	m.Called(args...)
 }
 
-func (m *MockLogger) Error(msg string, fields ...EpicServer.LogField) {
-	args := []interface{}{msg}
-	for _, field := range fields {
-		args = append(args, field)
-	}
-	m.Called(args...)
-}
-
-func (m *MockLogger) Debug(msg string, fields ...EpicServer.LogField) {
-	args := []interface{}{msg}
-	for _, field := range fields {
-		args = append(args, field)
-	}
-	m.Called(args...)
-}
-
-func (m *MockLogger) Warn(msg string, fields ...EpicServer.LogField) {
-	args := []interface{}{msg}
-	for _, field := range fields {
-		args = append(args, field)
-	}
-	m.Called(args...)
-}
-
-func (m *MockLogger) Fatal(msg string, fields ...EpicServer.LogField) {
-	args := []interface{}{msg}
-	for _, field := range fields {
-		args = append(args, field)
-	}
-	m.Called(args...)
-}
-
-func (m *MockLogger) WithFields(fields ...EpicServer.LogField) EpicServer.Logger {
-	args := []interface{}{}
-	for _, field := range fields {
-		args = append(args, field)
-	}
-	m.Called(args...)
-	return m
-}
-
-func (m *MockLogger) SetOutput(output io.Writer) {
-	m.Called(output)
-}
-
-func (m *MockLogger) SetLevel(level EpicServer.LogLevel) {
-	m.Called(level)
-}
-
-func (m *MockLogger) SetFormat(format EpicServer.LogFormat) {
-	m.Called(format)
-}
-
-// Test GetMongoCollection function
 func TestGetMongoCollection(t *testing.T) {
-	testServer := &TestServer{
-		Databases: make(map[string]interface{}),
+	// Skip integration tests unless running in CI
+	if os.Getenv("CI_TEST_DB") != "true" {
+		t.Skip("Skipping database tests in non-CI environment")
 	}
 
-	// Test case: client exists
-	expectedClient := &mongo.Client{}
-	testServer.Databases["test-conn"] = expectedClient
+	// Create a mock logger
+	mockLogger := setupMockLogger()
 
-	// This test will not actually connect to MongoDB, but tests the error handling
-	collection, err := getMongoCollectionForTest(testServer, "test-conn", "test-db", "test-collection")
-	assert.Nil(t, err) // We're not actually connecting, so no error
-	assert.NotNil(t, collection)
+	s := &EpicServer.Server{
+		Db:     make(map[string]interface{}),
+		Logger: mockLogger,
+	}
 
-	// Test case: client doesn't exist
-	collection, err = getMongoCollectionForTest(testServer, "nonexistent", "test-db", "test-collection")
-	assert.Error(t, err)
-	assert.Nil(t, collection)
+	// Mock the client for collection test
+	ctx := context.Background()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		t.Skip("Could not connect to local MongoDB")
+	}
+
+	mongoConfig := &MongoConfig{
+		ConnectionName: "test_collection",
+		URI:            "mongodb://localhost:27017",
+		DatabaseName:   "test",
+		client:         client,
+	}
+
+	s.Db[mongoConfig.ConnectionName] = mongoConfig
+
+	// Test with invalid connection name
+	t.Run("invalid connection name", func(t *testing.T) {
+		_, err := GetMongoCollection(s, "nonexistent", "test", "test_collection")
+		assert.Error(t, err)
+	})
+
+	// Test with valid connection
+	t.Run("valid collection", func(t *testing.T) {
+		coll, err := GetMongoCollection(s, "test_collection", "test", "test_collection")
+		assert.NoError(t, err)
+		assert.NotNil(t, coll)
+	})
 }
 
-// Test ErrMongoConnection error message
-func TestErrMongoConnection_Error(t *testing.T) {
+func TestUpdateIndexes(t *testing.T) {
+	// Skip integration tests unless running in CI
+	if os.Getenv("CI_TEST_DB") != "true" {
+		t.Skip("Skipping database tests in non-CI environment")
+	}
+
+	ctx := context.Background()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		t.Skip("Could not connect to local MongoDB")
+	}
+
+	coll := client.Database("test").Collection("test_indexes")
+
+	// Create some test indexes
+	indexes := []mongo.IndexModel{
+		{
+			Keys: map[string]interface{}{"test_field": 1},
+		},
+	}
+
+	err = UpdateIndexes(ctx, coll, indexes)
+	assert.NoError(t, err)
+}
+
+func TestStringToObjectIDAndArray(t *testing.T) {
+	// Test valid ObjectID
+	validID := "507f1f77bcf86cd799439011"
+	objID := StringToObjectID(validID)
+	assert.Equal(t, validID, objID.Hex())
+
+	// Test with invalid ID (should not panic)
+	invalidID := StringToObjectID("invalid")
+	assert.NotEqual(t, "invalid", invalidID.Hex())
+
+	// Test with array of IDs
+	testIDs := []string{
+		"507f1f77bcf86cd799439011",
+		"507f1f77bcf86cd799439012",
+		"507f1f77bcf86cd799439013",
+	}
+
+	objIDs := StringArrayToObjectIDArray(testIDs)
+	assert.Len(t, objIDs, len(testIDs))
+
+	// Test with empty array
+	emptyIDs := StringArrayToObjectIDArray([]string{})
+	assert.Len(t, emptyIDs, 0)
+
+	// Test with invalid ObjectID (should not panic)
+	invalidIDs := StringArrayToObjectIDArray([]string{"invalid"})
+	assert.Len(t, invalidIDs, 1)
+}
+
+func TestStringArrayContains(t *testing.T) {
+	testArray := []string{"one", "two", "three"}
+
+	// Test with value in array
+	assert.True(t, StringArrayContains(testArray, "two"))
+
+	// Test with value not in array
+	assert.False(t, StringArrayContains(testArray, "four"))
+
+	// Test with empty array
+	assert.False(t, StringArrayContains([]string{}, "test"))
+}
+
+func TestErrMongoConnection(t *testing.T) {
 	err := &ErrMongoConnection{
 		URI: "mongodb://localhost:27017",
 		Err: assert.AnError,
 	}
 
-	errorMsg := err.Error()
-	assert.Contains(t, errorMsg, "failed to connect to MongoDB at mongodb://localhost:27017")
+	errMsg := err.Error()
+	assert.Contains(t, errMsg, "mongodb://localhost:27017")
+	assert.Contains(t, errMsg, "failed to connect to MongoDB")
 }

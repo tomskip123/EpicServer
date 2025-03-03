@@ -34,14 +34,14 @@ func getMemoryCacheForTest(s *TestServer, name string) *MemoryCache {
 		return nil
 	}
 
-	cache, ok := s.Cache[name]
+	cache, ok := s.GetCache(name)
 	if !ok {
 		return nil
 	}
 
 	config, ok := cache.(*MemoryCacheConfig)
 	if !ok {
-		return nil
+		panic("Cache is not a memory cache")
 	}
 
 	return config.Cache
@@ -49,6 +49,20 @@ func getMemoryCacheForTest(s *TestServer, name string) *MemoryCache {
 
 func withMemoryCacheForTest(config *MemoryCacheConfig) func(*TestServer) {
 	return func(s *TestServer) {
+		if s.Cache == nil {
+			s.Cache = make(map[string]interface{})
+		}
+
+		// Set default TTL if not provided
+		if config.DefaultTTL == 0 {
+			config.DefaultTTL = 5 * time.Minute
+		}
+
+		// Set default cleanup interval if not provided
+		if config.CleanupInterval == 0 {
+			config.CleanupInterval = time.Minute
+		}
+
 		config.Cache = NewMemoryCache(config.DefaultTTL, config.CleanupInterval, config.MaxItems)
 		s.Cache[config.Name] = config
 	}
@@ -188,59 +202,66 @@ func TestMemoryCache_DeleteExpired(t *testing.T) {
 	assert.False(t, found)
 }
 
-// Test WithMemoryCache function
-func TestWithMemoryCache(t *testing.T) {
-	// Create a test server
-	server := &TestServer{
+// Test GetMemoryCache tests the GetMemoryCache function
+func TestGetMemoryCache(t *testing.T) {
+	// Create a test server with initialization
+	testServer := &TestServer{
 		Cache: make(map[string]interface{}),
 	}
 
-	// Create cache config
+	// Create and add a cache config
 	config := &MemoryCacheConfig{
-		Name:            "test-cache",
-		Type:            "memory",
-		DefaultTTL:      time.Minute,
-		CleanupInterval: time.Minute,
-		MaxItems:        100,
+		Name:       "test-cache",
+		DefaultTTL: 5 * time.Minute,
+		Cache:      NewMemoryCache(5*time.Minute, time.Minute, 0),
 	}
 
-	// Apply the WithMemoryCache layer using our test adapter
-	layer := withMemoryCacheForTest(config)
-	layer(server)
+	// Add the cache to the server
+	testServer.AddCache("test-cache", config)
 
-	// Verify the cache was added to the server
-	cache, found := server.GetCache("test-cache")
-	assert.True(t, found)
+	// Test getting the cache
+	cache := getMemoryCacheForTest(testServer, "test-cache")
 	assert.NotNil(t, cache)
 
-	// Verify it's the same cache as in the config
-	assert.Same(t, config.Cache, cache.(*MemoryCacheConfig).Cache)
+	// Test panic on invalid cache
+	testServer.AddCache("invalid-cache", "not a memory cache")
+	assert.Panics(t, func() {
+		getMemoryCacheForTest(testServer, "invalid-cache")
+	})
 }
 
-// Test GetMemoryCache function
-func TestGetMemoryCache(t *testing.T) {
-	// Create a test server
-	server := &TestServer{
+// TestWithMemoryCache tests the WithMemoryCache function
+func TestWithMemoryCache(t *testing.T) {
+	// Create a test server with initialization
+	testServer := &TestServer{
 		Cache: make(map[string]interface{}),
 	}
 
-	// Case 1: Cache doesn't exist
-	cache := getMemoryCacheForTest(server, "nonexistent")
-	assert.Nil(t, cache)
-
-	// Case 2: Cache exists
-	expectedCache := NewMemoryCache(time.Minute, time.Minute, 100)
-	config := &MemoryCacheConfig{
-		Name:            "test-cache",
-		Type:            "memory",
-		DefaultTTL:      time.Minute,
-		CleanupInterval: time.Minute,
-		MaxItems:        100,
-		Cache:           expectedCache,
+	// Test with default TTL
+	config1 := &MemoryCacheConfig{
+		Name: "default-ttl-cache",
 	}
-	server.Cache["test-cache"] = config
 
-	cache = getMemoryCacheForTest(server, "test-cache")
-	assert.NotNil(t, cache)
-	assert.Same(t, expectedCache, cache)
+	// Apply the app layer
+	layer := withMemoryCacheForTest(config1)
+	layer(testServer)
+
+	// Verify the cache was created with default TTL
+	cache1 := getMemoryCacheForTest(testServer, "default-ttl-cache")
+	assert.NotNil(t, cache1)
+	assert.Equal(t, 5*time.Minute, cache1.defaultTTL)
+
+	// Test with custom TTL
+	config2 := &MemoryCacheConfig{
+		Name:       "custom-ttl-cache",
+		DefaultTTL: 10 * time.Minute,
+	}
+
+	layer = withMemoryCacheForTest(config2)
+	layer(testServer)
+
+	// Verify the cache was created with custom TTL
+	cache2 := getMemoryCacheForTest(testServer, "custom-ttl-cache")
+	assert.NotNil(t, cache2)
+	assert.Equal(t, 10*time.Minute, cache2.defaultTTL)
 }
