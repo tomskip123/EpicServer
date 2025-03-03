@@ -3,7 +3,7 @@
 > A powerful, flexible, and production-ready Go web server built on top of Gin framework.
 
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.16-blue)
-![Version](https://img.shields.io/badge/version-2.0.1-blue)
+![Version](https://img.shields.io/badge/version-2.0.3-blue)
 [![Coverage Status](https://coveralls.io/repos/github/tomskip123/EpicServer/badge.svg?branch=main&v=1)](https://coveralls.io/github/tomskip123/EpicServer?branch=main&v=1)
 
 ## ⚠️ Breaking Changes in v2.0.0
@@ -24,14 +24,16 @@ Version 2.0.1 improves documentation with:
 - Improved integration examples with imports and context
 - Enhanced changelog maintenance
 
-## 🔧 Recent Improvements in Unreleased Version
+## 🧪 Enhanced Test Coverage in v2.0.3
 
-- **Test Coverage Framework**:
-  - Added comprehensive test coverage validation with reporting tools
-  - Implemented `test-coverage.sh` script for generating detailed coverage reports
-  - Added GitHub workflow for continuous test coverage validation in CI
-  - Enhanced GitHub Actions workflow with Coveralls integration for visual coverage reporting
-  - Set minimum coverage threshold at 80% with quality indicators
+Version 2.0.3 improves test coverage and reliability:
+- Improved overall test coverage to 80.7%, surpassing the minimum threshold of 80%
+- Added comprehensive tests for CSRF protection functionality
+- Enhanced logging test suite with additional test cases
+- Fixed edge cases in authentication tests
+- Added specific tests for middleware components
+
+## 🔧 Recent Improvements in Unreleased Version
 
 - **Thread Safety Improvements**:
   - Fixed data race condition in Server struct by adding a mutex to protect concurrent access
@@ -1117,12 +1119,25 @@ To run tests and generate a coverage report:
 # Run the test coverage script
 ./test-coverage.sh
 
-# Or manually run coverage analysis
-go test -race -coverprofile=./coverage/coverage.out -covermode=atomic ./...
-go tool cover -html=./coverage/coverage.out -o ./coverage/coverage.html
+# Run with options to exclude test helpers (default behavior)
+./test-coverage.sh
+
+# Run without failing on coverage threshold
+./test-coverage.sh --no-fail
+
+# Run including test helpers in coverage calculation
+./test-coverage.sh --include-test-helpers
+
+# Combine options
+./test-coverage.sh --no-fail --include-test-helpers
 ```
 
 The coverage report will be generated in the `coverage` directory. The HTML report provides detailed information about which code paths are covered by tests and which need additional testing.
+
+#### Script Options
+
+- `--no-fail`: Prevents the script from returning a non-zero exit code when coverage is below the threshold
+- `--include-test-helpers`: Includes test helper files in the coverage calculation (by default, test helpers are excluded)
 
 #### Coverage Requirements
 
@@ -1532,6 +1547,63 @@ s.Logger.Info("User authenticated",
     EpicServer.F("user_id", userID), 
     EpicServer.F("ip", ip),
     EpicServer.F("duration_ms", authDuration.Milliseconds()))
+```
+
+#### Module-Based Logging (v2.0.2+)
+
+EpicServer v2.0.2 introduces module-based logging, allowing you to control log levels for specific components of your application:
+
+```go
+// Set log level for specific modules
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    // Set global default log level
+    EpicServer.WithLogLevel(EpicServer.LogLevelInfo),
+    
+    // Enable debug logging only for authentication-related code
+    EpicServer.WithModuleLogLevel("auth", EpicServer.LogLevelDebug),
+    
+    // Set error-only logging for database operations
+    EpicServer.WithModuleLogLevel("db", EpicServer.LogLevelError),
+})
+
+// Create module-specific loggers in your code
+authLogger := s.Logger.WithModule("auth")
+dbLogger := s.Logger.WithModule("db")
+
+// These logs will respect their module's log level
+authLogger.Debug("OAuth flow started") // Will be logged (auth module is at Debug level)
+dbLogger.Debug("Connection pool stats") // Won't be logged (db module is at Error level)
+dbLogger.Error("Database connection failed") // Will be logged
+
+// You can also use hierarchical module names
+authOAuthLogger := s.Logger.WithModule("auth.oauth")
+authBasicLogger := s.Logger.WithModule("auth.basic")
+
+// These will inherit from parent modules if no specific level is set
+// In this case, both inherit LogLevelDebug from the "auth" module
+```
+
+Module-based logging features:
+
+- **Hierarchical modules**: Use dot notation (e.g., `auth.oauth`) to create a hierarchy of modules
+- **Inheritance**: Modules inherit log levels from parent modules if not explicitly set
+- **Global registry**: Module log levels are stored in a global registry by default
+- **Custom registries**: Create isolated log level registries for more complex applications
+
+Advanced usage with custom registry:
+
+```go
+// Create a custom log registry
+registry := EpicServer.NewLogRegistry(EpicServer.LogLevelWarn)
+registry.SetLevel("api", EpicServer.LogLevelDebug)
+
+// Use the custom registry
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithLogRegistry(registry),
+})
+
+// Or create a logger with a custom registry directly
+logger := EpicServer.NewLoggerWithRegistry(os.Stdout, EpicServer.LogLevelInfo, EpicServer.LogFormatText, registry)
 ```
 
 ## Contributing

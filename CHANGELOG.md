@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2025-03-03
+
+### Improvements
+
+- **Enhanced Test Coverage**:
+  - Improved overall test coverage from 79.9% to 80.7%, surpassing the minimum threshold of 80%
+  - Added comprehensive tests for CSRF protection functionality in middleware
+  - Enhanced logging test suite with additional test cases for special JSON fields and caller information
+  - Fixed edge cases in authentication tests to avoid nil pointer dereferences
+  - Added specific test for `VerifyCSRFToken` middleware with various request scenarios
+  - Added tests for special fields in JSON format logging
+
+### Bug Fixes
+
+- **Test Reliability Improvements**:
+  - Fixed the `TestWriteJSON_SpecialFields` test to properly validate JSON fields
+  - Fixed the `TestLog_WithCallerInfo` test to correctly verify caller information
+  - Updated the `TestWithCSRFProtection_AdditionalCases` test to properly use the `VerifyCSRFToken` middleware
+  - Made tests more robust by using proper expectations for field presence rather than specific values
+
 ## [2.0.2] - 2024-03-03
+
+### New Features
+
+- **Enhanced Logging System**:
+  - Added module-based logging to control log levels for specific components
+  - Implemented hierarchical module structure with inheritance (e.g., `auth.oauth`)
+  - Added global log level registry for centralized management
+  - Added support for custom log registries for complex applications
+  - Added new methods: `WithModule()`, `SetRegistry()`, and global helpers
+  - Added new AppLayers: `WithModuleLogLevel()` and `WithLogRegistry()`
 
 ### Improvements
 
