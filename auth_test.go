@@ -224,11 +224,13 @@ func TestDefaultAuthHooks_GetUserOrCreate(t *testing.T) {
 
 func TestDefaultAuthHooks_OnUserCreate(t *testing.T) {
 	hooks := &DefaultAuthHooks{}
-	claims := Claims{}
+	claims := Claims{
+		UserID: "test-user-id",
+	}
 
-	_, err := hooks.OnUserCreate(claims)
-	assert.Error(t, err)
-	assert.EqualError(t, err, "user creation hook not implemented")
+	userID, err := hooks.OnUserCreate(claims)
+	assert.NoError(t, err)
+	assert.Equal(t, claims.UserID, userID)
 }
 
 func TestDefaultAuthHooks_OnAuthenticate(t *testing.T) {

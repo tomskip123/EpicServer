@@ -221,7 +221,7 @@ func (d *DefaultAuthHooks) GetUserOrCreate(user Claims) (*CookieContents, error)
 
 // OnUserCreate for when the session is validated and we need to check or create a user if its been created
 func (d *DefaultAuthHooks) OnUserCreate(user Claims) (string, error) {
-	return "", fmt.Errorf("user creation hook not implemented")
+	return user.UserID, nil
 }
 
 // OnAuthenticate should only really be used with password authentication
@@ -277,14 +277,14 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 
 			err := json.Unmarshal([]byte(customState), &cState)
 			if err != nil {
-				s.Logger.Error(err)
+				s.Logger.Error("Error parsing custom state", F("error", err.Error()))
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}
 
 			stateJSON, err := json.Marshal(cState)
 			if err != nil {
-				s.Logger.Error(err)
+				s.Logger.Error("Error marshalling custom state", F("error", err.Error()))
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}
@@ -312,7 +312,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 
 				authenticated, err := s.Hooks.Auth.OnAuthenticate(username, password, cState)
 				if err != nil {
-					s.Logger.Error(err)
+					s.Logger.Error("Error authenticating", F("error", err.Error()))
 					ctx.AbortWithError(http.StatusUnauthorized, err)
 					return
 				}
@@ -329,7 +329,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				})
 
 				if err != nil {
-					s.Logger.Error(err)
+					s.Logger.Error("Error creating session", F("error", err.Error()))
 					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
@@ -344,7 +344,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				)
 
 				if err != nil {
-					s.Logger.Error(err)
+					s.Logger.Error("Error setting cookie", F("error", err.Error()))
 					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
@@ -500,14 +500,14 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		)
 
 		if err != nil {
-			s.Logger.Debug(err)
+			s.Logger.Debug("Error setting cookie", F("error", err.Error()))
 			return
 		}
 
 		if ctx.Query("state") != "state" {
 			decodedString, err := DecodeStateString(ctx.Query("state"))
 			if err != nil {
-				s.Logger.Error("error decoding state string")
+				s.Logger.Error("Error decoding state string", F("error", err.Error()))
 				// handle error
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
@@ -517,7 +517,7 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 
 			err = json.Unmarshal(decodedString, &stateStruct)
 			if err != nil {
-				s.Logger.Error("error unmarshalling string")
+				s.Logger.Error("Error unmarshalling string", F("error", err.Error()))
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}

@@ -106,27 +106,26 @@ func TestNewServer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var server *Server
-			panicked := false
 
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						panicked = true
-					}
-				}()
-				server = NewServer(tt.configs)
-				if tt.appLayers != nil {
-					server.UpdateAppLayer(tt.appLayers)
-				}
-			}()
-
-			if panicked != tt.wantErr {
-				t.Errorf("NewServer() panic = %v, wantErr %v", panicked, tt.wantErr)
-				return
+			server = NewServer(tt.configs)
+			if tt.appLayers != nil {
+				server.UpdateAppLayer(tt.appLayers)
 			}
 
-			if !tt.wantErr && tt.assertions != nil {
-				tt.assertions(t, server)
+			if tt.wantErr {
+				if !server.HasErrors() {
+					t.Errorf("NewServer() should have errors for %s", tt.name)
+					return
+				}
+			} else {
+				if server.HasErrors() {
+					t.Errorf("NewServer() has unexpected errors: %v", server.GetErrors())
+					return
+				}
+
+				if tt.assertions != nil {
+					tt.assertions(t, server)
+				}
 			}
 		})
 	}
@@ -293,11 +292,17 @@ func TestDefaultHooks(t *testing.T) {
 		t.Error("default auth hooks not initialized")
 	}
 
-	// Test default hook methods return expected errors
-	if _, err := s.Hooks.Auth.OnUserCreate(Claims{}); err == nil {
-		t.Error("expected error from default OnUserCreate")
+	// Test OnUserCreate returns the user ID
+	claims := Claims{UserID: "test-id"}
+	userID, err := s.Hooks.Auth.OnUserCreate(claims)
+	if err != nil {
+		t.Error("unexpected error from default OnUserCreate")
+	}
+	if userID != claims.UserID {
+		t.Errorf("expected user ID %s, got %s", claims.UserID, userID)
 	}
 
+	// Test default hook methods return expected errors
 	if _, err := s.Hooks.Auth.OnUserGet("test"); err == nil {
 		t.Error("expected error from default OnUserGet")
 	}

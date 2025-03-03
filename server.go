@@ -1,3 +1,26 @@
+// Package EpicServer provides a powerful, flexible, and production-ready web server built on top of Gin framework.
+//
+// Key features:
+//   - Flexible configuration system
+//   - Built-in authentication
+//   - Database support (MongoDB, PostgreSQL, MySQL, GORM)
+//   - Caching system
+//   - Static file serving
+//   - Middleware support
+//   - SPA support
+//
+// Basic usage:
+//
+//	server := EpicServer.NewServer([]EpicServer.Option{
+//	    EpicServer.SetSecretKey([]byte("your-secret-key")),
+//	})
+//
+//	server.UpdateAppLayer([]EpicServer.AppLayer{
+//	    EpicServer.WithHealthCheck("/health"),
+//	    EpicServer.WithEnvironment("development"),
+//	})
+//
+//	server.Start()
 package EpicServer
 
 import (
@@ -23,31 +46,45 @@ type Server struct {
 	Cache       map[string]interface{}
 	srv         *http.Server
 	cancel      context.CancelFunc
+	errors      []error // Store initialization errors
 }
+
+// ServerOption represents a configuration option for the server
+type ServerOption func(*Server) error
 
 // NewServer creates and initializes a new server instance with the provided configuration
 // It applies all configurations and app layers in the order they are provided
 // Panics if no secret key is set
-func NewServer(p1 []Option) *Server {
+func NewServer(options []Option) *Server {
 	// generate sensible default config
-
 	config := defaultConfig()
-	for _, opt := range p1 {
+
+	// Apply configuration options
+	for _, opt := range options {
 		// loop through each option and apply whatever functionality has been defined
 		opt(config)
 	}
 
-	if len(config.SecretKey) == 0 {
-		panic("server secret key is required")
+	// Validate configuration
+	if err := config.Validate(); err != nil {
+		// Instead of panicking, return a server with the error
+		s := &Server{
+			Config: config,
+			errors: []error{err},
+		}
+		return s
 	}
 
 	// We then define an initial setup for the server instance
 	s := &Server{
-		Config: config,
-		Engine: gin.New(),
-		Logger: defaultLogger(os.Stdout),
-		Db:     make(map[string]interface{}),
-		Cache:  make(map[string]interface{}),
+		Config:      config,
+		Engine:      gin.New(),
+		Logger:      defaultLogger(os.Stdout),
+		PublicPaths: make(map[string]bool),
+		AuthConfigs: make(map[string]*Auth),
+		Db:          make(map[string]interface{}),
+		Cache:       make(map[string]interface{}),
+		errors:      []error{},
 	}
 
 	s.Hooks = defaultHooks(s)
@@ -55,30 +92,71 @@ func NewServer(p1 []Option) *Server {
 	return s
 }
 
+// HasErrors returns true if the server has initialization errors
+func (s *Server) HasErrors() bool {
+	return len(s.errors) > 0
+}
+
+// GetErrors returns all initialization errors
+func (s *Server) GetErrors() []error {
+	return s.errors
+}
+
+// AddError adds an error to the server's error list
+func (s *Server) AddError(err error) {
+	s.errors = append(s.errors, err)
+}
+
 // UpdateAppLayer allows adding new application layers to an existing server instance
-func (s *Server) UpdateAppLayer(p1 []AppLayer) {
-	for _, opt := range p1 {
-		opt(s)
+func (s *Server) UpdateAppLayer(layers []AppLayer) {
+	if s.HasErrors() {
+		s.Logger.Error("Server has initialization errors, skipping app layer updates",
+			F("error_count", len(s.errors)))
+		return
+	}
+
+	for _, layer := range layers {
+		layer(s)
 	}
 }
 
 // Start initiates the server on the configured host and port
 func (s *Server) Start() error {
+	// Check for initialization errors
+	if s.HasErrors() {
+		errMsgs := "Server initialization errors: "
+		for i, err := range s.errors {
+			if i > 0 {
+				errMsgs += ", "
+			}
+			errMsgs += err.Error()
+		}
+		return fmt.Errorf(errMsgs)
+	}
+
 	// Create a new context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
+	addr := fmt.Sprintf("%s:%d", s.Config.Server.Host, s.Config.Server.Port)
+	s.Logger.Info("Starting server",
+		F("address", addr),
+		F("environment", s.Config.Server.Environment))
+
 	s.srv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", s.Config.Server.Host, s.Config.Server.Port),
+		Addr:    addr,
 		Handler: s.Engine,
 	}
 
 	go func() {
 		// Wait for the context to be canceled
 		<-ctx.Done()
+		s.Logger.Info("Server shutdown initiated")
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
-		s.srv.Shutdown(shutdownCtx)
+		if err := s.srv.Shutdown(shutdownCtx); err != nil {
+			s.Logger.Error("Server shutdown error", F("error", err.Error()))
+		}
 	}()
 
 	// Start the server and return any errors
@@ -89,7 +167,7 @@ func (s *Server) Start() error {
 func (s *Server) Stop() error {
 	if s.cancel != nil {
 		s.cancel() // Call the cancel function to stop the server
-		fmt.Println("Server context canceled")
+		s.Logger.Info("Server stopping")
 	}
 	return nil
 }
@@ -100,6 +178,10 @@ func defaultConfig() *Config {
 
 	c.Server.Host = "localhost"
 	c.Server.Port = 3000
+	c.Server.Environment = "development"
+
+	// Set secure defaults for security
+	c.Security.SecureCookie = true
 
 	return c
 }

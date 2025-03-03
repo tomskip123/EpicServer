@@ -3,8 +3,28 @@
 > A powerful, flexible, and production-ready Go web server built on top of Gin framework.
 
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.16-blue)
-![Version](https://img.shields.io/badge/version-1.0.4-blue)
+![Version](https://img.shields.io/badge/version-2.0.1-blue)
 [![Coverage Status](https://coveralls.io/repos/github/tomskip123/EpicServer/badge.svg?branch=main)](https://coveralls.io/github/tomskip123/EpicServer?branch=main)
+
+## ⚠️ Breaking Changes in v2.0.0
+
+Version 2.0.0 introduces significant improvements with breaking changes. See [CHANGELOG.md](CHANGELOG.md) for details and migration guide.
+
+Key changes:
+- Structured logging replaces variadic logging
+- Database connections now return errors instead of panicking
+- Enhanced configuration system with validation
+- Improved security features
+
+## 📝 Enhanced Documentation in v2.0.1
+
+Version 2.0.1 improves documentation with:
+- Detailed migration guide with code examples
+- Comprehensive API usage examples
+- Improved integration examples with imports and context
+- Enhanced changelog maintenance
+
+See [CHANGELOG.md](CHANGELOG.md) for complete details.
 
 ## Table of Contents
 
@@ -34,22 +54,31 @@
    - [CSRF Protection](#csrf-protection)
    - [Security Headers](#security-headers)
    - [Environment Variables](#environment-variables)
+   - [Rate Limiting](#rate-limiting)
 
 5. [API Reference](#api-reference)
    - [Server Options](#server-options)
    - [Database Methods](#database-methods)
    - [Cache Methods](#cache-methods)
    - [Authentication Methods](#authentication-methods)
+   - [Logging System](#logging-system)
 
-6. [Contributing](#contributing)
+6. [Migration Guide](#migration-guide)
+   - [Upgrading to v2.0.0](#upgrading-to-v200)
+   - [Structured Logging](#structured-logging)
+   - [Error Handling](#error-handling)
+
+7. [Contributing](#contributing)
    - [Getting Started](#getting-started-1)
    - [Development](#development)
    - [Testing Your Changes](#testing-your-changes)
    - [Submitting Changes](#submitting-changes)
    - [Code Style](#code-style)
 
-7. [License](#license)
-8. [Support](#support)
+8. [Changelog](#changelog)
+
+9. [License](#license)
+10. [Support](#support)
 
 ## Getting Started
 
@@ -1045,22 +1074,22 @@ server := EpicServer.NewServer(&EpicServer.NewServerParam{
 Configure the server to handle SPA routing:
 
 ```go
- //go:embed dist/*
- var spaFiles embed.FS
- 
- func main() {
-     server := EpicServer.NewServer([]EpicServer.Option{
-         EpicServer.SetSecretKey([]byte("your-secret-key")),
-     })
-     server.UpdateAppLayer([]EpicServer.AppLayer{
-         // Configure SPA handling
-         EpicServer.WithSPACatchAll(
-             &spaFiles,              // Embedded filesystem
-             "dist",                 // Static files directory
-             "dist/index.html",      // SPA entry point
-         ),
-     })
- }
+//go:embed dist/*
+var spaFiles embed.FS
+
+func main() {
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure SPA handling
+        EpicServer.WithSPACatchAll(
+            &spaFiles,              // Embedded filesystem
+            "dist",                 // Static files directory
+            "dist/index.html",      // SPA entry point
+        ),
+    })
+}
 ```
 
 ## Security
@@ -1156,6 +1185,39 @@ hashKey, _ := EpicServer.GenerateEncryptionKey()
 blockKey, _ := EpicServer.GenerateEncryptionKey()
 ```
 
+### Rate Limiting
+
+EpicServer includes a built-in rate limiter to prevent abuse:
+
+#### Setting Up Rate Limiting
+
+```go
+package main
+
+import (
+    "time"
+    
+    "github.com/tomskip123/EpicServer"
+)
+
+// Later in your code:
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRateLimiter(EpicServer.RateLimiterConfig{
+        MaxRequests: 100,
+        Interval: time.Minute,
+        BlockDuration: 5 * time.Minute,
+        ExcludedPaths: []string{"/health", "/static/*"},
+    }),
+})
+```
+
+#### Rate Limiting Features
+
+* Fixed window rate limiting
+* Sliding window rate limiting
+* Customizable duration
+* Multiple named rate limiters
+
 ## API Reference
 
 ### Server Options
@@ -1190,6 +1252,186 @@ GORM specific helpers:
 * `GenerateCSRFToken() (string, error)` - Generate a CSRF token
 * `IsTrustedSource(req *http.Request) bool` - Validate CSRF token
 * `GetSession(c *gin.Context) (*Session, error)` - Retrieve session data
+
+### Logging System
+
+* `Info(message string, args ...interface{})` - Logs an informational message
+* `Warn(message string, args ...interface{})` - Logs a warning message
+* `Error(message string, args ...interface{})` - Logs an error message
+
+## Migration Guide
+
+### Upgrading to v2.0.0
+
+Version 2.0.0 introduces several breaking changes to improve error handling, security, and maintainability. Follow this guide to update your application.
+
+#### 1. Logger Interface Changes
+
+The logging system has been completely refactored to support structured logging:
+
+```go
+// OLD (pre-v2.0.0)
+s.Logger.Info("Connected to database", dbName)
+
+// NEW (v2.0.0+)
+s.Logger.Info("Connected to database", F("name", dbName))
+```
+
+All logger methods now accept a message string and a variable number of `LogField` objects. Use the `F()` helper function to create these fields.
+
+#### 2. MongoDB Interface Changes
+
+Database connections no longer panic on failure and return more information:
+
+```go
+// OLD (pre-v2.0.0)
+client := EpicServerDb.GetMongoClient(s, "default")
+collection := client.Database("myapp").Collection("users")
+
+// NEW (v2.0.0+)
+client, ok := EpicServerDb.GetMongoClient(s, "default")
+if !ok {
+    // Handle error
+    return
+}
+collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapp", "users")
+if err != nil {
+    // Handle error
+    return
+}
+```
+
+#### 3. Server Initialization Error Handling
+
+Server initialization now captures errors instead of panicking:
+
+```go
+// OLD (pre-v2.0.0)
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetSecretKey([]byte("your-secret-key")),
+})
+// If configuration is invalid, this would panic
+server.Start()
+
+// NEW (v2.0.0+)
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetSecretKey([]byte("your-secret-key")),
+})
+if server.HasErrors() {
+    for _, err := range server.GetErrors() {
+        fmt.Printf("Server initialization error: %v\n", err)
+    }
+    return
+}
+server.Start()
+```
+
+#### 4. Memory Cache Configuration
+
+Memory cache now requires additional configuration parameters:
+
+```go
+// OLD (pre-v2.0.0)
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServerCache.WithMemoryCache(&EpicServerCache.MemoryCacheConfig{
+        Name: "default",
+        Type: "memory",
+    }),
+})
+
+// NEW (v2.0.0+)
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServerCache.WithMemoryCache(&EpicServerCache.MemoryCacheConfig{
+        Name: "default",
+        Type: "memory",
+        DefaultTTL: 5 * time.Minute,
+        CleanupInterval: time.Minute,
+        MaxItems: 1000, // Optional
+    }),
+})
+```
+
+### New Features Usage
+
+#### Environment Variables Configuration
+
+```go
+// Load configuration from environment variables
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.WithEnvVars(),
+    // Provide fallback values for critical settings
+    EpicServer.SetSecretKey([]byte("fallback-secret-key")),
+})
+```
+
+Available environment variables:
+- `EPICSERVER_SERVER_HOST`: Server host
+- `EPICSERVER_SERVER_PORT`: Server port
+- `EPICSERVER_SERVER_ENVIRONMENT`: Environment name
+- `EPICSERVER_SECURITY_SECURECOOKIE`: Enable secure cookies (true/false)
+- `EPICSERVER_SECURITY_COOKIEDOMAIN`: Cookie domain
+- `EPICSERVER_SECURITY_CSPHEADER`: Content Security Policy header
+- `EPICSERVER_SECURITY_ORIGINS`: Comma-separated CORS origins
+- `EPICSERVER_SECRETKEY`: Secret key for encryption/signing
+
+#### Rate Limiting
+
+```go
+// Add rate limiting to your server
+import (
+    "time"
+    
+    "github.com/tomskip123/EpicServer"
+)
+
+// Later in your code:
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRateLimiter(EpicServer.RateLimiterConfig{
+        MaxRequests: 100,
+        Interval: time.Minute,
+        BlockDuration: 5 * time.Minute,
+        ExcludedPaths: []string{"/health", "/static/*"},
+    }),
+})
+```
+
+#### Security Headers
+
+```go
+// Add recommended security headers to all responses
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithSecurityHeaders(nil), // Use defaults
+})
+
+// Or with custom configuration
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithSecurityHeaders(&EpicServer.SecurityHeadersConfig{
+        EnableHSTS: true,
+        HSTSMaxAge: 63072000, // 2 years
+        ContentSecurityPolicy: "default-src 'self'",
+    }),
+})
+```
+
+#### Structured Logging Configuration
+
+```go
+// Configure log level
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithLogLevel(EpicServer.LogLevelDebug),
+})
+
+// Configure log format
+s.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithLogFormat(EpicServer.LogFormatJSON),
+})
+
+// Log with structured fields
+s.Logger.Info("User authenticated", 
+    EpicServer.F("user_id", userID), 
+    EpicServer.F("ip", ip),
+    EpicServer.F("duration_ms", authDuration.Milliseconds()))
+```
 
 ## Contributing
 
@@ -1260,6 +1502,10 @@ git push origin feature/amazing-feature
 * Add tests for new features
 * Update documentation as needed
 * Keep commits focused and atomic
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for details on changes in each version.
 
 ## License
 

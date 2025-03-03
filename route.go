@@ -4,22 +4,41 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Route handler type matching gin.HandlerFunc
+// HandlerFunc defines a function that handles HTTP requests with access to both
+// the Gin context and the server instance.
 type HandlerFunc func(*gin.Context, *Server)
 
-// Route definition structure
+// Route defines an HTTP route with its method, path and handler.
 type Route struct {
-	Method  string
-	Path    string
+	// Method is the HTTP method (GET, POST, etc.)
+	Method string
+	// Path is the URL path for the route
+	Path string
+	// Handler is the function that processes the request
 	Handler HandlerFunc
 }
 
+// RouteGroup represents a group of routes with a common prefix.
 type RouteGroup struct {
+	// Prefix is prepended to all routes in the group
 	Prefix string
+	// Routes contains the individual route definitions
 	Routes []Route
 }
 
-// Register routes with AppLayer pattern
+// WithRoutes registers route groups with the server.
+// Example usage:
+//
+//	server.UpdateAppLayer([]EpicServer.AppLayer{
+//	    EpicServer.WithRoutes(
+//	        EpicServer.RouteGroup{
+//	            Prefix: "/api/v1",
+//	            Routes: []EpicServer.Route{
+//	                EpicServer.Get("/users", HandleUsers),
+//	            },
+//	        },
+//	    ),
+//	})
 func WithRoutes(groups ...RouteGroup) AppLayer {
 	return func(s *Server) {
 		for _, group := range groups {

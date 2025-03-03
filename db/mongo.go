@@ -1,3 +1,4 @@
+// Package EpicServerDb provides database adapters for the EpicServer framework.
 package EpicServerDb
 
 import (
@@ -12,13 +13,38 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// MongoConfig contains configuration for a MongoDB connection.
 type MongoConfig struct {
+	// ConnectionName is a unique identifier for this database connection
 	ConnectionName string
-	URI            string
-	DatabaseName   string
-	client         *mongo.Client
+	// URI is the MongoDB connection string
+	URI string
+	// DatabaseName is the name of the database to connect to
+	DatabaseName string
+	client       *mongo.Client
 }
 
+// ErrMongoConnection is returned when a MongoDB connection cannot be established
+type ErrMongoConnection struct {
+	URI string
+	Err error
+}
+
+func (e *ErrMongoConnection) Error() string {
+	return fmt.Sprintf("failed to connect to MongoDB at %s: %v", e.URI, e.Err)
+}
+
+// WithMongo creates a MongoDB connection and adds it to the server's database pool.
+//
+// Example:
+//
+//	server.UpdateAppLayer([]EpicServer.AppLayer{
+//	    EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
+//	        ConnectionName: "default",
+//	        URI:           "mongodb://localhost:27017",
+//	        DatabaseName:  "myapp",
+//	    }),
+//	})
 func WithMongo(mongoConfig *MongoConfig) EpicServer.AppLayer {
 	return func(s *EpicServer.Server) {
 		ctx := context.Background()
@@ -26,12 +52,18 @@ func WithMongo(mongoConfig *MongoConfig) EpicServer.AppLayer {
 		// Create client and connect
 		client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoConfig.URI))
 		if err != nil {
-			panic(err)
+			s.Logger.Error(fmt.Sprintf("Failed to connect to MongoDB: %v", err))
+			// Store the error in the server's state instead of panicking
+			s.Db[mongoConfig.ConnectionName] = &ErrMongoConnection{URI: mongoConfig.URI, Err: err}
+			return
 		}
 
 		// Ping to verify connection
 		if err := client.Ping(ctx, nil); err != nil {
-			panic(err)
+			s.Logger.Error(fmt.Sprintf("Failed to ping MongoDB: %v", err))
+			// Store the error in the server's state instead of panicking
+			s.Db[mongoConfig.ConnectionName] = &ErrMongoConnection{URI: mongoConfig.URI, Err: err}
+			return
 		}
 
 		// Cast the mongo client to the server's db interface
@@ -39,23 +71,36 @@ func WithMongo(mongoConfig *MongoConfig) EpicServer.AppLayer {
 			mongoConfig.client = db
 			s.Db[mongoConfig.ConnectionName] = mongoConfig
 		} else {
-			panic("mongo client does not implement DB interface")
+			s.Logger.Error("mongo client does not implement DB interface")
+			s.Db[mongoConfig.ConnectionName] = fmt.Errorf("mongo client does not implement DB interface")
 		}
 	}
 }
 
 // GetMongoClient safely retrieves the mongo.Client from the server
-func GetMongoClient(s *EpicServer.Server, connectionName string) *mongo.Client {
+// Returns the client and a boolean indicating success
+func GetMongoClient(s *EpicServer.Server, connectionName string) (*mongo.Client, bool) {
 	if config, ok := s.Db[connectionName].(*MongoConfig); ok {
-		return config.client
+		return config.client, true
 	}
-	panic("server DB is not a mongo client")
+
+	// Check if we have an error stored instead
+	if err, ok := s.Db[connectionName].(error); ok {
+		s.Logger.Error(fmt.Sprintf("Cannot get MongoDB client: %v", err))
+	} else {
+		s.Logger.Error(fmt.Sprintf("Cannot get MongoDB client: connection '%s' not found or is not a MongoDB connection", connectionName))
+	}
+
+	return nil, false
 }
 
-// Nice Helper method for getting a collection
-func GetMongoCollection(s *EpicServer.Server, connectionName string, databaseName string, collectionName string) *mongo.Collection {
-	client := GetMongoClient(s, connectionName)
-	return client.Database(databaseName).Collection(collectionName)
+// GetMongoCollection gets a MongoDB collection with error handling
+func GetMongoCollection(s *EpicServer.Server, connectionName string, databaseName string, collectionName string) (*mongo.Collection, error) {
+	client, ok := GetMongoClient(s, connectionName)
+	if !ok {
+		return nil, fmt.Errorf("failed to get MongoDB client for connection: %s", connectionName)
+	}
+	return client.Database(databaseName).Collection(collectionName), nil
 }
 
 //  MONGO HELPERS

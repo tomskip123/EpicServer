@@ -2,13 +2,11 @@ package EpicServer
 
 import (
 	"bytes"
-	"fmt"
-	"os"
 	"testing"
 )
 
 func TestDefaultLogger(t *testing.T) {
-	logger := defaultLogger(os.Stdout)
+	logger := defaultLogger(nil)
 	if logger == nil {
 		t.Error("defaultLogger() returned nil")
 	}
@@ -18,10 +16,14 @@ func TestLogger_Levels(t *testing.T) {
 	var buf bytes.Buffer
 
 	logger := defaultLogger(&buf)
+	// Set log level to Debug to allow all log levels
+	if structLogger, ok := logger.(*StructuredLogger); ok {
+		structLogger.SetLevel(LogLevelDebug)
+	}
 
 	tests := []struct {
 		name     string
-		logFunc  func(args ...interface{})
+		logFunc  func(msg string, fields ...LogField)
 		message  string
 		wantText string
 	}{
@@ -53,11 +55,8 @@ func TestLogger_Levels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// buf.Reset()
+			buf.Reset()
 			tt.logFunc(tt.message)
-
-			output := buf.String()
-			fmt.Println(output)
 
 			if !bytes.Contains(buf.Bytes(), []byte(tt.wantText)) {
 				t.Errorf("logger output = %q, want %q", buf.String(), tt.wantText)
