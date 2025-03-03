@@ -22,7 +22,10 @@ jobs:
         go mod download
     - name: Run Unit tests
       run: |
-        go test -race -covermode atomic -coverprofile=covprofile ./...
+        # Exclude test helper files from coverage calculation
+        go test -race -covermode atomic -coverprofile=covprofile.raw ./...
+        # Filter out test helper files from coverage report
+        cat covprofile.raw | grep -v "test_helpers.go" > covprofile
     - name: Install goveralls
       run: go install github.com/mattn/goveralls@latest
     - name: Send coverage
