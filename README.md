@@ -3,7 +3,7 @@
 > A powerful, flexible, and production-ready Go web server built on top of Gin framework.
 
 ![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.16-blue)
-![Version](https://img.shields.io/badge/version-2.0.2-blue)
+![Version](https://img.shields.io/badge/version-2.0.1-blue)
 [![Coverage Status](https://coveralls.io/repos/github/tomskip123/EpicServer/badge.svg?branch=main&v=1)](https://coveralls.io/github/tomskip123/EpicServer?branch=main&v=1)
 
 ## ⚠️ Breaking Changes in v2.0.0
