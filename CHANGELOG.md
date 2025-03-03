@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2024-03-03
+
 ### Improvements
 
 - **Test Coverage Framework**:
@@ -16,6 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enhanced GitHub Actions workflow with Coveralls integration for visual coverage reporting
   - Set minimum coverage threshold at 80% with quality indicators
   - Added coverage configuration with `.coveragerc` for consistent analysis
+
+- **Documentation**:
+  - Added detailed migration guide to README.md with code examples for all breaking changes
+  - Enhanced code examples with imports and context for better clarity
+  - Added complete API usage examples for new features in v2.0.0
+
+- **AI Development Support**:
+  - Added comprehensive cursor rules documentation for AI-assisted development
+  - Implemented changelog maintenance guidelines to ensure consistent documentation
+  - Added migration patterns with before/after code examples
 
 ### Bug Fixes
 
@@ -29,20 +41,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed `TestLogger_Levels` to properly set the debug log level before testing
   - Updated `TestNewServer` to check for errors using `HasErrors()` instead of expecting panics
   - Fixed `TestDefaultAuthHooks_OnUserCreate` and `TestDefaultHooks` to align with the updated implementation of `OnUserCreate`
-
-## [2.0.1] - 2023-06-10
-
-### Improvements
-
-- **Documentation**:
-  - Added detailed migration guide to README.md with code examples for all breaking changes
-  - Enhanced code examples with imports and context for better clarity
-  - Added complete API usage examples for new features in v2.0.0
-
-- **AI Development Support**:
-  - Added comprehensive cursor rules documentation for AI-assisted development
-  - Implemented changelog maintenance guidelines to ensure consistent documentation
-  - Added migration patterns with before/after code examples
 
 ## [2.0.0] - 2023-05-29
 
