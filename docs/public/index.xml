@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>EpicServer on My Docs</title>
+    <link>http://localhost:1313/</link>
+    <description>Recent content in EpicServer on My Docs</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <copyright>Copyright (c) 2020-2024 Thulite</copyright>
+    <lastBuildDate>Thu, 07 Sep 2023 16:27:22 +0200</lastBuildDate>
+    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Installation</title>
+      <link>http://localhost:1313/docs/getting-started/installation/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/getting-started/installation/</guid>
+      <description>Learn how to add EpicServer to your Go project using Go modules.</description>
+    </item>
+    <item>
+      <title>API Reference</title>
+      <link>http://localhost:1313/docs/reference/api-reference/</link>
+      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <guid>http://localhost:1313/docs/reference/api-reference/</guid>
+      <description>Detailed documentation of all EpicServer&amp;rsquo;s public API methods and types.</description>
+    </item>
+    <item>
+      <title>Basic API Server</title>
+      <link>http://localhost:1313/docs/examples/basic-api-server/</link>
+      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <guid>http://localhost:1313/docs/examples/basic-api-server/</guid>
+      <description>Step-by-step guide to create a simple RESTful API using EpicServer.</description>
+    </item>
+    <item>
+      <title>Routing</title>
+      <link>http://localhost:1313/docs/guides/routing/</link>
+      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/routing/</guid>
+      <description>Complete guide to defining and managing HTTP routes in EpicServer.</description>
+    </item>
+    <item>
+      <title>Server Architecture</title>
+      <link>http://localhost:1313/docs/concepts/server-architecture/</link>
+      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <guid>http://localhost:1313/docs/concepts/server-architecture/</guid>
+      <description>Deep dive into the architecture of EpicServer and how its components work together.</description>
+    </item>
+    <item>
+      <title>Quick Start</title>
+      <link>http://localhost:1313/docs/getting-started/quick-start/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/getting-started/quick-start/</guid>
+      <description>A step-by-step guide to create your first EpicServer application.</description>
+    </item>
+    <item>
+      <title>Middleware</title>
+      <link>http://localhost:1313/docs/guides/middleware/</link>
+      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/middleware/</guid>
+      <description>Complete guide to using and implementing middleware in EpicServer.</description>
+    </item>
+    <item>
+      <title>Example Post</title>
+      <link>http://localhost:1313/blog/example-post/</link>
+      <pubDate>Thu, 07 Sep 2023 16:27:22 +0200</pubDate>
+      <guid>http://localhost:1313/blog/example-post/</guid>
+      <description>You can use blog posts for announcing product updates and features.</description>
+    </item>
+    <item>
+      <title>Resources</title>
+      <link>http://localhost:1313/docs/resources/</link>
+      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <guid>http://localhost:1313/docs/resources/</guid>
+      <description>Additional resources to help you get the most out of EpicServer.</description>
+    </item>
+    <item>
+      <title>Example Guide</title>
+      <link>http://localhost:1313/docs/guides/example-guide/</link>
+      <pubDate>Thu, 07 Sep 2023 16:04:48 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/example-guide/</guid>
+      <description>&lt;p&gt;Guides lead a user through a specific task they want to accomplish, often with a sequence of steps. Writing a good guide requires thinking about what your users are trying to do.&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>
