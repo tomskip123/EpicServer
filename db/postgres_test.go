@@ -75,10 +75,14 @@ func TestWithPostgresErrorCases(t *testing.T) {
 	// Create and apply the app layer
 	appLayer := WithPostgres(config)
 
-	// This should panic with the SQL Open error
-	assert.Panics(t, func() {
+	// This should not panic but add an error to the server
+	assert.NotPanics(t, func() {
 		appLayer(s)
-	}, "Should panic when SQL Open fails")
+	})
+
+	// Verify the connection was not added to the server
+	_, ok := s.Db[config.ConnectionName].(*sql.DB)
+	assert.False(t, ok, "Should not have added a database connection")
 
 	// Test case 2: Ping error
 	mockDB := &sql.DB{}
@@ -90,8 +94,12 @@ func TestWithPostgresErrorCases(t *testing.T) {
 		return sql.ErrConnDone
 	}
 
-	// This should panic with the Ping error
-	assert.Panics(t, func() {
+	// This should not panic but add an error to the server
+	assert.NotPanics(t, func() {
 		appLayer(s)
-	}, "Should panic when Ping fails")
+	})
+
+	// Verify the connection was not added to the server
+	_, ok = s.Db[config.ConnectionName].(*sql.DB)
+	assert.False(t, ok, "Should not have added a database connection")
 }

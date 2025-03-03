@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// For testing purposes - allows mocking os.Exit
+var osExit = os.Exit
+
 // LogLevel represents the severity of a log message
 type LogLevel int
 
@@ -55,6 +58,96 @@ const (
 	LogFormatJSON
 )
 
+// LogRegistry maintains a registry of log levels by module
+type LogRegistry struct {
+	mu           sync.RWMutex
+	levels       map[string]LogLevel
+	defaultLevel LogLevel
+}
+
+// globalRegistry is the default registry for log levels
+var globalRegistry = &LogRegistry{
+	levels:       make(map[string]LogLevel),
+	defaultLevel: LogLevelInfo,
+}
+
+// NewLogRegistry creates a new log registry with the specified default level
+func NewLogRegistry(defaultLevel LogLevel) *LogRegistry {
+	return &LogRegistry{
+		levels:       make(map[string]LogLevel),
+		defaultLevel: defaultLevel,
+	}
+}
+
+// SetLevel sets the log level for a specific module
+func (r *LogRegistry) SetLevel(module string, level LogLevel) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.levels[module] = level
+}
+
+// GetLevel gets the log level for a specific module
+func (r *LogRegistry) GetLevel(module string) LogLevel {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if level, ok := r.levels[module]; ok {
+		return level
+	}
+
+	// Check for parent modules (e.g., "auth.oauth" falls back to "auth")
+	parts := strings.Split(module, ".")
+	for i := len(parts) - 1; i > 0; i-- {
+		parentModule := strings.Join(parts[:i], ".")
+		if level, ok := r.levels[parentModule]; ok {
+			return level
+		}
+	}
+
+	return r.defaultLevel
+}
+
+// SetDefaultLevel sets the default log level for modules without a specific level
+func (r *LogRegistry) SetDefaultLevel(level LogLevel) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.defaultLevel = level
+}
+
+// GetDefaultLevel gets the default log level
+func (r *LogRegistry) GetDefaultLevel() LogLevel {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.defaultLevel
+}
+
+// ClearLevels removes all module-specific log levels
+func (r *LogRegistry) ClearLevels() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.levels = make(map[string]LogLevel)
+}
+
+// SetModuleLevel sets the log level for a specific module in the global registry
+func SetModuleLevel(module string, level LogLevel) {
+	globalRegistry.SetLevel(module, level)
+}
+
+// GetModuleLevel gets the log level for a specific module from the global registry
+func GetModuleLevel(module string) LogLevel {
+	return globalRegistry.GetLevel(module)
+}
+
+// SetDefaultLevel sets the default log level in the global registry
+func SetDefaultLevel(level LogLevel) {
+	globalRegistry.SetDefaultLevel(level)
+}
+
+// GetDefaultLevel gets the default log level from the global registry
+func GetDefaultLevel() LogLevel {
+	return globalRegistry.GetDefaultLevel()
+}
+
 // Logger is an interface for logging messages
 type Logger interface {
 	Debug(msg string, fields ...LogField)
@@ -63,9 +156,11 @@ type Logger interface {
 	Error(msg string, fields ...LogField)
 	Fatal(msg string, fields ...LogField)
 	WithFields(fields ...LogField) Logger
+	WithModule(module string) Logger
 	SetOutput(w io.Writer)
 	SetLevel(level LogLevel)
 	SetFormat(format LogFormat)
+	SetRegistry(registry *LogRegistry)
 }
 
 // LogField represents a key-value pair in a structured log
@@ -81,30 +176,48 @@ func F(key string, value interface{}) LogField {
 
 // StructuredLogger implements the Logger interface
 type StructuredLogger struct {
-	mu     sync.Mutex
-	writer io.Writer
-	level  LogLevel
-	format LogFormat
-	fields []LogField
+	mu       sync.Mutex
+	writer   io.Writer
+	level    LogLevel
+	format   LogFormat
+	fields   []LogField
+	module   string
+	registry *LogRegistry
 }
 
 // defaultLogger creates a new default logger
 func defaultLogger(w io.Writer) Logger {
 	return &StructuredLogger{
-		writer: w,
-		level:  LogLevelInfo,
-		format: LogFormatText,
-		fields: []LogField{},
+		writer:   w,
+		level:    LogLevelInfo,
+		format:   LogFormatText,
+		fields:   []LogField{},
+		module:   "",
+		registry: globalRegistry,
 	}
 }
 
 // NewLogger creates a new structured logger
 func NewLogger(w io.Writer, level LogLevel, format LogFormat) Logger {
 	return &StructuredLogger{
-		writer: w,
-		level:  level,
-		format: format,
-		fields: []LogField{},
+		writer:   w,
+		level:    level,
+		format:   format,
+		fields:   []LogField{},
+		module:   "",
+		registry: globalRegistry,
+	}
+}
+
+// NewLoggerWithRegistry creates a new structured logger with a custom registry
+func NewLoggerWithRegistry(w io.Writer, level LogLevel, format LogFormat, registry *LogRegistry) Logger {
+	return &StructuredLogger{
+		writer:   w,
+		level:    level,
+		format:   format,
+		fields:   []LogField{},
+		module:   "",
+		registry: registry,
 	}
 }
 
@@ -129,13 +242,22 @@ func (l *StructuredLogger) SetFormat(format LogFormat) {
 	l.format = format
 }
 
+// SetRegistry sets the log registry
+func (l *StructuredLogger) SetRegistry(registry *LogRegistry) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.registry = registry
+}
+
 // WithFields returns a new logger with the given fields
 func (l *StructuredLogger) WithFields(fields ...LogField) Logger {
 	newLogger := &StructuredLogger{
-		writer: l.writer,
-		level:  l.level,
-		format: l.format,
-		fields: make([]LogField, len(l.fields)+len(fields)),
+		writer:   l.writer,
+		level:    l.level,
+		format:   l.format,
+		module:   l.module,
+		registry: l.registry,
+		fields:   make([]LogField, len(l.fields)+len(fields)),
 	}
 
 	copy(newLogger.fields, l.fields)
@@ -144,39 +266,70 @@ func (l *StructuredLogger) WithFields(fields ...LogField) Logger {
 	return newLogger
 }
 
+// WithModule returns a new logger with the specified module
+func (l *StructuredLogger) WithModule(module string) Logger {
+	newLogger := &StructuredLogger{
+		writer:   l.writer,
+		level:    l.level,
+		format:   l.format,
+		module:   module,
+		registry: l.registry,
+		fields:   make([]LogField, len(l.fields)),
+	}
+
+	copy(newLogger.fields, l.fields)
+
+	return newLogger
+}
+
+// getEffectiveLevel returns the effective log level for the current module
+func (l *StructuredLogger) getEffectiveLevel() LogLevel {
+	if l.module == "" {
+		return l.level
+	}
+
+	moduleLevel := l.registry.GetLevel(l.module)
+
+	// Use the more verbose of the two levels
+	if moduleLevel < l.level {
+		return moduleLevel
+	}
+	return l.level
+}
+
 // Debug logs a debug message
 func (l *StructuredLogger) Debug(msg string, fields ...LogField) {
-	if l.level <= LogLevelDebug {
+	if l.getEffectiveLevel() <= LogLevelDebug {
 		l.log(LogLevelDebug, msg, fields...)
 	}
 }
 
 // Info logs an info message
 func (l *StructuredLogger) Info(msg string, fields ...LogField) {
-	if l.level <= LogLevelInfo {
+	if l.getEffectiveLevel() <= LogLevelInfo {
 		l.log(LogLevelInfo, msg, fields...)
 	}
 }
 
 // Warn logs a warning message
 func (l *StructuredLogger) Warn(msg string, fields ...LogField) {
-	if l.level <= LogLevelWarn {
+	if l.getEffectiveLevel() <= LogLevelWarn {
 		l.log(LogLevelWarn, msg, fields...)
 	}
 }
 
 // Error logs an error message
 func (l *StructuredLogger) Error(msg string, fields ...LogField) {
-	if l.level <= LogLevelError {
+	if l.getEffectiveLevel() <= LogLevelError {
 		l.log(LogLevelError, msg, fields...)
 	}
 }
 
-// Fatal logs a fatal message
+// Fatal logs a message at Fatal level and then exits the application
 func (l *StructuredLogger) Fatal(msg string, fields ...LogField) {
-	if l.level <= LogLevelFatal {
+	if l.getEffectiveLevel() <= LogLevelFatal {
 		l.log(LogLevelFatal, msg, fields...)
-		os.Exit(1)
+		osExit(1)
 	}
 }
 
@@ -201,7 +354,7 @@ func (l *StructuredLogger) log(level LogLevel, msg string, fields ...LogField) {
 	now := time.Now().Format(time.RFC3339)
 
 	// Combine all fields
-	allFields := make([]LogField, 0, len(l.fields)+len(fields)+4)
+	allFields := make([]LogField, 0, len(l.fields)+len(fields)+5)
 	allFields = append(allFields, l.fields...)
 	allFields = append(allFields, fields...)
 	allFields = append(allFields,
@@ -210,6 +363,11 @@ func (l *StructuredLogger) log(level LogLevel, msg string, fields ...LogField) {
 		LogField{Key: "message", Value: msg},
 		LogField{Key: "caller", Value: fmt.Sprintf("%s:%d", file, line)},
 	)
+
+	// Add module if set
+	if l.module != "" {
+		allFields = append(allFields, LogField{Key: "module", Value: l.module})
+	}
 
 	if l.format == LogFormatJSON {
 		l.writeJSON(allFields)
@@ -241,7 +399,7 @@ func (l *StructuredLogger) writeJSON(fields []LogField) {
 // writeText writes the log in a human-readable format
 func (l *StructuredLogger) writeText(level LogLevel, msg string, fields []LogField) {
 	// Extract timestamp and caller from fields
-	var timestamp, caller string
+	var timestamp, caller, module string
 	fieldsMap := make(map[string]interface{})
 
 	for _, field := range fields {
@@ -254,54 +412,100 @@ func (l *StructuredLogger) writeText(level LogLevel, msg string, fields []LogFie
 			if c, ok := field.Value.(string); ok {
 				caller = c
 			}
-		}
-	}
-
-	// Format the log entry
-	var sb strings.Builder
-
-	// Format timestamp, level, and message
-	fmt.Fprintf(&sb, "%s [%s] %-44s %s", timestamp, level, msg, caller)
-
-	// Add remaining fields
-	if len(fieldsMap) > 0 {
-		sb.WriteString(" |")
-		for _, field := range fields {
-			if field.Key != "timestamp" && field.Key != "level" && field.Key != "message" && field.Key != "caller" {
-				fmt.Fprintf(&sb, " %s=%v", field.Key, field.Value)
+		} else if field.Key == "module" {
+			if m, ok := field.Value.(string); ok {
+				module = m
 			}
 		}
 	}
 
-	sb.WriteString("\n")
+	// Format the log message
+	var builder strings.Builder
 
-	_, err := l.writer.Write([]byte(sb.String()))
+	// Add timestamp
+	builder.WriteString(timestamp)
+	builder.WriteString(" ")
+
+	// Add log level
+	builder.WriteString("[")
+	builder.WriteString(level.String())
+	builder.WriteString("] ")
+
+	// Add module if present
+	if module != "" {
+		builder.WriteString("[")
+		builder.WriteString(module)
+		builder.WriteString("] ")
+	}
+
+	// Add message
+	builder.WriteString(msg)
+
+	// Add caller
+	builder.WriteString(" (")
+	builder.WriteString(caller)
+	builder.WriteString(")")
+
+	// Add fields
+	for _, field := range fields {
+		if field.Key != "timestamp" && field.Key != "level" && field.Key != "message" && field.Key != "caller" && field.Key != "module" {
+			builder.WriteString(" ")
+			builder.WriteString(field.Key)
+			builder.WriteString("=")
+
+			// Format the value based on its type
+			switch v := field.Value.(type) {
+			case string:
+				builder.WriteString(v)
+			case error:
+				builder.WriteString(v.Error())
+			default:
+				builder.WriteString(fmt.Sprintf("%v", v))
+			}
+		}
+	}
+
+	builder.WriteString("\n")
+
+	_, err := l.writer.Write([]byte(builder.String()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing log: %v\n", err)
 	}
 }
 
-// WithCustomLogger adds a custom logger to the server
+// WithCustomLogger sets a custom logger for the server
 func WithCustomLogger(logger Logger) AppLayer {
 	return func(s *Server) {
 		s.Logger = logger
 	}
 }
 
-// WithLogLevel sets the log level for the server's logger
+// WithLogLevel sets the log level for the server
 func WithLogLevel(level LogLevel) AppLayer {
 	return func(s *Server) {
-		if logger, ok := s.Logger.(*StructuredLogger); ok {
-			logger.SetLevel(level)
-		}
+		s.Logger.SetLevel(level)
 	}
 }
 
-// WithLogFormat sets the log format for the server's logger
+// WithLogFormat sets the log format for the server
 func WithLogFormat(format LogFormat) AppLayer {
 	return func(s *Server) {
+		s.Logger.SetFormat(format)
+	}
+}
+
+// WithModuleLogLevel sets the log level for a specific module
+func WithModuleLogLevel(module string, level LogLevel) AppLayer {
+	return func(s *Server) {
+		SetModuleLevel(module, level)
+	}
+}
+
+// WithLogRegistry sets a custom log registry for the server
+func WithLogRegistry(registry *LogRegistry) AppLayer {
+	return func(s *Server) {
 		if logger, ok := s.Logger.(*StructuredLogger); ok {
-			logger.SetFormat(format)
+			logger.SetRegistry(registry)
 		}
 	}
 }

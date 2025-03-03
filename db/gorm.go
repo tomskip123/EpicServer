@@ -19,6 +19,14 @@ type GormConfig struct {
 
 func WithGorm(gormConfig *GormConfig) EpicServer.AppLayer {
 	return func(s *EpicServer.Server) {
+		// Create module-based logger
+		dbLogger := s.Logger.WithModule("db.gorm")
+
+		dbLogger.Debug("Connecting to database with GORM",
+			EpicServer.F("connection_name", gormConfig.ConnectionName),
+			EpicServer.F("dialect", gormConfig.Dialect),
+			EpicServer.F("dsn", gormConfig.DSN))
+
 		var db *gorm.DB
 		var err error
 
@@ -30,15 +38,27 @@ func WithGorm(gormConfig *GormConfig) EpicServer.AppLayer {
 		case "sqlite":
 			db, err = gorm.Open(sqlite.Open(gormConfig.DSN), &gorm.Config{})
 		default:
-			panic(fmt.Sprintf("unsupported dialect: %s", gormConfig.Dialect))
+			errMsg := fmt.Sprintf("unsupported dialect: %s", gormConfig.Dialect)
+			dbLogger.Error("GORM initialization failed",
+				EpicServer.F("error", errMsg))
+			s.AddError(fmt.Errorf(errMsg))
+			return
 		}
 
 		if err != nil {
-			panic(fmt.Sprintf("failed to connect to database: %v", err))
+			dbLogger.Error("Failed to connect to database with GORM",
+				EpicServer.F("error", err.Error()),
+				EpicServer.F("dialect", gormConfig.Dialect))
+			s.AddError(err)
+			return
 		}
 
 		gormConfig.client = db
 		s.Db[gormConfig.ConnectionName] = gormConfig
+
+		dbLogger.Info("GORM connection established",
+			EpicServer.F("connection_name", gormConfig.ConnectionName),
+			EpicServer.F("dialect", gormConfig.Dialect))
 	}
 }
 
@@ -52,6 +72,25 @@ func GetGormDB(s *EpicServer.Server, connectionName string) *gorm.DB {
 
 // AutoMigrateModels runs GORM AutoMigrate for the given models
 func AutoMigrateModels(s *EpicServer.Server, connectionName string, models ...interface{}) error {
+	// Create module-based logger
+	dbLogger := s.Logger.WithModule("db.gorm")
+
 	db := GetGormDB(s, connectionName)
-	return db.AutoMigrate(models...)
+
+	dbLogger.Debug("Running GORM AutoMigrate",
+		EpicServer.F("connection_name", connectionName),
+		EpicServer.F("model_count", len(models)))
+
+	err := db.AutoMigrate(models...)
+
+	if err != nil {
+		dbLogger.Error("GORM AutoMigrate failed",
+			EpicServer.F("error", err.Error()),
+			EpicServer.F("connection_name", connectionName))
+	} else {
+		dbLogger.Info("GORM AutoMigrate completed successfully",
+			EpicServer.F("connection_name", connectionName))
+	}
+
+	return err
 }

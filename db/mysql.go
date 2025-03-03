@@ -19,6 +19,9 @@ type MySQLConfig struct {
 
 func WithMySQL(config MySQLConfig) EpicServer.AppLayer {
 	return func(s *EpicServer.Server) {
+		// Create module-based logger
+		dbLogger := s.Logger.WithModule("db.mysql")
+
 		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
 			config.User,
 			config.Password,
@@ -27,16 +30,32 @@ func WithMySQL(config MySQLConfig) EpicServer.AppLayer {
 			config.Database,
 		)
 
+		dbLogger.Debug("Connecting to MySQL",
+			EpicServer.F("connection_name", config.ConnectionName),
+			EpicServer.F("host", config.Host),
+			EpicServer.F("port", config.Port),
+			EpicServer.F("database", config.Database))
+
 		db, err := sql.Open("mysql", dsn)
 		if err != nil {
-			panic(err)
+			dbLogger.Error("Failed to open MySQL connection",
+				EpicServer.F("error", err.Error()))
+			s.AddError(err)
+			return
 		}
 
 		if err := db.Ping(); err != nil {
-			panic(err)
+			dbLogger.Error("Failed to ping MySQL",
+				EpicServer.F("error", err.Error()))
+			s.AddError(err)
+			return
 		}
 
 		s.Db[config.ConnectionName] = db
+
+		dbLogger.Info("MySQL connection established",
+			EpicServer.F("connection_name", config.ConnectionName),
+			EpicServer.F("database", config.Database))
 	}
 }
 

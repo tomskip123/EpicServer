@@ -214,9 +214,11 @@ func (l *testLogger) Warn(msg string, fields ...EpicServer.LogField)            
 func (l *testLogger) Error(msg string, fields ...EpicServer.LogField)            {}
 func (l *testLogger) Fatal(msg string, fields ...EpicServer.LogField)            {}
 func (l *testLogger) WithFields(fields ...EpicServer.LogField) EpicServer.Logger { return l }
+func (l *testLogger) WithModule(module string) EpicServer.Logger                 { return l }
 func (l *testLogger) SetOutput(io.Writer)                                        {}
 func (l *testLogger) SetLevel(EpicServer.LogLevel)                               {}
 func (l *testLogger) SetFormat(EpicServer.LogFormat)                             {}
+func (l *testLogger) SetRegistry(registry *EpicServer.LogRegistry)               {}
 
 // TestWithMemoryCache tests the WithMemoryCache function
 func TestWithMemoryCache(t *testing.T) {

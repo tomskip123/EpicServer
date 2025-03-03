@@ -18,10 +18,12 @@ import (
 // Replace the mockLogger implementation to use a real StructuredLogger to avoid interface issues
 func createMockLogger() Logger {
 	return &StructuredLogger{
-		writer: io.Discard,
-		level:  LogLevelInfo,
-		format: LogFormatText,
-		fields: []LogField{},
+		writer:   io.Discard,
+		level:    LogLevelInfo,
+		format:   LogFormatText,
+		fields:   []LogField{},
+		module:   "",
+		registry: globalRegistry,
 	}
 }
 
@@ -96,14 +98,14 @@ func TestNewServer(t *testing.T) {
 				SetSecretKey([]byte("test-secret-key")),
 			},
 			appLayers: []AppLayer{
-				WithHealthCheck("/health"),
+				WithHealthCheck("/test-health"),
 				WithCompression(),
 				WithEnvironment("test"),
 			},
 			assertions: func(t *testing.T, s *Server) {
 				// Test health endpoint
 				w := httptest.NewRecorder()
-				req := httptest.NewRequest("GET", "/health", nil)
+				req := httptest.NewRequest("GET", "/test-health", nil)
 				s.Engine.ServeHTTP(w, req)
 				if w.Code != http.StatusOK {
 					t.Errorf("health check failed: got %d, want %d", w.Code, http.StatusOK)
@@ -157,9 +159,9 @@ func TestAppLayers(t *testing.T) {
 		{
 			name: "health check layer",
 			appLayers: []AppLayer{
-				WithHealthCheck("/health"),
+				WithHealthCheck("/custom-health"),
 			},
-			testPath:   "/health",
+			testPath:   "/custom-health",
 			wantStatus: http.StatusOK,
 		},
 		{

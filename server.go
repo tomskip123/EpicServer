@@ -58,12 +58,11 @@ type ServerOption func(*Server) error
 // It applies all configurations and app layers in the order they are provided
 // Panics if no secret key is set
 func NewServer(options []Option) *Server {
-	// generate sensible default config
+	// Initialize the server with default configuration
 	config := defaultConfig()
 
-	// Apply configuration options
+	// Apply options to modify the configuration
 	for _, opt := range options {
-		// loop through each option and apply whatever functionality has been defined
 		opt(config)
 	}
 
@@ -77,19 +76,38 @@ func NewServer(options []Option) *Server {
 		return s
 	}
 
-	// We then define an initial setup for the server instance
+	// Initialize Gin engine
+	engine := gin.New()
+
 	s := &Server{
 		Config:      config,
-		Engine:      gin.New(),
-		Logger:      defaultLogger(os.Stdout),
+		Engine:      engine,
 		PublicPaths: make(map[string]bool),
 		AuthConfigs: make(map[string]*Auth),
 		Db:          make(map[string]interface{}),
 		Cache:       make(map[string]interface{}),
-		errors:      []error{},
+		errors:      make([]error, 0),
 	}
 
+	// Initialize the logger
+	s.Logger = defaultLogger(os.Stdout)
+
+	// Setup default hooks
 	s.Hooks = defaultHooks(s)
+
+	// Setup default AppLayers
+	defaultLayers := []AppLayer{
+		WithLoggerMiddleware(), // Add the logger to the context first
+		WithHealthCheck("/health"),
+		WithCompression(),
+		WithRemoveWWW(),
+		WithEnvironment(config.Server.Environment),
+	}
+
+	// Apply app layers
+	for _, layer := range defaultLayers {
+		layer(s)
+	}
 
 	return s
 }
@@ -243,6 +261,10 @@ func WithHealthCheck(path string) AppLayer {
 func WithCompression() AppLayer {
 	return func(s *Server) {
 		s.Engine.Use(CompressMiddleware)
+
+		// Add module-based logging
+		compressionLogger := s.Logger.WithModule("middleware.compression")
+		compressionLogger.Debug("Compression middleware enabled")
 	}
 }
 
@@ -250,6 +272,10 @@ func WithCompression() AppLayer {
 func WithRemoveWWW() AppLayer {
 	return func(s *Server) {
 		s.Engine.Use(RemoveWWWMiddleware())
+
+		// Add module-based logging
+		wwwLogger := s.Logger.WithModule("middleware.www")
+		wwwLogger.Debug("Remove WWW middleware enabled")
 	}
 }
 
@@ -257,6 +283,10 @@ func WithRemoveWWW() AppLayer {
 func WithCors(origins []string) AppLayer {
 	return func(s *Server) {
 		s.Engine.Use(CorsMiddleware(origins))
+
+		// Add module-based logging
+		corsLogger := s.Logger.WithModule("middleware.cors")
+		corsLogger.Debug("CORS middleware enabled", F("allowed_origins", origins))
 	}
 }
 
@@ -271,6 +301,10 @@ func WithEnvironment(environment string) AppLayer {
 		} else {
 			gin.SetMode(gin.TestMode)
 		}
+
+		// Add module-based logging
+		envLogger := s.Logger.WithModule("middleware.environment")
+		envLogger.Info("Environment set", F("mode", environment))
 	}
 }
 
@@ -278,6 +312,10 @@ func WithEnvironment(environment string) AppLayer {
 func WithTrustedProxies(proxies []string) AppLayer {
 	return func(s *Server) {
 		s.Engine.SetTrustedProxies(proxies)
+
+		// Add module-based logging
+		proxyLogger := s.Logger.WithModule("middleware.proxy")
+		proxyLogger.Debug("Trusted proxies configured", F("proxies", proxies))
 	}
 }
 
@@ -285,5 +323,21 @@ func WithTrustedProxies(proxies []string) AppLayer {
 func WithHttp2() AppLayer {
 	return func(s *Server) {
 		s.Engine.UseH2C = true
+
+		// Add module-based logging
+		http2Logger := s.Logger.WithModule("middleware.http2")
+		http2Logger.Debug("HTTP/2 support enabled")
+	}
+}
+
+// WithLoggerMiddleware adds the server's logger to the gin context
+// This should be added early in the middleware chain to ensure all subsequent middleware can access the logger
+func WithLoggerMiddleware() AppLayer {
+	return func(s *Server) {
+		s.Engine.Use(LoggerMiddleware(s.Logger))
+
+		// Log that the middleware has been added
+		loggerMwLogger := s.Logger.WithModule("middleware.logger")
+		loggerMwLogger.Debug("Logger middleware enabled")
 	}
 }

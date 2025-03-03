@@ -20,6 +20,9 @@ type PostgresConfig struct {
 
 func WithPostgres(config PostgresConfig) EpicServer.AppLayer {
 	return func(s *EpicServer.Server) {
+		// Create module-based logger
+		dbLogger := s.Logger.WithModule("db.postgres")
+
 		dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			config.Host,
 			config.Port,
@@ -29,16 +32,32 @@ func WithPostgres(config PostgresConfig) EpicServer.AppLayer {
 			config.SSLMode,
 		)
 
+		dbLogger.Debug("Connecting to PostgreSQL",
+			EpicServer.F("connection_name", config.ConnectionName),
+			EpicServer.F("host", config.Host),
+			EpicServer.F("port", config.Port),
+			EpicServer.F("database", config.Database))
+
 		db, err := sql.Open("postgres", dsn)
 		if err != nil {
-			panic(err)
+			dbLogger.Error("Failed to open PostgreSQL connection",
+				EpicServer.F("error", err.Error()))
+			s.AddError(err)
+			return
 		}
 
 		if err := db.Ping(); err != nil {
-			panic(err)
+			dbLogger.Error("Failed to ping PostgreSQL",
+				EpicServer.F("error", err.Error()))
+			s.AddError(err)
+			return
 		}
 
 		s.Db[config.ConnectionName] = db
+
+		dbLogger.Info("PostgreSQL connection established",
+			EpicServer.F("connection_name", config.ConnectionName),
+			EpicServer.F("database", config.Database))
 	}
 }
 

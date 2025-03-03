@@ -94,10 +94,12 @@ func WithAuth(
 
 		RegisterAuthRoutes(s, providers, sessionConfig.CookieName, sessionConfig.CookieDomain, sessionConfig.CookieSecure)
 
-		// 1. we need to setup oauth configs that can be used for different providers
-		// 2. we need to set up WithAuth to accept provider name, client id, secret and callback
-		// 3. the with auth layer should automatically set these up including routes and
-
+		// Add module-based logging
+		authLogger := s.Logger.WithModule("auth")
+		authLogger.Info("Authentication configured",
+			F("providers", len(providers)),
+			F("cookie_name", sessionConfig.CookieName),
+			F("cookie_domain", sessionConfig.CookieDomain))
 	}
 }
 
@@ -136,8 +138,15 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 				return
 			}
 
+			// Create module-based logger
+			authMiddlewareLogger := s.Logger.WithModule("auth.middleware")
+
 			session, err := GetSessionFromCookie(s, c, config.CookieName)
 			if err != nil {
+				authMiddlewareLogger.Debug("Authentication failed",
+					F("path", c.Request.URL.Path),
+					F("error", err.Error()))
+
 				if config.ErrorHandler != nil {
 					config.ErrorHandler(c, err)
 				} else {
@@ -146,30 +155,52 @@ func WithAuthMiddleware(config SessionConfig) AppLayer {
 				return
 			}
 
+			authMiddlewareLogger.Debug("User authenticated",
+				F("email", session.Email))
+
 			// Set user in context
 			c.Set(string(sessionKey), session)
 			c.Next()
 		})
+
+		// Add module-based logging
+		authLogger := s.Logger.WithModule("auth")
+		authLogger.Info("Auth middleware configured",
+			F("cookie_name", config.CookieName),
+			F("cookie_domain", config.CookieDomain))
 	}
 }
 
 func GetSessionFromCookie(s *Server, c *gin.Context, cookieName string) (*Session, error) {
+	// Create module-based logger
+	sessionLogger := s.Logger.WithModule("auth.session")
+
 	providerCookie, err := c.Cookie("provider")
 	if err != nil {
+		sessionLogger.Debug("Provider cookie not found", F("error", err.Error()))
 		return nil, err
 	}
 
 	cookie, err := s.AuthConfigs[providerCookie].CookieHandler.ReadCookieHandler(c, cookieName)
 	if err != nil {
+		sessionLogger.Debug("Failed to read cookie",
+			F("provider", providerCookie),
+			F("cookie_name", cookieName),
+			F("error", err.Error()))
 		return nil, err
-
 	}
 
 	// Validate session/token using the hooks
 	user, err := s.Hooks.Auth.OnSessionValidate(cookie)
 	if err != nil {
+		sessionLogger.Debug("Session validation failed",
+			F("email", cookie.Email),
+			F("error", err.Error()))
 		return nil, err
 	}
+
+	sessionLogger.Debug("Session validated successfully",
+		F("email", cookie.Email))
 
 	session := &Session{
 		User:      user,
@@ -253,6 +284,10 @@ func (d *DefaultAuthHooks) OnSessionDestroy(sessionToken string) error {
 func WithAuthHooks(hooks AuthenticationHooks) AppLayer {
 	return func(s *Server) {
 		s.Hooks.Auth = hooks
+
+		// Add module-based logging
+		authLogger := s.Logger.WithModule("auth.hooks")
+		authLogger.Debug("Auth hooks configured")
 	}
 }
 
@@ -264,7 +299,11 @@ type OAuthState struct {
 
 func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain string, secure bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// Create module-based logger
+		loginLogger := s.Logger.WithModule("auth.login")
+
 		providerParam := ctx.Param("provider")
+		loginLogger.Debug("Auth login request", F("provider", providerParam))
 
 		// if there is a app callback param in the original request, pass on to the oauth
 		var options []oauth2.AuthCodeOption
@@ -277,14 +316,14 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 
 			err := json.Unmarshal([]byte(customState), &cState)
 			if err != nil {
-				s.Logger.Error("Error parsing custom state", F("error", err.Error()))
+				loginLogger.Error("Error parsing custom state", F("error", err.Error()))
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}
 
 			stateJSON, err := json.Marshal(cState)
 			if err != nil {
-				s.Logger.Error("Error marshalling custom state", F("error", err.Error()))
+				loginLogger.Error("Error marshalling custom state", F("error", err.Error()))
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}
@@ -306,19 +345,20 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				username, password, ok := ctx.Request.BasicAuth()
 
 				if !ok {
+					loginLogger.Warn("Basic auth failed - no credentials provided")
 					ctx.AbortWithStatus(http.StatusUnauthorized)
 					return
 				}
 
 				authenticated, err := s.Hooks.Auth.OnAuthenticate(username, password, cState)
 				if err != nil {
-					s.Logger.Error("Error authenticating", F("error", err.Error()))
+					loginLogger.Error("Error authenticating", F("error", err.Error()))
 					ctx.AbortWithError(http.StatusUnauthorized, err)
 					return
 				}
 
 				if !authenticated {
-					s.Logger.Error("unauthorised")
+					loginLogger.Warn("Unauthorized login attempt", F("username", username))
 					ctx.AbortWithStatus(http.StatusUnauthorized)
 					return
 				}
@@ -329,7 +369,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				})
 
 				if err != nil {
-					s.Logger.Error("Error creating session", F("error", err.Error()))
+					loginLogger.Error("Error creating session", F("error", err.Error()))
 					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
@@ -344,19 +384,23 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				)
 
 				if err != nil {
-					s.Logger.Error("Error setting cookie", F("error", err.Error()))
+					loginLogger.Error("Error setting cookie", F("error", err.Error()))
 					ctx.AbortWithError(http.StatusInternalServerError, err)
 					return
 				}
 
-				s.Logger.Debug("Basic auth provider")
+				loginLogger.Info("Basic auth successful", F("username", username))
 				return
 			}
 
+			loginLogger.Debug("Redirecting to OAuth provider",
+				F("provider", providerParam),
+				F("state", state != "state"))
 			ctx.Redirect(http.StatusSeeOther, authConfig.Config.AuthCodeURL(state, options...))
 			return
 		}
 
+		loginLogger.Warn("Provider not found", F("provider", providerParam))
 		ctx.JSON(http.StatusNotFound, gin.H{"provider": "doesn't exist"})
 	}
 }
@@ -434,10 +478,15 @@ func DecodeStateString(stateString string) ([]byte, error) {
 
 func HandleAuthCallback(s *Server, providers []Provider, cookiename string, domain string, secure bool, hooks AuthenticationHooks) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// Create module-based logger
+		callbackLogger := s.Logger.WithModule("auth.callback")
+
 		prov := ctx.Param("provider")
+		callbackLogger.Debug("Auth callback request", F("provider", prov))
 
 		authConfig, exists := s.AuthConfigs[prov]
 		if !exists {
+			callbackLogger.Warn("Provider not found", F("provider", prov))
 			ctx.JSON(http.StatusNotFound, gin.H{"provider": "doesn't exist"})
 			return
 		}
@@ -445,6 +494,7 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		// Use the stored auth config
 		oauth2Token, err := authConfig.Config.Exchange(ctx, ctx.Query("code"))
 		if err != nil {
+			callbackLogger.Error("Failed to exchange token", F("error", err.Error()))
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
@@ -453,6 +503,7 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 		if !ok {
 			// handle missing token
+			callbackLogger.Error("Missing ID token in OAuth response")
 			ctx.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -461,6 +512,7 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		idToken, err := authConfig.Verifier.Verify(ctx, rawIDToken)
 		if err != nil {
 			// handle error
+			callbackLogger.Error("Failed to verify ID token", F("error", err.Error()))
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
@@ -470,14 +522,19 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 
 		if err := idToken.Claims(&claims); err != nil {
 			// handle error
+			callbackLogger.Error("Failed to extract claims", F("error", err.Error()))
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 			return
 		}
 
+		callbackLogger.Debug("Processing OAuth claims",
+			F("email", claims.Email),
+			F("verified", claims.Verified))
+
 		// event hook needs to be called here
 		contents, err := hooks.GetUserOrCreate(claims)
 		if err != nil {
-			fmt.Println(err)
+			callbackLogger.Error("Failed to get or create user", F("error", err.Error()))
 		}
 
 		err = authConfig.CookieHandler.SetCookieHandler(
@@ -500,14 +557,14 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		)
 
 		if err != nil {
-			s.Logger.Debug("Error setting cookie", F("error", err.Error()))
+			callbackLogger.Error("Error setting cookie", F("error", err.Error()))
 			return
 		}
 
 		if ctx.Query("state") != "state" {
 			decodedString, err := DecodeStateString(ctx.Query("state"))
 			if err != nil {
-				s.Logger.Error("Error decoding state string", F("error", err.Error()))
+				callbackLogger.Error("Error decoding state string", F("error", err.Error()))
 				// handle error
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
@@ -517,16 +574,20 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 
 			err = json.Unmarshal(decodedString, &stateStruct)
 			if err != nil {
-				s.Logger.Error("Error unmarshalling string", F("error", err.Error()))
+				callbackLogger.Error("Error unmarshalling string", F("error", err.Error()))
 				ctx.AbortWithError(http.StatusInternalServerError, err)
 				return
 			}
 
-			s.Logger.Debug("assuming consumer wants to handle redirect behavior use OnOAuthCallbackSuccess")
+			callbackLogger.Debug("Handling custom OAuth callback",
+				F("return_to", stateStruct.ReturnTo))
 			hooks.OnOAuthCallbackSuccess(ctx, stateStruct)
 			return
 		}
 
+		callbackLogger.Info("Authentication successful",
+			F("provider", prov),
+			F("email", claims.Email))
 		ctx.Redirect(http.StatusSeeOther, "/")
 	}
 }
@@ -534,6 +595,14 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 // HandleAuthLogout registers handler for the route that provides functionality to frontend for logging out.
 func HandleAuthLogout(cookiename string, cookieDomain string, cookieSecure bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// Create module-based logger - we need to get the server from context
+		var logoutLogger Logger
+		if s, exists := ctx.Get("server"); exists {
+			if server, ok := s.(*Server); ok {
+				logoutLogger = server.Logger.WithModule("auth.logout")
+			}
+		}
+
 		ctx.SetCookie(
 			cookiename,
 			"",
@@ -543,6 +612,10 @@ func HandleAuthLogout(cookiename string, cookieDomain string, cookieSecure bool)
 			cookieSecure,
 			true,
 		)
+
+		if logoutLogger != nil {
+			logoutLogger.Info("User logged out")
+		}
 
 		if ctx.Query("redirect") != "" {
 			ctx.Redirect(http.StatusSeeOther, ctx.Query("redirect"))

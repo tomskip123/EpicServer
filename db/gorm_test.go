@@ -38,14 +38,13 @@ func TestAutoMigrateModels(t *testing.T) {
 	}, "Should panic when DB not found")
 }
 
-// Mock the GetGormDB function
 // TestWithGorm tests the WithGorm function with SQLite in-memory database
 // which doesn't require external database connections
 func TestWithGorm(t *testing.T) {
 	tests := []struct {
 		name       string
 		gormConfig *GormConfig
-		wantPanic  bool
+		wantError  bool
 	}{
 		{
 			name: "sqlite in-memory connection",
@@ -54,7 +53,7 @@ func TestWithGorm(t *testing.T) {
 				Dialect:        "sqlite",
 				DSN:            ":memory:",
 			},
-			wantPanic: false,
+			wantError: false,
 		},
 		{
 			name: "invalid dialect",
@@ -63,38 +62,41 @@ func TestWithGorm(t *testing.T) {
 				Dialect:        "invalid",
 				DSN:            ":memory:",
 			},
-			wantPanic: true,
+			wantError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a mock logger that implements the Logger interface
+			mockLogger := &testLogger{}
+
 			s := &EpicServer.Server{
-				Db: make(map[string]interface{}),
+				Db:     make(map[string]interface{}),
+				Logger: mockLogger,
 			}
 
+			// Create the app layer
 			appLayer := WithGorm(tt.gormConfig)
 
-			if tt.wantPanic {
-				assert.Panics(t, func() {
-					appLayer(s)
-				})
-				return
-			}
-
-			// Should not panic
+			// Apply the layer - should not panic
 			assert.NotPanics(t, func() {
 				appLayer(s)
 			})
+
+			if tt.wantError {
+				// For invalid dialect, the connection should not be in the map
+				_, ok := s.Db[tt.gormConfig.ConnectionName].(*GormConfig)
+				assert.False(t, ok, "Should not have stored a valid connection for invalid dialect")
+				return
+			}
 
 			// Verify the connection was stored
 			assert.Contains(t, s.Db, tt.gormConfig.ConnectionName)
 
 			// Test the getter
-			if !tt.wantPanic {
-				db := GetGormDB(s, tt.gormConfig.ConnectionName)
-				assert.NotNil(t, db)
-			}
+			db := GetGormDB(s, tt.gormConfig.ConnectionName)
+			assert.NotNil(t, db)
 		})
 	}
 }
@@ -110,9 +112,20 @@ func TestWithMySQLMock(t *testing.T) {
 		Database:       "test",
 	}
 
+	// Create a mock server with a logger
+	s := &EpicServer.Server{
+		Db:     make(map[string]interface{}),
+		Logger: &testLogger{},
+	}
+
 	// This just tests that the function can be called without error
 	mysqlLayer := WithMySQL(config)
 	assert.NotNil(t, mysqlLayer)
+
+	// Should not panic
+	assert.NotPanics(t, func() {
+		mysqlLayer(s)
+	})
 }
 
 // TestWithPostgresMock tests the WithPostgres function with a mock approach
@@ -127,9 +140,20 @@ func TestWithPostgresMock(t *testing.T) {
 		SSLMode:        "disable",
 	}
 
+	// Create a mock server with a logger
+	s := &EpicServer.Server{
+		Db:     make(map[string]interface{}),
+		Logger: &testLogger{},
+	}
+
 	// This just tests that the function can be called without error
 	postgresLayer := WithPostgres(config)
 	assert.NotNil(t, postgresLayer)
+
+	// Should not panic
+	assert.NotPanics(t, func() {
+		postgresLayer(s)
+	})
 }
 
 // TestWithMongoMock tests the WithMongo function with a mock approach
@@ -140,14 +164,27 @@ func TestWithMongoMock(t *testing.T) {
 		DatabaseName:   "test",
 	}
 
+	// Create a mock server with a logger
+	s := &EpicServer.Server{
+		Db:     make(map[string]interface{}),
+		Logger: &testLogger{},
+	}
+
 	// This just tests that the function can be called without error
 	mongoLayer := WithMongo(config)
 	assert.NotNil(t, mongoLayer)
+
+	// Should not panic
+	assert.NotPanics(t, func() {
+		mongoLayer(s)
+	})
 }
 
 func TestGetGormDB(t *testing.T) {
+	// Create a mock server with a logger
 	s := &EpicServer.Server{
-		Db: make(map[string]interface{}),
+		Db:     make(map[string]interface{}),
+		Logger: &testLogger{},
 	}
 
 	// Setup a valid GORM config

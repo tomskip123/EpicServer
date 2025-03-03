@@ -11,6 +11,24 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Parse command line arguments
+for arg in "$@"
+do
+    case $arg in
+        --no-fail)
+        NO_FAIL=true
+        shift
+        ;;
+        --include-test-helpers)
+        INCLUDE_TEST_HELPERS=true
+        shift
+        ;;
+        *)
+        # Unknown option
+        ;;
+    esac
+done
+
 # Output directory for coverage reports
 COVERAGE_DIR="./coverage"
 mkdir -p $COVERAGE_DIR
@@ -19,11 +37,32 @@ mkdir -p $COVERAGE_DIR
 MIN_COVERAGE=${COVERAGE_THRESHOLD:-80}
 FAIL_ON_THRESHOLD=${FAIL_ON_THRESHOLD:-true}
 
+# Override fail on threshold if --no-fail was specified
+if [ "$NO_FAIL" = true ]; then
+    FAIL_ON_THRESHOLD=false
+    echo -e "${YELLOW}Running in no-fail mode - will not fail if coverage is below threshold${NC}"
+fi
+
+# Option to exclude test helpers, default is true
+EXCLUDE_TEST_HELPERS=${EXCLUDE_TEST_HELPERS:-true}
+
+# Override exclude test helpers if --include-test-helpers was specified
+if [ "$INCLUDE_TEST_HELPERS" = true ]; then
+    EXCLUDE_TEST_HELPERS=false
+    echo -e "${YELLOW}Including test helpers in coverage calculation${NC}"
+fi
+
 echo -e "${GREEN}Running tests with coverage for EpicServer...${NC}"
 
 # Run tests for the main package and generate coverage profile
-# Comment out the -race flag to avoid race condition issues
-go test -race -coverprofile=$COVERAGE_DIR/coverage.out -covermode=atomic ./...
+if [ "$EXCLUDE_TEST_HELPERS" = true ]; then
+    echo -e "${GREEN}Excluding test helpers from coverage calculation...${NC}"
+    # Use -coverpkg to specify which packages to include, excluding test helpers
+    go test -race -coverprofile=$COVERAGE_DIR/coverage.out -covermode=atomic -coverpkg=$(go list ./... | grep -v test) ./...
+else
+    # Include all packages in coverage
+    go test -race -coverprofile=$COVERAGE_DIR/coverage.out -covermode=atomic ./...
+fi
 
 # Generate HTML coverage report
 go tool cover -html=$COVERAGE_DIR/coverage.out -o $COVERAGE_DIR/coverage.html
@@ -32,7 +71,11 @@ go tool cover -html=$COVERAGE_DIR/coverage.out -o $COVERAGE_DIR/coverage.html
 COVERAGE_PCT=$(go tool cover -func=$COVERAGE_DIR/coverage.out | grep total | awk '{print $3}')
 
 echo -e "\n${GREEN}Test Coverage Summary:${NC}"
-echo -e "Total coverage: ${YELLOW}$COVERAGE_PCT${NC}"
+if [ "$EXCLUDE_TEST_HELPERS" = true ]; then
+    echo -e "Total coverage (excluding test helpers): ${YELLOW}$COVERAGE_PCT${NC}"
+else
+    echo -e "Total coverage: ${YELLOW}$COVERAGE_PCT${NC}"
+fi
 
 # Display coverage per package
 echo -e "\n${GREEN}Coverage by Package:${NC}"
@@ -66,6 +109,8 @@ if (( $(echo "$COVERAGE_NUM < $MIN_COVERAGE" | bc -l) )); then
     # Exit with error only if FAIL_ON_THRESHOLD is true
     if [ "$FAIL_ON_THRESHOLD" = true ]; then
         exit 1
+    else
+        echo -e "${YELLOW}Ignoring coverage threshold failure due to --no-fail option${NC}"
     fi
 fi
 

@@ -45,62 +45,72 @@ func (e *ErrMongoConnection) Error() string {
 //	        DatabaseName:  "myapp",
 //	    }),
 //	})
-func WithMongo(mongoConfig *MongoConfig) EpicServer.AppLayer {
+func WithMongo(config *MongoConfig) EpicServer.AppLayer {
 	return func(s *EpicServer.Server) {
-		ctx := context.Background()
+		// Create module-based logger
+		dbLogger := s.Logger.WithModule("db.mongo")
 
-		// Create client and connect
-		client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoConfig.URI))
+		dbLogger.Debug("Connecting to MongoDB",
+			EpicServer.F("connection_name", config.ConnectionName),
+			EpicServer.F("database", config.DatabaseName))
+
+		// Set client options
+		clientOptions := options.Client().ApplyURI(config.URI)
+
+		// Connect to MongoDB
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		client, err := mongo.Connect(ctx, clientOptions)
 		if err != nil {
-			s.Logger.Error(fmt.Sprintf("Failed to connect to MongoDB: %v", err))
-			// Store the error in the server's state instead of panicking
-			s.Db[mongoConfig.ConnectionName] = &ErrMongoConnection{URI: mongoConfig.URI, Err: err}
+			dbLogger.Error("Failed to connect to MongoDB",
+				EpicServer.F("error", err.Error()),
+				EpicServer.F("uri", config.URI))
+			s.AddError(&ErrMongoConnection{URI: config.URI, Err: err})
 			return
 		}
 
-		// Ping to verify connection
-		if err := client.Ping(ctx, nil); err != nil {
-			s.Logger.Error(fmt.Sprintf("Failed to ping MongoDB: %v", err))
-			// Store the error in the server's state instead of panicking
-			s.Db[mongoConfig.ConnectionName] = &ErrMongoConnection{URI: mongoConfig.URI, Err: err}
+		// Check the connection
+		err = client.Ping(ctx, nil)
+		if err != nil {
+			dbLogger.Error("Failed to ping MongoDB",
+				EpicServer.F("error", err.Error()),
+				EpicServer.F("uri", config.URI))
+			s.AddError(&ErrMongoConnection{URI: config.URI, Err: err})
 			return
 		}
 
-		// Cast the mongo client to the server's db interface
-		if db, ok := interface{}(client).(*mongo.Client); ok {
-			mongoConfig.client = db
-			s.Db[mongoConfig.ConnectionName] = mongoConfig
-		} else {
-			s.Logger.Error("mongo client does not implement DB interface")
-			s.Db[mongoConfig.ConnectionName] = fmt.Errorf("mongo client does not implement DB interface")
-		}
+		config.client = client
+		s.Db[config.ConnectionName] = config
+
+		dbLogger.Info("MongoDB connection established",
+			EpicServer.F("connection_name", config.ConnectionName),
+			EpicServer.F("database", config.DatabaseName))
 	}
 }
 
-// GetMongoClient safely retrieves the mongo.Client from the server
-// Returns the client and a boolean indicating success
-func GetMongoClient(s *EpicServer.Server, connectionName string) (*mongo.Client, bool) {
+// GetMongoClient retrieves the MongoDB client from the server's database pool.
+func GetMongoClient(s *EpicServer.Server, connectionName string) *mongo.Client {
 	if config, ok := s.Db[connectionName].(*MongoConfig); ok {
-		return config.client, true
+		return config.client
 	}
-
-	// Check if we have an error stored instead
-	if err, ok := s.Db[connectionName].(error); ok {
-		s.Logger.Error(fmt.Sprintf("Cannot get MongoDB client: %v", err))
-	} else {
-		s.Logger.Error(fmt.Sprintf("Cannot get MongoDB client: connection '%s' not found or is not a MongoDB connection", connectionName))
-	}
-
-	return nil, false
+	panic(fmt.Sprintf("MongoDB connection '%s' not found", connectionName))
 }
 
-// GetMongoCollection gets a MongoDB collection with error handling
-func GetMongoCollection(s *EpicServer.Server, connectionName string, databaseName string, collectionName string) (*mongo.Collection, error) {
-	client, ok := GetMongoClient(s, connectionName)
-	if !ok {
-		return nil, fmt.Errorf("failed to get MongoDB client for connection: %s", connectionName)
+// GetMongoDatabase retrieves a specific MongoDB database from the server's database pool.
+func GetMongoDatabase(s *EpicServer.Server, connectionName string) *mongo.Database {
+	if config, ok := s.Db[connectionName].(*MongoConfig); ok {
+		return config.client.Database(config.DatabaseName)
 	}
-	return client.Database(databaseName).Collection(collectionName), nil
+	panic(fmt.Sprintf("MongoDB connection '%s' not found", connectionName))
+}
+
+// GetMongoCollection retrieves a specific MongoDB collection from the server's database pool.
+func GetMongoCollection(s *EpicServer.Server, connectionName string, collectionName string) *mongo.Collection {
+	if config, ok := s.Db[connectionName].(*MongoConfig); ok {
+		return config.client.Database(config.DatabaseName).Collection(collectionName)
+	}
+	panic(fmt.Sprintf("MongoDB connection '%s' not found", connectionName))
 }
 
 //  MONGO HELPERS
