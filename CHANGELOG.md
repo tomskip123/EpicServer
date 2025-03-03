@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Set minimum coverage threshold at 80% with quality indicators
   - Added coverage configuration with `.coveragerc` for consistent analysis
 
+- **Module Path Updates**:
+  - Updated import paths from `github.com/tomskip123/EpicServer` to `github.com/tomskip123/EpicServer/v2`
+  - Fixed module versioning in all database connectors (MongoDB, MySQL, PostgreSQL, GORM)
+  - Updated import paths in cache implementations
+  - Updated code examples in README.md to use the correct import paths
+
 ### Bug Fixes
 
 - **Thread Safety Improvements**:
