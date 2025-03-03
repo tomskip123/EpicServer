@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tomskip123/EpicServer"
+	"github.com/tomskip123/EpicServer/v2"
 )
 
 // TestGetPostgresDB tests the GetPostgresDB function

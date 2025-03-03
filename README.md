@@ -108,7 +108,7 @@ Create a new web server in just a few lines:
 ```go
 package main
 
-import "github.com/tomskip123/EpicServer"
+import "github.com/tomskip123/EpicServer/v2"
 
 func main() {
     server := EpicServer.NewServer([]EpicServer.Option{
@@ -133,7 +133,7 @@ package main
 
 import (
     "github.com/gin-gonic/gin"
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
     "github.com/tomskip123/EpicServer/db"
 )
 
@@ -183,7 +183,7 @@ EpicServer provides a flexible configuration system using options pattern.
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
 )
 
 func main() {
@@ -242,7 +242,7 @@ EpicServer provides a flexible routing system that allows you to organize your r
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
 )
 
 func main() {
@@ -352,7 +352,7 @@ EpicServer provides a flexible authentication system supporting multiple provide
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
 )
 
 func main() {
@@ -493,7 +493,7 @@ EpicServer supports multiple database adapters out of the box:
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
     "github.com/tomskip123/EpicServer/db"
 )
 
@@ -528,7 +528,7 @@ func HandleUsers(c *gin.Context, s *EpicServer.Server) {
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
     "github.com/tomskip123/EpicServer/db"
 )
 
@@ -565,7 +565,7 @@ func HandleUsers(c *gin.Context, s *EpicServer.Server) {
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
     "github.com/tomskip123/EpicServer/db"
 )
 
@@ -601,7 +601,7 @@ func HandleUsers(c *gin.Context, s *EpicServer.Server) {
 package main
 
 import (
-	"github.com/tomskip123/EpicServer"
+	"github.com/tomskip123/EpicServer/v2"
 	"github.com/tomskip123/EpicServer/db"
 )
 
@@ -638,7 +638,7 @@ EpicServer includes a built-in memory cache system for temporary data storage.
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
     "github.com/tomskip123/EpicServer/cache"
 )
 
@@ -1201,7 +1201,7 @@ if err != nil {
 package main
 
 import (
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
 )
 
 func main() {
@@ -1298,7 +1298,7 @@ package main
 import (
     "time"
     
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
 )
 
 // Later in your code:
@@ -1482,7 +1482,7 @@ Available environment variables:
 import (
     "time"
     
-    "github.com/tomskip123/EpicServer"
+    "github.com/tomskip123/EpicServer/v2"
 )
 
 // Later in your code:

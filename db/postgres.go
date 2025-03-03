@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	_ "github.com/lib/pq"
-	"github.com/tomskip123/EpicServer"
+	"github.com/tomskip123/EpicServer/v2"
 )
 
 type PostgresConfig struct {

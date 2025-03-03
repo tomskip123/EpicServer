@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/tomskip123/EpicServer"
+	"github.com/tomskip123/EpicServer/v2"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

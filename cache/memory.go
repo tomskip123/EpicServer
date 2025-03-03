@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tomskip123/EpicServer"
+	"github.com/tomskip123/EpicServer/v2"
 )
 
 // MemoryCacheConfig contains configuration for memory cache
