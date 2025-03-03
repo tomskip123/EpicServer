@@ -813,15 +813,31 @@ EpicServer provides several built-in middleware options and supports custom midd
 
 #### Compression Middleware
 
-Automatically compresses responses and sets appropriate cache headers:
+> ⚠️ **Important Note**: Compression middleware is **already included by default** in the server initialization. You do not need to add it manually with `WithCompression()`. Adding it again will result in the middleware being applied twice, which can cause issues.
+
+If you need to customize compression settings, you can replace the default middleware with your own implementation.
 
 ```go
 func main() {
+    // DO NOT add compression middleware like this unless you have a specific reason
+    // as it's already included by default:
     server := EpicServer.NewServer(&EpicServer.NewServerParam{
         AppLayer: []EpicServer.AppLayer{
-            EpicServer.WithCompression(),
+            // EpicServer.WithCompression(), // This is redundant! Already included by default
         },
     })
+}
+```
+
+Default middleware layers included automatically:
+```go
+// These are already applied by default, you don't need to add them manually
+defaultLayers := []AppLayer{
+    WithLoggerMiddleware(), // Add the logger to the context first
+    WithHealthCheck("/health"),
+    WithCompression(),      // Compression is already here!
+    WithRemoveWWW(),
+    WithEnvironment(config.Server.Environment),
 }
 ```
 
@@ -911,6 +927,8 @@ Features:
 
 Create your own middleware:
 
+> ⚠️ **Important Note**: When adding custom middleware, be aware of the default middleware that's already included (WithLoggerMiddleware, WithHealthCheck, WithCompression, WithRemoveWWW, WithEnvironment). Avoid duplicating functionality that's already provided by default middleware.
+
 ```go
 func MyCustomMiddleware() EpicServer.AppLayer {
     return func(s *EpicServer.Server) {
@@ -939,18 +957,30 @@ server := EpicServer.NewServer(&EpicServer.NewServerParam{
 
 #### Middleware Order
 
-Middleware is executed in the order it's added:
+Middleware is executed in the order it's added. Be aware that some middleware is already included by default (as shown in the Compression Middleware section).
 
 ```go
+// Default middleware is applied first in this order:
+// 1. WithLoggerMiddleware()
+// 2. WithHealthCheck("/health")
+// 3. WithCompression()
+// 4. WithRemoveWWW()
+// 5. WithEnvironment(config.Server.Environment)
+
+// Then your custom middleware is applied:
 server := EpicServer.NewServer(&EpicServer.NewServerParam{
     AppLayer: []EpicServer.AppLayer{
-        EpicServer.WithCompression(),    // 1st
-        EpicServer.WithCors(origins),    // 2nd
-        EpicServer.WithRemoveWWW(),      // 3rd
-        MyCustomMiddleware(),            // 4th
+        // DO NOT add middleware that's already included by default
+        // EpicServer.WithCompression(),    // WRONG: Already included by default
+        
+        // DO add custom middleware you need
+        EpicServer.WithCors(origins),    // This will be 6th in execution order
+        MyCustomMiddleware(),            // This will be 7th in execution order
     },
 })
 ```
+
+When adding your own middleware, remember that it will be executed after the default middleware. If you need to replace or customize default middleware, you should use a different approach (see Custom Configuration section).
 
 #### Built-in Security Headers
 
@@ -992,7 +1022,121 @@ func MyHandler(c *gin.Context, s *EpicServer.Server) {
     apiKey := config.APIKey
     // Use configuration...
 }
+
+#### Replacing Default Middleware
+
+If you need to replace or customize default middleware (such as compression), you can create a custom server initialization that skips the default middleware:
+
+```go
+// Create a server without default middleware
+server := &EpicServer.Server{
+    Config: EpicServer.defaultConfig(),
+    Engine: gin.New(), // Use gin.New() instead of gin.Default() to avoid default middleware
+}
+
+// Initialize the logger
+server.Logger = EpicServer.defaultLogger(os.Stdout)
+
+// Setup default hooks
+server.Hooks = EpicServer.defaultHooks(server)
+
+// Add only the middleware you want
+server.Engine.Use(EpicServer.LoggerMiddleware(server.Logger))
+server.Engine.Use(EpicServer.RequestTimingMiddleware(server.Logger))
+server.Engine.Use(MyCustomCompressMiddleware()) // Your custom compression middleware
+server.Engine.Use(EpicServer.RemoveWWWMiddleware())
+
+// Continue with your custom configuration
+// ...
 ```
+
+This approach gives you full control over which middleware is included and in what order.
+
+#### Specifying Your Own Default Layers
+
+If you want to completely customize the default layers while still using the standard server initialization flow, you can create a wrapper function around `NewServer`:
+
+```go
+// Create a function that initializes a server with your custom default layers
+func NewCustomServer(options []EpicServer.Option) *EpicServer.Server {
+    // Initialize the server with default configuration
+    config := EpicServer.defaultConfig()
+
+    // Apply options to modify the configuration
+    for _, opt := range options {
+        opt(config)
+    }
+
+    // Validate configuration
+    if err := config.Validate(); err != nil {
+        s := &EpicServer.Server{
+            Config: config,
+            errors: []error{err},
+        }
+        return s
+    }
+
+    // Initialize Gin engine
+    engine := gin.New()
+
+    s := &EpicServer.Server{
+        Config:      config,
+        Engine:      engine,
+        PublicPaths: make(map[string]bool),
+        AuthConfigs: make(map[string]*EpicServer.Auth),
+        Db:          make(map[string]interface{}),
+        Cache:       make(map[string]interface{}),
+        errors:      make([]error, 0),
+    }
+
+    // Initialize the logger
+    s.Logger = EpicServer.defaultLogger(os.Stdout)
+
+    // Setup default hooks
+    s.Hooks = EpicServer.defaultHooks(s)
+
+    // Setup YOUR custom default layers
+    myDefaultLayers := []EpicServer.AppLayer{
+        EpicServer.WithLoggerMiddleware(), // Usually keep this first
+        EpicServer.WithHealthCheck("/custom-health"), // Customize health check path
+        // Skip compression if you don't want it
+        // EpicServer.WithCompression(),
+        // Add your own custom middleware
+        MyCustomMiddleware(),
+        // Keep other default middleware you want
+        EpicServer.WithRemoveWWW(),
+        EpicServer.WithEnvironment(config.Server.Environment),
+    }
+
+    // Apply your custom default layers
+    for _, layer := range myDefaultLayers {
+        layer(s)
+    }
+
+    return s
+}
+
+// Usage
+func main() {
+    server := NewCustomServer([]EpicServer.Option{
+        EpicServer.SetHost("localhost", 8080),
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+
+    // Add additional app layers if needed
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        EpicServer.WithCors([]string{"https://example.com"}),
+    })
+
+    server.Start()
+}
+```
+
+This approach allows you to:
+1. Completely customize which default layers are included
+2. Change the order of default layers
+3. Add your own custom middleware as part of the default layers
+4. Still use the standard server configuration options
 
 ### Multiple Database Connections
 
