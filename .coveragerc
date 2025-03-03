@@ -1,0 +1,26 @@
+# Coverage configuration for EpicServer
+
+# Specify patterns for files that should be included in coverage
+[run]
+include = [
+    "*.go",
+]
+
+# Exclude test files and specific patterns
+exclude = [
+    "*_test.go",
+    "vendor/*",
+    "mocks/*",
+]
+
+# Specify coverage reporting options
+[report]
+# Display a coverage report sorted by package and file
+sort = Name
+# Set a precision for coverage percentages (number of decimal places)
+precision = 2
+# Set a lower threshold for packages to warn about
+fail_under = 80
+
+# This file works with go test -coverprofile=coverage.out
+# and is used by the test-coverage.sh script. 

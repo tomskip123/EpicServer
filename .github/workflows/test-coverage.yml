@@ -1,0 +1,52 @@
+name: Test Coverage
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test with Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          
+      - name: Check out code
+        uses: actions/checkout@v3
+        
+      - name: Install dependencies
+        run: go mod download
+        
+      - name: Run Tests with Coverage
+        run: |
+          mkdir -p ./coverage
+          go test -race -coverprofile=./coverage/coverage.out -covermode=atomic ./...
+          
+      - name: Generate Coverage Report
+        run: go tool cover -func=./coverage/coverage.out
+        
+      - name: Check Coverage Threshold
+        run: |
+          COVERAGE_PCT=$(go tool cover -func=./coverage/coverage.out | grep total | awk '{print $3}')
+          COVERAGE_NUM=$(echo $COVERAGE_PCT | tr -d '%')
+          MIN_COVERAGE=80
+          
+          echo "Total coverage: $COVERAGE_PCT"
+          
+          if (( $(echo "$COVERAGE_NUM < $MIN_COVERAGE" | bc -l) )); then
+            echo "::error::Test coverage ($COVERAGE_PCT) is below the minimum threshold of $MIN_COVERAGE%"
+            exit 1
+          else
+            echo "Coverage meets minimum threshold of $MIN_COVERAGE%"
+          fi
+          
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: ./coverage/ 

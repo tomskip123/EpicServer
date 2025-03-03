@@ -48,6 +48,7 @@ See [CHANGELOG.md](CHANGELOG.md) for complete details.
    - [Authentication Hooks](#authentication-hooks)
    - [Custom Middleware](#custom-middleware)
    - [SPA Support](#spa-support)
+   - [Test Coverage](#test-coverage)
 
 4. [Security](#security)
    - [Authentication Setup](#authentication-setup)
@@ -1091,6 +1092,42 @@ func main() {
     })
 }
 ```
+
+### Test Coverage
+
+EpicServer maintains high test coverage standards to ensure reliability and stability.
+
+#### Running Test Coverage Analysis
+
+To run tests and generate a coverage report:
+
+```bash
+# Run the test coverage script
+./test-coverage.sh
+
+# Or manually run coverage analysis
+go test -race -coverprofile=./coverage/coverage.out -covermode=atomic ./...
+go tool cover -html=./coverage/coverage.out -o ./coverage/coverage.html
+```
+
+The coverage report will be generated in the `coverage` directory. The HTML report provides detailed information about which code paths are covered by tests and which need additional testing.
+
+#### Coverage Requirements
+
+- Minimum coverage threshold: 80%
+- Critical components require 90%+ coverage:
+  - Authentication mechanisms
+  - Database connectivity
+  - Core server initialization
+
+#### Continuous Integration
+
+The GitHub workflow automatically verifies test coverage on every pull request and push to the main branch, ensuring that coverage standards are maintained throughout development.
+
+To contribute code to EpicServer:
+1. Write tests for any new functionality
+2. Ensure existing tests pass and coverage meets or exceeds thresholds
+3. Run `./test-coverage.sh` locally before submitting a pull request
 
 ## Security
 
