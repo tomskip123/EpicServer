@@ -6,7 +6,7 @@
 ![Version](https://img.shields.io/badge/version-2.0.3-blue)
 [![Coverage Status](https://coveralls.io/repos/github/tomskip123/EpicServer/badge.svg?branch=main&v=1)](https://coveralls.io/github/tomskip123/EpicServer?branch=main&v=1)
 
-**[📚 Documentation Site](https://tomskip123.github.io/EpicServer) | [💻 GitHub Repo](https://github.com/tomskip123/EpicServer)**
+**[💻 GitHub Repo](https://github.com/tomskip123/EpicServer)**
 
 ## ⚠️ Breaking Changes in v2.0.0
 
@@ -99,33 +99,14 @@ Version 2.0.3 improves test coverage and reliability:
 
 ## Documentation
 
-The complete documentation for EpicServer is available at [https://tomskip123.github.io/EpicServer](https://tomskip123.github.io/EpicServer).
-
-For comprehensive guides, API reference, examples, and more, please visit the documentation site. The documentation is built with Hugo and the Doks theme, providing a modern and searchable interface to help you get the most out of EpicServer.
+The documentation for EpicServer is available in this README file and in the code comments. The codebase is well-documented with examples and explanations to help you get started quickly.
 
 ### Documentation Features
 
-- Comprehensive guides for all EpicServer features
-- Quick start tutorials
-- API reference
-- Code examples
-- Migration guides
-
-### Running Documentation Locally
-
-The documentation is built with Hugo and can be run locally:
-
-```bash
-cd docs
-npm install
-npm run dev
-```
-
-This will start a local development server at http://localhost:1313.
-
-### Contributing to Documentation
-
-See [docs/README.md](docs/README.md) for information on how to contribute to the documentation.
+- Comprehensive code comments
+- Examples in the README
+- Clear API interfaces
+- Test cases demonstrating usage
 
 ## Getting Started
 
