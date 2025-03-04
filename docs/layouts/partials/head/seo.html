@@ -1,0 +1,38 @@
+{{ $title := .Title }}
+{{ $description := .Description }}
+{{ $permalink := .Permalink }}
+{{ $siteTitle := .Site.Title }}
+
+{{ if .IsHome }}
+  {{ $title = .Site.Title }}
+  {{ $description = .Site.Params.description }}
+{{ end }}
+
+{{ if .Params.seo.title }}
+  {{ $title = .Params.seo.title }}
+{{ end }}
+
+{{ if .Params.seo.description }}
+  {{ $description = .Params.seo.description }}
+{{ end }}
+
+<title>{{ $title }}</title>
+<meta name="description" content="{{ $description }}">
+
+<!-- Canonical URL -->
+<link rel="canonical" href="{{ $permalink }}">
+
+<!-- Open Graph -->
+<meta property="og:title" content="{{ $title }}">
+<meta property="og:description" content="{{ $description }}">
+<meta property="og:url" content="{{ $permalink }}">
+<meta property="og:site_name" content="{{ $siteTitle }}">
+<meta property="og:type" content="{{ if .IsPage }}article{{ else }}website{{ end }}">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ $title }}">
+<meta name="twitter:description" content="{{ $description }}">
+
+<!-- Allow indexing -->
+<meta name="robots" content="index, follow"> 
