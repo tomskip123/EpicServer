@@ -42,6 +42,21 @@ Version 2.0.3 improves test coverage and reliability:
   - Updated `Start()` and `Stop()` methods to use mutex protection when accessing the HTTP server
   - Enhanced tests to properly handle concurrent access to server resources
 
+## 📚 Documentation
+
+EpicServer now provides comprehensive API documentation generated with [pkgsite](https://pkg.go.dev/golang.org/x/pkgsite/cmd/pkgsite).
+
+You can access the documentation in several ways:
+- **GitHub Pages**: Visit our [GitHub Pages documentation site](https://tomskip123.github.io/EpicServer/)
+- **Local Generation**: Run `./generate-pkgsite-docs.sh` to generate documentation locally in the `docs/` directory
+
+The documentation includes:
+- Complete API reference
+- Type definitions
+- Function signatures and descriptions
+- Package organization
+- Source code links
+
 ## Table of Contents
 
 1. [Getting Started](#getting-started)
@@ -97,11 +112,7 @@ Version 2.0.3 improves test coverage and reliability:
 9. [License](#license)
 10. [Support](#support)
 
-## Documentation
-
-The documentation for EpicServer is available in this README file and in the code comments. The codebase is well-documented with examples and explanations to help you get started quickly.
-
-### Documentation Features
+## Documentation Features
 
 - Comprehensive code comments
 - Examples in the README
