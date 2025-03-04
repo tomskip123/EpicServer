@@ -1,4 +1,1 @@
 coverage
-# Ignore docs directory but keep README.md
-docs/*
-!docs/README.md

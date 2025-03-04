@@ -1,0 +1,42 @@
+/* Additional styles for the static website */
+body {
+    background-color: #f5f7fa;
+}
+
+a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+.card {
+    background-color: white;
+    border-radius: 5px;
+    padding: 15px;
+    margin: 15px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.highlight {
+    background-color: #fffde7;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border-left: 3px solid #ffd600;
+} 

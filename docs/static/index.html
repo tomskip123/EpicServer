@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EpicServer Static Site</title>
+    <link rel="stylesheet" href="/site/styles.css">
+    <script src="/site/script.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to EpicServer!</h1>
+        <p>This is a static website served by EpicServer. The server is configured to serve all files from the <code>static</code> directory under the <code>/site</code> URL path.</p>
+        <p>You can add more HTML files, CSS, JavaScript, images, and other assets to this directory to build your static website.</p>
+        
+        <h2>Features</h2>
+        <ul>
+            <li>Simple static file serving at <code>/site/</code></li>
+            <li>Health check endpoint at <code>/health</code></li>
+            <li>API status endpoint at <code>/api/status</code></li>
+            <li>API info endpoint at <code>/api/info</code></li>
+            <li>Development environment with logging</li>
+        </ul>
+        
+        <div class="card">
+            <h3>External CSS</h3>
+            <p>This box is styled using the external <code>styles.css</code> file.</p>
+            <p class="highlight">This paragraph uses the highlight class from the external CSS.</p>
+            <button>Styled Button</button>
+        </div>
+        
+        <div class="card">
+            <h3>JavaScript Integration</h3>
+            <p>This page includes the <code>script.js</code> file which adds:</p>
+            <ul>
+                <li>A timestamp to the footer</li>
+                <li>Click events to buttons</li>
+                <li>Console messages</li>
+            </ul>
+            <button>Click Me</button>
+        </div>
+    </div>
+    
+    <div class="footer">
+        Powered by EpicServer - A powerful, flexible, and production-ready web server
+    </div>
+</body>
+</html> 
