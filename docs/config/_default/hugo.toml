@@ -61,8 +61,8 @@ copyRight = "Copyright (c) 2020-2024 Thulite"
   tag = "tags"
 
 [permalinks]
-  blog = "/blog/:slug/"
-  docs = "/docs/:sections[1:]/:slug/"
+  blog = "/blog/:slug.html"
+  docs = "/docs/:sections[1:]/:slug.html"
 # docs = "/docs/1.0/:sections[1:]/:slug/"
 
 [minify.tdewolff.html]
