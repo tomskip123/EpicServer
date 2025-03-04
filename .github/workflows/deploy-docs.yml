@@ -45,9 +45,10 @@ jobs:
         with:
           hugo-version: '0.145.0'
           extended: true
-          
+        
       - name: Build with Hugo
-        run: npm run build
+        run: |
+          hugo --gc --minify --environment production
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
