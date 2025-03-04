@@ -1,0 +1,18 @@
+{{- $index := slice -}}
+{{- range $page := where .Site.Pages "Kind" "in" (slice "page" "section") -}}
+  {{- if and (not .Draft) (not (in .Site.Params.doks.searchExclKinds .Kind)) (not (in .Site.Params.doks.searchExclTypes .Type)) -}}
+    {{- $pageData := dict -}}
+    {{- $pageData = merge $pageData (dict "title" .Title) -}}
+    {{- $pageData = merge $pageData (dict "href" .RelPermalink) -}}
+    {{- $pageData = merge $pageData (dict "section" (cond (eq .Section "") "docs" .Section)) -}}
+    {{- $pageData = merge $pageData (dict "content" (.Plain | htmlUnescape)) -}}
+    {{- if .Site.Params.doks.indexSummary -}}
+      {{- $pageData = merge $pageData (dict "summary" (.Summary | htmlUnescape)) -}}
+    {{- end -}}
+    {{- if .Date -}}
+      {{- $pageData = merge $pageData (dict "date" (.Date | time.Format ":date_long")) -}}
+    {{- end -}}
+    {{- $index = $index | append $pageData -}}
+  {{- end -}}
+{{- end -}}
+{{- $index | jsonify -}} 
