@@ -1,0 +1,20 @@
+name: GitHub Pages Configuration
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/pages.yml'
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Configure GitHub Pages
+        run: |
+          echo "This workflow exists to configure GitHub Pages settings."
+          echo "The actual deployment is handled by the deploy-docs.yml workflow." 
