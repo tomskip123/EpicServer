@@ -1,1 +1,4 @@
 coverage
+docs/public
+docs/.hugo_build.lock
+docs/resources

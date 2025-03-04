@@ -1,5 +1,7 @@
 title = "EpicServer Documentation"
 baseurl = "https://tomskip123.github.io/EpicServer/"
+publishDir = "public"
+assetDir = "assets"
 canonifyURLs = false
 disableAliases = true
 disableHugoGeneratorInject = true
