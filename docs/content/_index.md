@@ -18,7 +18,7 @@ EpicServer provides a robust foundation for building web applications and APIs i
 
 ### Quick Links
 
-- [Installation](/docs/getting-started/installation/)
-- [Quick Start Guide](/docs/getting-started/quick-start/)
-- [API Reference](/docs/reference/api/)
-- [Examples](/docs/examples/)
+- [Installation](/EpicServer/docs/getting-started/installation/)
+- [Quick Start Guide](/EpicServer/docs/getting-started/quick-start/)
+- [API Reference](/EpicServer/docs/reference/api/)
+- [Examples](/EpicServer/docs/examples/)
