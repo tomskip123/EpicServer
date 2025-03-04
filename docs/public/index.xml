@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>EpicServer on My Docs</title>
+    <link>http://localhost:1313/</link>
+    <description>Recent content in EpicServer on My Docs</description>
+    <generator>Hugo</generator>
+    <language>en</language>
+    <copyright>Copyright (c) 2020-2024 Thulite</copyright>
+    <lastBuildDate>Thu, 07 Sep 2023 16:12:03 +0200</lastBuildDate>
+    <atom:link href="http://localhost:1313/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Architecture</title>
+      <link>http://localhost:1313/docs/concepts/architecture/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/concepts/architecture/</guid>
+      <description>Learn about the core architecture and design principles behind EpicServer.</description>
+    </item>
+    <item>
+      <title>Basic API Example</title>
+      <link>http://localhost:1313/docs/examples/basic-api-example/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/examples/basic-api-example/</guid>
+      <description>Learn how to build a complete API with EpicServer, including routing, database integration, and authentication.</description>
+    </item>
+    <item>
+      <title>Installation</title>
+      <link>http://localhost:1313/docs/getting-started/installation/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/getting-started/installation/</guid>
+      <description>Learn how to add EpicServer to your Go project using Go modules.</description>
+    </item>
+    <item>
+      <title>Routing</title>
+      <link>http://localhost:1313/docs/guides/routing/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/routing/</guid>
+      <description>A comprehensive guide to setting up routes and handling requests in EpicServer.</description>
+    </item>
+    <item>
+      <title>API Reference</title>
+      <link>http://localhost:1313/docs/reference/api-reference/</link>
+      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <guid>http://localhost:1313/docs/reference/api-reference/</guid>
+      <description>Detailed documentation of all EpicServer&amp;rsquo;s public API methods and types.</description>
+    </item>
+    <item>
+      <title>Middleware</title>
+      <link>http://localhost:1313/docs/guides/middleware/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/middleware/</guid>
+      <description>A comprehensive guide to using built-in middleware and creating custom middleware in EpicServer.</description>
+    </item>
+    <item>
+      <title>Migration Guide</title>
+      <link>http://localhost:1313/docs/reference/migration-guide/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/reference/migration-guide/</guid>
+      <description>Learn how to upgrade your application from EpicServer v1.x to v2.x.</description>
+    </item>
+    <item>
+      <title>Quick Start</title>
+      <link>http://localhost:1313/docs/getting-started/quick-start/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/getting-started/quick-start/</guid>
+      <description>A step-by-step guide to create your first EpicServer application.</description>
+    </item>
+    <item>
+      <title>Database Support</title>
+      <link>http://localhost:1313/docs/guides/database-support/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/database-support/</guid>
+      <description>A comprehensive guide to using different database adapters in EpicServer.</description>
+    </item>
+    <item>
+      <title>Authentication</title>
+      <link>http://localhost:1313/docs/guides/authentication/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/authentication/</guid>
+      <description>A comprehensive guide to setting up authentication in EpicServer.</description>
+    </item>
+  </channel>
+</rss>

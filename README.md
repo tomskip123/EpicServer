@@ -95,13 +95,43 @@ Version 2.0.3 improves test coverage and reliability:
 9. [License](#license)
 10. [Support](#support)
 
+## Documentation
+
+The complete documentation for EpicServer is available at [https://tomskip123.github.io/EpicServer](https://tomskip123.github.io/EpicServer) (once deployed).
+
+### Documentation Features
+
+- Comprehensive guides for all EpicServer features
+- Quick start tutorials
+- API reference
+- Code examples
+- Migration guides
+
+### Running Documentation Locally
+
+The documentation is built with Hugo and can be run locally:
+
+```bash
+cd docs
+npm install
+npm run dev
+```
+
+This will start a local development server at http://localhost:1313.
+
+### Contributing to Documentation
+
+See [docs/README.md](docs/README.md) for information on how to contribute to the documentation.
+
 ## Getting Started
 
 ### Installation
 
 ```bash
-go get github.com/tomskip123/EpicServer
+go get github.com/tomskip123/EpicServer/v2
 ```
+
+> **Note:** Version 2.x is the only supported version. Version 1.x is deprecated and should not be used for new projects.
 
 ### Quick Start
 
