@@ -2,8 +2,8 @@
 
 > A powerful, flexible, and production-ready Go web server built on top of Gin framework.
 
-![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.16-blue)
-![Version](https://img.shields.io/badge/version-2.0.3-blue)
+![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.23-blue)
+![Version](https://img.shields.io/badge/version-2.0.4-blue)
 [![Coverage Status](https://coveralls.io/repos/github/tomskip123/EpicServer/badge.svg?branch=main&v=1)](https://coveralls.io/github/tomskip123/EpicServer?branch=main&v=1)
 
 **[💻 GitHub Repo](https://github.com/tomskip123/EpicServer)**
@@ -26,6 +26,15 @@ Version 2.0.1 improves documentation with:
 - Improved integration examples with imports and context
 - Enhanced changelog maintenance
 
+## 📊 Enhanced Logging in v2.0.2
+
+Version 2.0.2 introduces a powerful module-based logging system:
+- Hierarchical module structure with inheritance (e.g., `auth.oauth`)
+- Global log level registry for centralized management
+- Custom log registries for complex applications
+- New methods: `WithModule()`, `SetRegistry()`, and global helpers
+- New AppLayers: `WithModuleLogLevel()` and `WithLogRegistry()`
+
 ## 🧪 Enhanced Test Coverage in v2.0.3
 
 Version 2.0.3 improves test coverage and reliability:
@@ -35,27 +44,21 @@ Version 2.0.3 improves test coverage and reliability:
 - Fixed edge cases in authentication tests
 - Added specific tests for middleware components
 
-## 🔧 Recent Improvements in Unreleased Version
+## 🔄 Documentation Updates in v2.0.4
+
+- **Comprehensive Documentation**:
+  - Added detailed documentation for HTTP/2 support functionality
+  - Added documentation for Trusted Proxies configuration features
+  - Expanded Rate Limiting documentation with configuration examples
+  - Added comprehensive Advanced Logging Configuration section
+  - Improved Static File Serving documentation including SPA support
+
+## 🔧 Recent Improvements in v2.0.3
 
 - **Thread Safety Improvements**:
   - Fixed data race condition in Server struct by adding a mutex to protect concurrent access
   - Updated `Start()` and `Stop()` methods to use mutex protection when accessing the HTTP server
   - Enhanced tests to properly handle concurrent access to server resources
-
-## 📚 Documentation
-
-EpicServer now provides comprehensive API documentation generated with [pkgsite](https://pkg.go.dev/golang.org/x/pkgsite/cmd/pkgsite).
-
-You can access the documentation in several ways:
-- **GitHub Pages**: Visit our [GitHub Pages documentation site](https://tomskip123.github.io/EpicServer/)
-- **Local Generation**: Run `./generate-pkgsite-docs.sh` to generate documentation locally in the `docs/` directory
-
-The documentation includes:
-- Complete API reference
-- Type definitions
-- Function signatures and descriptions
-- Package organization
-- Source code links
 
 ## Table of Contents
 
@@ -112,13 +115,6 @@ The documentation includes:
 9. [License](#license)
 10. [Support](#support)
 
-## Documentation Features
-
-- Comprehensive code comments
-- Examples in the README
-- Clear API interfaces
-- Test cases demonstrating usage
-
 ## Getting Started
 
 ### Installation
@@ -160,18 +156,31 @@ Here's a complete example with routing, database, and authentication:
 package main
 
 import (
+    "fmt"
+    "log"
+    
     "github.com/gin-gonic/gin"
     "github.com/tomskip123/EpicServer/v2"
-    "github.com/tomskip123/EpicServer/db"
+    "github.com/tomskip123/EpicServer/v2/db"
 )
 
 func main() {
+    // Create a new server with options
     server := EpicServer.NewServer([]EpicServer.Option{
         EpicServer.SetHost("localhost", 8080),
         EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
+    
+    // Check for initialization errors
+    if server.HasErrors() {
+        for _, err := range server.GetErrors() {
+            log.Fatalf("Server initialization error: %v", err)
+        }
+    }
 
+    // Add application layers
     server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Add routes
         EpicServer.WithRoutes(
             EpicServer.RouteGroup{
                 Prefix: "/api/v1",
@@ -180,24 +189,49 @@ func main() {
                 },
             },
         ),
+        // Add MongoDB connection
         EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
             ConnectionName: "default",
             URI:           "mongodb://localhost:27017",
             DatabaseName:  "myapp",
         }),
+        // Add logging middleware
+        EpicServer.WithLoggerMiddleware(),
+        // Add security headers
+        EpicServer.WithSecurityHeaders(&EpicServer.SecurityHeadersConfig{
+            EnableHSTS:               true,
+            EnableContentTypeOptions: true,
+            EnableFrameOptions:       true,
+            FrameOption:              "DENY",
+            EnableXSSProtection:      true,
+        }),
     })
 
-    server.Start()
+    // Start the server
+    if err := server.Start(); err != nil {
+        log.Fatalf("Server error: %v", err)
+    }
 }
 
 func HandleUsers(c *gin.Context, s *EpicServer.Server) {
-    client := EpicServerDb.GetMongoClient(s, "default")
+    // Get MongoDB client
+    client, ok := EpicServerDb.GetMongoClient(s, "default")
+    if !ok {
+        c.JSON(500, gin.H{"error": "MongoDB client not found"})
+        return
+    }
+    
+    // Use the client
     db := client.Database("myapp")
     collection := db.Collection("users")
-    // Handle request using MongoDB...
+    
+    // Log with module-based logging
+    logger := s.Logger.WithModule("api.users")
+    logger.Info("Handling users request", EpicServer.F("path", c.Request.URL.Path))
+    
+    // Handle request
     c.JSON(200, gin.H{"message": "users endpoint"})
 }
-```
 
 ## Core Features
 
@@ -274,27 +308,29 @@ import (
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure routes
-            EpicServer.WithRoutes(
-                EpicServer.RouteGroup{
-                    Prefix: "/api/v1",
-                    Routes: []EpicServer.Route{
-                        EpicServer.Get("/users", HandleGetUsers),
-                        EpicServer.Post("/users", HandleCreateUser),
-                        EpicServer.Put("/users/:id", HandleUpdateUser),
-                        EpicServer.Delete("/users/:id", HandleDeleteUser),
-                    },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure routes
+        EpicServer.WithRoutes(
+            EpicServer.RouteGroup{
+                Prefix: "/api/v1",
+                Routes: []EpicServer.Route{
+                    EpicServer.Get("/users", HandleGetUsers),
+                    EpicServer.Post("/users", HandleCreateUser),
+                    EpicServer.Put("/users/:id", HandleUpdateUser),
+                    EpicServer.Delete("/users/:id", HandleDeleteUser),
                 },
-                EpicServer.RouteGroup{
-                    Prefix: "/admin",
-                    Routes: []EpicServer.Route{
-                        EpicServer.Get("/stats", HandleAdminStats),
-                    },
+            },
+            EpicServer.RouteGroup{
+                Prefix: "/admin",
+                Routes: []EpicServer.Route{
+                    EpicServer.Get("/stats", HandleAdminStats),
                 },
-            ),
-        },
+            },
+        ),
     })
 
     server.Start()
@@ -380,34 +416,37 @@ EpicServer provides a flexible authentication system supporting multiple provide
 package main
 
 import (
+    "time"
     "github.com/tomskip123/EpicServer/v2"
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure authentication
-            EpicServer.WithAuth([]EpicServer.Provider{
-                {
-                    Name:         "google",
-                    ClientId:     "your-client-id",
-                    ClientSecret: "your-client-secret",
-                    Callback:     "http://localhost:3000/auth/google/callback",
-                },
-            }, &EpicServer.SessionConfig{
-                CookieName:      "auth_session",
-                CookieDomain:    "localhost",
-                CookieSecure:    false,
-                CookieHTTPOnly:  true,
-                SessionDuration: time.Hour * 24,
-            }),
-            // Add authentication middleware
-            EpicServer.WithAuthMiddleware(EpicServer.SessionConfig{
-                CookieName:   "auth_session",
-                CookieDomain: "localhost",
-                CookieSecure: false,
-            }),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+    
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure authentication
+        EpicServer.WithAuth([]EpicServer.Provider{
+            {
+                Name:         "google",
+                ClientId:     "your-client-id",
+                ClientSecret: "your-client-secret",
+                Callback:     "http://localhost:3000/auth/google/callback",
+            },
+        }, &EpicServer.SessionConfig{
+            CookieName:      "auth_session",
+            CookieDomain:    "localhost",
+            CookieSecure:    false,
+            CookieHTTPOnly:  true,
+            SessionDuration: time.Hour * 24,
+        }),
+        // Add authentication middleware
+        EpicServer.WithAuthMiddleware(EpicServer.SessionConfig{
+            CookieName:   "auth_session",
+            CookieDomain: "localhost",
+            CookieSecure: false,
+        }),
     })
 
     server.Start()
@@ -671,19 +710,18 @@ import (
 )
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure memory cache
-            EpicServerCache.WithMemoryCache(&EpicServerCache.MemoryCacheConfig{
-                Name: "myCache",
-                Type: "memory",
-            }),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
 
-    // Use the cache in your handlers
-    cache := EpicServerCache.GetMemoryCache(server, "myCache")
-    
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure memory cache
+        EpicServerCache.WithMemoryCache(&EpicServerCache.MemoryCacheConfig{
+            Name: "myCache",
+            Type: "memory",
+        }),
+    })
+
     server.Start()
 }
 ```
@@ -737,12 +775,16 @@ Serve static files from a directory:
 var staticFiles embed.FS
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Serve static files
-            EpicServer.WithStaticDirectory("/static", &staticFiles, "static"),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
+
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Serve static files
+        EpicServer.WithStaticDirectory("/static", &staticFiles, "static"),
+    })
+
+    server.Start()
 }
 ```
 
@@ -755,21 +797,25 @@ Serve specific static files with custom MIME types:
 var favicon embed.FS
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Serve a single static file
-            EpicServer.WithStaticFile(
-                "favicon.ico",           // URL path
-                &favicon,                // Embedded filesystem
-                "favicon.ico",           // File path in embedded filesystem
-                "image/x-icon",          // MIME type
-            ),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
+
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Serve a single static file
+        EpicServer.WithStaticFile(
+            "favicon.ico",           // URL path
+            &favicon,                // Embedded filesystem
+            "favicon.ico",           // File path in embedded filesystem
+            "image/x-icon",          // MIME type
+        ),
+    })
+
+    server.Start()
 }
 ```
 
-#### SPA (Single Page Application) Support
+#### SPA Support
 
 Configure the server to handle SPA routing:
 
@@ -778,16 +824,20 @@ Configure the server to handle SPA routing:
 var spaFiles embed.FS
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure SPA handling
-            EpicServer.WithSPACatchAll(
-                &spaFiles,              // Embedded filesystem
-                "dist",                 // Static files directory
-                "dist/index.html",      // SPA entry point
-            ),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
+    
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Configure SPA handling
+        EpicServer.WithSPACatchAll(
+            &spaFiles,              // Embedded filesystem
+            "dist",                 // Static files directory
+            "dist/index.html",      // SPA entry point
+        ),
+    })
+    
+    server.Start()
 }
 ```
 
@@ -818,18 +868,22 @@ The static file system supports:
 var files embed.FS
 
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Serve static assets
-            EpicServer.WithStaticDirectory("/assets", &files, "assets"),
-            
-            // Serve favicon
-            EpicServer.WithStaticFile("favicon.ico", &files, "favicon.ico", "image/x-icon"),
-            
-            // Configure SPA
-            EpicServer.WithSPACatchAll(&files, "spa", "spa/index.html"),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
+
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Serve static assets
+        EpicServer.WithStaticDirectory("/assets", &files, "assets"),
+        
+        // Serve favicon
+        EpicServer.WithStaticFile("favicon.ico", &files, "favicon.ico", "image/x-icon"),
+        
+        // Configure SPA
+        EpicServer.WithSPACatchAll(&files, "spa", "spa/index.html"),
+    })
+
+    server.Start()
 }
 ```
 
@@ -847,10 +901,8 @@ If you need to customize compression settings, you can replace the default middl
 func main() {
     // DO NOT add compression middleware like this unless you have a specific reason
     // as it's already included by default:
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // EpicServer.WithCompression(), // This is redundant! Already included by default
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
 }
 ```
@@ -879,14 +931,18 @@ Configure Cross-Origin Resource Sharing:
 
 ```go
 func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            EpicServer.WithCors([]string{
-                "https://example.com",
-                "https://api.example.com",
-            }),
-        },
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
     })
+
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        EpicServer.WithCors([]string{
+            "https://example.com",
+            "https://api.example.com",
+        }),
+    })
+
+    server.Start()
 }
 ```
 
@@ -899,48 +955,55 @@ Features:
 
 #### CSRF Protection
 
-Enable CSRF token validation:
+EpicServer provides built-in CSRF protection to prevent cross-site request forgery attacks.
 
 ```go
-func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            EpicServer.WithCSRFProtection(),
-        },
-    })
-}
-
-// In your handlers
-func MyHandler(c *gin.Context) {
-    // Generate CSRF token
-    token, _ := EpicServer.GenerateCSRFToken()
-    
-    // Validate token in POST/PUT/DELETE requests
-    if !EpicServer.IsTrustedSource(c.Request) {
-        // Handle CSRF validation
-    }
-}
+// Add CSRF protection to your server
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithCSRFProtection(EpicServer.CSRFConfig{
+        CookieName:     "csrf_token",
+        HeaderName:     "X-CSRF-Token",
+        CookieMaxAge:   3600,
+        CookieSecure:   true,
+        CookieHTTPOnly: true,
+        CookieSameSite: http.SameSiteStrictMode,
+        ExcludedPaths:  []string{"/api/webhook", "/health"},
+    }),
+})
 ```
 
-Features:
-* Automatic token generation
-* Token validation
-* Trusted source bypass
-* Custom token storage
-* Header/Form support
+To use CSRF protection in your templates:
+
+```html
+<form method="POST" action="/submit">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <!-- other form fields -->
+    <button type="submit">Submit</button>
+</form>
+```
+
+For AJAX requests, include the CSRF token in the request headers:
+
+```javascript
+fetch('/api/data', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ key: 'value' })
+})
+```
 
 #### WWW Redirect Middleware
 
-Remove 'www' prefix from domains:
+Automatically redirect www to non-www or vice versa:
 
 ```go
-func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            EpicServer.WithRemoveWWW(),
-        },
-    })
-}
+// Redirect www to non-www
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRemoveWWW(),
+})
 ```
 
 Features:
@@ -953,10 +1016,8 @@ Features:
 
 Create your own middleware:
 
-> ⚠️ **Important Note**: When adding custom middleware, be aware of the default middleware that's already included (WithLoggerMiddleware, WithHealthCheck, WithCompression, WithRemoveWWW, WithEnvironment). Avoid duplicating functionality that's already provided by default middleware.
-
 ```go
-func MyCustomMiddleware() EpicServer.AppLayer {
+func MyCustomMiddleware() AppLayer {
     return func(s *EpicServer.Server) {
         s.Engine.Use(func(c *gin.Context) {
             // Pre-processing
@@ -967,17 +1028,19 @@ func MyCustomMiddleware() EpicServer.AppLayer {
             // Post-processing
             status := c.Writer.Status()
             if status >= 500 {
-                s.Logger.Error("Server error occurred")
+                s.Logger.Error("Server error occurred", EpicServer.F("status", status))
             }
         })
     }
 }
 
 // Usage
-server := EpicServer.NewServer(&EpicServer.NewServerParam{
-    AppLayer: []EpicServer.AppLayer{
-        MyCustomMiddleware(),
-    },
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetSecretKey([]byte("your-secret-key")),
+})
+
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    MyCustomMiddleware(),
 })
 ```
 
@@ -994,15 +1057,17 @@ Middleware is executed in the order it's added. Be aware that some middleware is
 // 5. WithEnvironment(config.Server.Environment)
 
 // Then your custom middleware is applied:
-server := EpicServer.NewServer(&EpicServer.NewServerParam{
-    AppLayer: []EpicServer.AppLayer{
-        // DO NOT add middleware that's already included by default
-        // EpicServer.WithCompression(),    // WRONG: Already included by default
-        
-        // DO add custom middleware you need
-        EpicServer.WithCors(origins),    // This will be 6th in execution order
-        MyCustomMiddleware(),            // This will be 7th in execution order
-    },
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetSecretKey([]byte("your-secret-key")),
+})
+
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    // DO NOT add middleware that's already included by default
+    // EpicServer.WithCompression(),    // WRONG: Already included by default
+    
+    // DO add custom middleware you need
+    EpicServer.WithCors(origins),    // This will be 6th in execution order
+    MyCustomMiddleware(),            // This will be 7th in execution order
 })
 ```
 
@@ -1016,6 +1081,130 @@ All responses automatically include security headers:
 * X-XSS-Protection: 1; mode=block
 * Strict-Transport-Security: max-age=31536000; includeSubDomains
 * Content-Security-Policy: configurable
+
+#### HTTP/2 Support
+
+Enable HTTP/2 for improved performance:
+
+```go
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithHttp2(),
+})
+```
+
+Features:
+* HTTP/2 multiplexing for parallel requests
+* Header compression
+* Server push capabilities
+* Reduced latency
+* Backward compatible
+
+#### Trusted Proxies Configuration
+
+When running behind load balancers, CDNs, or reverse proxies:
+
+```go
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithTrustedProxies([]string{
+        "127.0.0.1",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+    }),
+})
+```
+
+Features:
+* Proper handling of X-Forwarded-* headers
+* Correct client IP detection
+* Support for both individual IPs and CIDR ranges
+* Enhanced security for proxy environments
+
+#### Rate Limiting
+
+Protect your server from abuse with rate limiting:
+
+```go
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRateLimiter(EpicServer.RateLimiterConfig{
+        MaxRequests:   100,             // Maximum requests per interval
+        Interval:      time.Minute,     // Time window for request counting
+        BlockDuration: 5 * time.Minute, // How long to block after exceeding limit
+        ExcludedPaths: []string{        // Paths to exclude from rate limiting
+            "/health",
+            "/api/webhook",
+            "/public/*",
+        },
+    }),
+})
+```
+
+Features:
+* IP-based rate limiting
+* Configurable request thresholds
+* Automatic blocking of abusive clients
+* Path-based exclusions
+* Appropriate HTTP headers (X-RateLimit-*)
+* Cleanup of expired blocks
+
+#### Advanced Logging Configuration
+
+EpicServer provides extensive logging configuration options to tailor the logging system to your needs:
+
+```go
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    // Set global log level
+    EpicServer.WithLogLevel(EpicServer.LogLevelDebug),
+    
+    // Configure log format (JSON or Text)
+    EpicServer.WithLogFormat(EpicServer.LogFormatJSON),
+    
+    // Set log level for specific modules
+    EpicServer.WithModuleLogLevel("auth", EpicServer.LogLevelDebug),
+    EpicServer.WithModuleLogLevel("db", EpicServer.LogLevelInfo),
+    
+    // Or use a custom log registry for more control
+    EpicServer.WithLogRegistry(customRegistry),
+    
+    // Use a completely custom logger implementation
+    EpicServer.WithCustomLogger(myCustomLogger),
+})
+```
+
+Features:
+* Module-based log levels for granular control
+* JSON or text output formats
+* Custom log registry for centralized level management
+* Support for custom logger implementations
+* Contextual logging with fields
+* Performance optimized
+
+#### Static File Serving
+
+Serve static files and single-page applications (SPAs) with ease:
+
+```go
+//go:embed static
+var staticFiles embed.FS
+
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    // Serve a directory of static files
+    EpicServer.WithStaticDirectory("/static", &staticFiles, "static"),
+    
+    // Serve individual files with custom MIME types
+    EpicServer.WithStaticFile("/favicon.ico", &staticFiles, "static/favicon.ico", "image/x-icon"),
+    
+    // Handle SPA routing (serve index.html for non-matched routes)
+    EpicServer.WithSPACatchAll(&staticFiles, "static", "static/index.html"),
+})
+```
+
+Features:
+* Embedded file system support via Go 1.16+ embed package
+* Directory and individual file serving
+* Custom MIME type configuration
+* Single-page application (SPA) support with catch-all routes
+* Efficient file serving with proper caching headers
 
 ## Advanced Usage
 
@@ -1036,10 +1225,8 @@ customConfig := MyCustomConfig{
     Features:    []string{"feature1", "feature2"},
 }
 
-server := EpicServer.NewServer(&EpicServer.NewServerParam{
-    Configs: []EpicServer.Option{
-        EpicServer.SetCustomConfig(customConfig),
-    },
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetCustomConfig(customConfig),
 })
 
 // Access custom config in handlers
@@ -1169,27 +1356,29 @@ This approach allows you to:
 You can configure multiple database connections with different connection names:
 
 ```go
-server := EpicServer.NewServer(&EpicServer.NewServerParam{
-    AppLayer: []EpicServer.AppLayer{
-        // Configure multiple databases
-        EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
-            ConnectionName: "users",
-            URI:           "mongodb://localhost:27017",
-            DatabaseName:  "users",
-        }),
-        EpicServerDb.WithPostgres(EpicServerDb.PostgresConfig{
-            ConnectionName: "products",
-            Host:          "localhost",
-            Database:      "products",
-            // ...other config
-        }),
-        EpicServerDb.WithMySQL(EpicServerDb.MySQLConfig{
-            ConnectionName: "orders",
-            Host:          "localhost",
-            Database:      "orders",
-            // ...other config
-        }),
-    },
+server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetSecretKey([]byte("your-secret-key")),
+})
+
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    // Configure multiple databases
+    EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
+        ConnectionName: "users",
+        URI:           "mongodb://localhost:27017",
+        DatabaseName:  "users",
+    }),
+    EpicServerDb.WithPostgres(EpicServerDb.PostgresConfig{
+        ConnectionName: "products",
+        Host:          "localhost",
+        Database:      "products",
+        // ...other config
+    }),
+    EpicServerDb.WithMySQL(EpicServerDb.MySQLConfig{
+        ConnectionName: "orders",
+        Host:          "localhost",
+        Database:      "orders",
+        // ...other config
+    }),
 })
 ```
 
@@ -1202,79 +1391,6 @@ type MyAuthHooks struct {
     db *Database
 }
 
-func (h *MyAuthHooks) OnUserCreate(user EpicServer.Claims) (string, error) {
-    // Create user in database
-    return userID, nil
-}
-
-func (h *MyAuthHooks) GetUserOrCreate(user EpicServer.Claims) (*EpicServer.CookieContents, error) {
-    // Get or create user and return session data
-    return &EpicServer.CookieContents{
-        UserId:     user.UserID,
-        Email:      user.Email,
-        SessionId:  generateSessionID(),
-        IsLoggedIn: true,
-        ExpiresOn:  time.Now().Add(time.Hour * 24),
-    }, nil
-}
-
-// Add auth hooks to server
-server.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithAuthHooks(&MyAuthHooks{db: db}),
-})
-```
-
-### Custom Middleware
-
-Create your own middleware:
-
-```go
-func MyCustomMiddleware() EpicServer.AppLayer {
-    return func(s *EpicServer.Server) {
-        s.Engine.Use(func(c *gin.Context) {
-            // Pre-processing
-            c.Set("custom_key", "custom_value")
-            
-            c.Next()
-            
-            // Post-processing
-            status := c.Writer.Status()
-            if status >= 500 {
-                s.Logger.Error("Server error occurred")
-            }
-        })
-    }
-}
-
-// Usage
-server := EpicServer.NewServer(&EpicServer.NewServerParam{
-    AppLayer: []EpicServer.AppLayer{
-        MyCustomMiddleware(),
-    },
-})
-```
-
-### SPA Support
-
-Configure the server to handle SPA routing:
-
-```go
-//go:embed dist/*
-var spaFiles embed.FS
-
-func main() {
-    server := EpicServer.NewServer([]EpicServer.Option{
-        EpicServer.SetSecretKey([]byte("your-secret-key")),
-    })
-    server.UpdateAppLayer([]EpicServer.AppLayer{
-        // Configure SPA handling
-        EpicServer.WithSPACatchAll(
-            &spaFiles,              // Embedded filesystem
-            "dist",                 // Static files directory
-            "dist/index.html",      // SPA entry point
-        ),
-    })
-}
 ```
 
 ### Test Coverage
@@ -1326,10 +1442,6 @@ To contribute code to EpicServer:
 2. Ensure existing tests pass and coverage meets or exceeds thresholds
 3. Run `./test-coverage.sh` locally before submitting a pull request
 
-### Error Handling
-
-EpicServer v2.0.0 introduces a more robust error handling approach that replaces panics with proper error returns.
-
 #### Server Initialization Errors
 
 ```go
@@ -1373,507 +1485,3 @@ if !ok {
 collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapp", "users")
 if err != nil {
     // Handle error
-    c.JSON(500, gin.H{"error": "Failed to access collection"})
-    return
-}
-```
-
-## Security
-
-### Authentication Setup
-
-```go
-package main
-
-import (
-    "github.com/tomskip123/EpicServer/v2"
-)
-
-func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            // Configure authentication
-            EpicServer.WithAuth([]EpicServer.Provider{
-                {
-                    Name:         "google",
-                    ClientId:     "your-client-id",
-                    ClientSecret: "your-client-secret",
-                    Callback:     "http://localhost:3000/auth/google/callback",
-                },
-            }, &EpicServer.SessionConfig{
-                CookieName:      "auth_session",
-                CookieDomain:    "localhost",
-                CookieSecure:    false,
-                CookieHTTPOnly:  true,
-                SessionDuration: time.Hour * 24,
-            }),
-            // Add authentication middleware
-            EpicServer.WithAuthMiddleware(EpicServer.SessionConfig{
-                CookieName:   "auth_session",
-                CookieDomain: "localhost",
-                CookieSecure: false,
-            }),
-        },
-    })
-
-    server.Start()
-}
-```
-
-### CSRF Protection
-
-Enable CSRF token validation:
-
-```go
-func main() {
-    server := EpicServer.NewServer(&EpicServer.NewServerParam{
-        AppLayer: []EpicServer.AppLayer{
-            EpicServer.WithCSRFProtection(),
-        },
-    })
-}
-
-// In your handlers
-func MyHandler(c *gin.Context) {
-    // Generate CSRF token
-    token, _ := EpicServer.GenerateCSRFToken()
-    
-    // Validate token in POST/PUT/DELETE requests
-    if !EpicServer.IsTrustedSource(c.Request) {
-        // Handle CSRF validation
-    }
-}
-```
-
-### Security Headers
-
-All responses automatically include security headers:
-* X-Content-Type-Options: nosniff
-* X-Frame-Options: DENY
-* X-XSS-Protection: 1; mode=block
-* Strict-Transport-Security: max-age=31536000; includeSubDomains
-* Content-Security-Policy: configurable
-
-### Environment Variables
-
-Required environment variables for secure authentication:
-
-```env
-SECURE_COOKIE_HASH_KEY=base64_encoded_32_byte_key
-SECURE_COOKIE_BLOCK_KEY=base64_encoded_32_byte_key
-ENCRYPTION_KEY=32_byte_hex_encoded_key
-```
-
-Generate secure keys using:
-
-```go
-hashKey, _ := EpicServer.GenerateEncryptionKey()
-blockKey, _ := EpicServer.GenerateEncryptionKey()
-```
-
-### Rate Limiting
-
-EpicServer includes a built-in rate limiter to prevent abuse:
-
-#### Setting Up Rate Limiting
-
-```go
-package main
-
-import (
-    "time"
-    
-    "github.com/tomskip123/EpicServer/v2"
-)
-
-// Later in your code:
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithRateLimiter(EpicServer.RateLimiterConfig{
-        MaxRequests: 100,
-        Interval: time.Minute,
-        BlockDuration: 5 * time.Minute,
-        ExcludedPaths: []string{"/health", "/static/*"},
-    }),
-})
-```
-
-#### Rate Limiting Features
-
-* Fixed window rate limiting
-* Sliding window rate limiting
-* Customizable duration
-* Multiple named rate limiters
-
-## API Reference
-
-### Server Options
-
-* `WithHealthCheck(path string)` - Adds a health check endpoint
-* `WithCompression()` - Enables response compression
-* `WithRemoveWWW()` - Removes www prefix from domain
-* `WithCors(origins []string)` - Configures CORS settings
-* `WithEnvironment(environment string)` - Sets runtime environment (development/production/test)
-* `WithTrustedProxies(proxies []string)` - Configures trusted proxy addresses
-* `WithHttp2()` - Enables HTTP/2 support
-
-### Database Methods
-
-MongoDB specific helpers:
-* `StringToObjectID(id string)` - Convert string to MongoDB ObjectID
-* `StringArrayToObjectIDArray(ids []string)` - Convert string array to ObjectID array
-* `UpdateIndexes(ctx, collection, indexes)` - Create or update collection indexes
-* `StringArrayContains(array []string, value string)` - Check if string array contains value
-
-GORM specific helpers:
-* `AutoMigrateModels(s *EpicServer.Server, connectionName string, models ...interface{}) error` - Run GORM AutoMigrate for the given models
-
-### Cache Methods
-
-* `Set(key string, value interface{}, duration time.Duration)` - Store a value with expiration
-* `Get(key string) (interface{}, bool)` - Retrieve a value if it exists
-* `Delete(key string)` - Remove a value from the cache
-
-### Authentication Methods
-
-* `GenerateCSRFToken() (string, error)` - Generate a CSRF token
-* `IsTrustedSource(req *http.Request) bool` - Validate CSRF token
-* `GetSession(c *gin.Context) (*Session, error)` - Retrieve session data
-
-### Logging System
-
-* `Info(message string, args ...interface{})` - Logs an informational message
-* `Warn(message string, args ...interface{})` - Logs a warning message
-* `Error(message string, args ...interface{})` - Logs an error message
-
-## Migration Guide
-
-### Upgrading to v2.0.0
-
-Version 2.0.0 introduces several breaking changes to improve error handling, security, and maintainability. Follow this guide to update your application.
-
-#### 1. Logger Interface Changes
-
-The logging system has been completely refactored to support structured logging:
-
-```go
-// OLD (pre-v2.0.0)
-s.Logger.Info("Connected to database", dbName)
-
-// NEW (v2.0.0+)
-s.Logger.Info("Connected to database", F("name", dbName))
-```
-
-All logger methods now accept a message string and a variable number of `LogField` objects. Use the `F()` helper function to create these fields.
-
-#### 2. MongoDB Interface Changes
-
-Database connections no longer panic on failure and return more information:
-
-```go
-// OLD (pre-v2.0.0)
-client := EpicServerDb.GetMongoClient(s, "default")
-collection := client.Database("myapp").Collection("users")
-
-// NEW (v2.0.0+)
-client, ok := EpicServerDb.GetMongoClient(s, "default")
-if !ok {
-    // Handle error
-    return
-}
-collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapp", "users")
-if err != nil {
-    // Handle error
-    return
-}
-```
-
-#### 3. Server Initialization Error Handling
-
-Server initialization now captures errors instead of panicking:
-
-```go
-// OLD (pre-v2.0.0)
-server := EpicServer.NewServer([]EpicServer.Option{
-    EpicServer.SetSecretKey([]byte("your-secret-key")),
-})
-// If configuration is invalid, this would panic
-server.Start()
-
-// NEW (v2.0.0+)
-server := EpicServer.NewServer([]EpicServer.Option{
-    EpicServer.SetSecretKey([]byte("your-secret-key")),
-})
-if server.HasErrors() {
-    for _, err := range server.GetErrors() {
-        fmt.Printf("Server initialization error: %v\n", err)
-    }
-    return
-}
-server.Start()
-```
-
-#### 4. Memory Cache Configuration
-
-Memory cache now requires additional configuration parameters:
-
-```go
-// OLD (pre-v2.0.0)
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServerCache.WithMemoryCache(&EpicServerCache.MemoryCacheConfig{
-        Name: "default",
-        Type: "memory",
-    }),
-})
-
-// NEW (v2.0.0+)
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServerCache.WithMemoryCache(&EpicServerCache.MemoryCacheConfig{
-        Name: "default",
-        Type: "memory",
-        DefaultTTL: 5 * time.Minute,
-        CleanupInterval: time.Minute,
-        MaxItems: 1000, // Optional
-    }),
-})
-```
-
-### New Features Usage
-
-#### Environment Variables Configuration
-
-```go
-// Load configuration from environment variables
-server := EpicServer.NewServer([]EpicServer.Option{
-    EpicServer.WithEnvVars(),
-    // Provide fallback values for critical settings
-    EpicServer.SetSecretKey([]byte("fallback-secret-key")),
-})
-```
-
-Available environment variables:
-- `EPICSERVER_SERVER_HOST`: Server host
-- `EPICSERVER_SERVER_PORT`: Server port
-- `EPICSERVER_SERVER_ENVIRONMENT`: Environment name
-- `EPICSERVER_SECURITY_SECURECOOKIE`: Enable secure cookies (true/false)
-- `EPICSERVER_SECURITY_COOKIEDOMAIN`: Cookie domain
-- `EPICSERVER_SECURITY_CSPHEADER`: Content Security Policy header
-- `EPICSERVER_SECURITY_ORIGINS`: Comma-separated CORS origins
-- `EPICSERVER_SECRETKEY`: Secret key for encryption/signing
-
-#### Rate Limiting
-
-```go
-// Add rate limiting to your server
-import (
-    "time"
-    
-    "github.com/tomskip123/EpicServer/v2"
-)
-
-// Later in your code:
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithRateLimiter(EpicServer.RateLimiterConfig{
-        MaxRequests: 100,
-        Interval: time.Minute,
-        BlockDuration: 5 * time.Minute,
-        ExcludedPaths: []string{"/health", "/static/*"},
-    }),
-})
-```
-
-#### Security Headers
-
-```go
-// Add recommended security headers to all responses
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithSecurityHeaders(nil), // Use defaults
-})
-
-// Or with custom configuration
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithSecurityHeaders(&EpicServer.SecurityHeadersConfig{
-        EnableHSTS: true,
-        HSTSMaxAge: 63072000, // 2 years
-        ContentSecurityPolicy: "default-src 'self'",
-    }),
-})
-```
-
-#### Structured Logging Configuration
-
-```go
-// Configure log level
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithLogLevel(EpicServer.LogLevelDebug),
-})
-
-// Configure log format
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithLogFormat(EpicServer.LogFormatJSON),
-})
-
-// Log with structured fields
-s.Logger.Info("User authenticated", 
-    EpicServer.F("user_id", userID), 
-    EpicServer.F("ip", ip),
-    EpicServer.F("duration_ms", authDuration.Milliseconds()))
-```
-
-#### Module-Based Logging (v2.0.2+)
-
-EpicServer v2.0.2 introduces module-based logging, allowing you to control log levels for specific components of your application:
-
-```go
-// Set log level for specific modules
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    // Set global default log level
-    EpicServer.WithLogLevel(EpicServer.LogLevelInfo),
-    
-    // Enable debug logging only for authentication-related code
-    EpicServer.WithModuleLogLevel("auth", EpicServer.LogLevelDebug),
-    
-    // Set error-only logging for database operations
-    EpicServer.WithModuleLogLevel("db", EpicServer.LogLevelError),
-})
-
-// Create module-specific loggers in your code
-authLogger := s.Logger.WithModule("auth")
-dbLogger := s.Logger.WithModule("db")
-
-// These logs will respect their module's log level
-authLogger.Debug("OAuth flow started") // Will be logged (auth module is at Debug level)
-dbLogger.Debug("Connection pool stats") // Won't be logged (db module is at Error level)
-dbLogger.Error("Database connection failed") // Will be logged
-
-// You can also use hierarchical module names
-authOAuthLogger := s.Logger.WithModule("auth.oauth")
-authBasicLogger := s.Logger.WithModule("auth.basic")
-
-// These will inherit from parent modules if no specific level is set
-// In this case, both inherit LogLevelDebug from the "auth" module
-```
-
-Module-based logging features:
-
-- **Hierarchical modules**: Use dot notation (e.g., `auth.oauth`) to create a hierarchy of modules
-- **Inheritance**: Modules inherit log levels from parent modules if not explicitly set
-- **Global registry**: Module log levels are stored in a global registry by default
-- **Custom registries**: Create isolated log level registries for more complex applications
-
-Advanced usage with custom registry:
-
-```go
-// Create a custom log registry
-registry := EpicServer.NewLogRegistry(EpicServer.LogLevelWarn)
-registry.SetLevel("api", EpicServer.LogLevelDebug)
-
-// Use the custom registry
-s.UpdateAppLayer([]EpicServer.AppLayer{
-    EpicServer.WithLogRegistry(registry),
-})
-
-// Or create a logger with a custom registry directly
-logger := EpicServer.NewLoggerWithRegistry(os.Stdout, EpicServer.LogLevelInfo, EpicServer.LogFormatText, registry)
-```
-
-## Contributing
-
-### Getting Started
-
-1. Fork the repository
-2. Clone your fork:
-
-```bash
-git clone https://github.com/yourusername/EpicServer.git
-```
-
-3. Create your feature branch:
-
-```bash
-git checkout -b feature/amazing-feature
-```
-
-### Development
-
-1. Ensure you have Go 1.16+ installed
-2. Run tests before making changes:
-
-```bash
-go test -v ./...
-```
-
-### Testing Your Changes
-
-The project includes tests for core functionality. Always run tests before submitting a PR:
-
-```bash
-# Run all tests
-go test -v ./...
-
-# Run specific tests (examples)
-go test -run TestVerifyCSRFToken     # Test CSRF middleware
-go test -run TestCompressMiddleware  # Test compression
-go test -run TestServer_Start       # Test server startup
-```
-
-Key areas covered by tests:
-* Server initialization and configuration
-* Built-in middleware (CSRF, Compression, CORS, WWW redirect)
-* Environment settings
-* Server lifecycle
-* Logger functionality
-
-### Test Coverage Requirements
-
-EpicServer maintains strict test coverage requirements:
-
-1. Run the coverage analysis before submitting changes:
-
-```bash
-./test-coverage.sh
-```
-
-2. Ensure your changes meet the following coverage thresholds:
-   - Overall coverage: minimum 80%
-   - Critical components: minimum 90%
-   - New code: aim for 100% coverage
-
-3. The CI pipeline will automatically verify coverage on pull requests
-
-### Submitting Changes
-
-1. Commit your changes:
-
-```bash
-git commit -m 'Add some amazing feature'
-```
-
-2. Push to your fork:
-
-```bash
-git push origin feature/amazing-feature
-```
-
-3. Open a Pull Request
-
-### Code Style
-
-* Follow standard Go formatting (`go fmt`)
-* Use the established code style and conventions seen in files like `server.go` and `route.go`
-* Add tests for new features
-* Update documentation as needed
-* Keep commits focused and atomic
-* Use clear, descriptive commit messages and reference any related issues
-* Ensure backward compatibility unless explicitly breaking changes
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for details on changes in each version.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-Project Link: [https://github.com/tomskip123/EpicServer](https://github.com/tomskip123/EpicServer)

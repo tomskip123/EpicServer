@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.4] - 2025-03-05
+
+### Improvements
+
+- **Enhanced Documentation**:
+  - Added comprehensive documentation for HTTP/2 support functionality
+  - Added documentation for Trusted Proxies configuration features
+  - Expanded Rate Limiting documentation with configuration examples
+  - Added comprehensive Advanced Logging Configuration section
+  - Improved Static File Serving documentation including SPA support
+
 ## [2.0.3] - 2025-03-03
 
 ### Improvements
