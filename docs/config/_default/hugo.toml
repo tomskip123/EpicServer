@@ -2,7 +2,9 @@ title = "EpicServer Documentation"
 baseurl = "https://tomskip123.github.io/EpicServer/"
 publishDir = "public"
 assetDir = "assets"
-canonifyURLs = false
+canonifyURLs = true
+uglyURLs = true
+absURL = "https://tomskip123.github.io/EpicServer"
 disableAliases = true
 disableHugoGeneratorInject = true
 # disableKinds = ["taxonomy", "term"]
@@ -86,3 +88,12 @@ copyRight = "Copyright (c) 2020-2024 Thulite"
   hint = "photo"
   quality = 85
   resampleFilter = "Lanczos"
+
+[module]
+  [[module.mounts]]
+    source = "assets"
+    target = "assets"
+    includeFiles = "**/*"
+
+[security.funcs]
+  getenv = ['^HUGO_', '^CI$']
