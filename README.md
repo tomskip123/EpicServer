@@ -6,6 +6,8 @@
 ![Version](https://img.shields.io/badge/version-2.0.3-blue)
 [![Coverage Status](https://coveralls.io/repos/github/tomskip123/EpicServer/badge.svg?branch=main&v=1)](https://coveralls.io/github/tomskip123/EpicServer?branch=main&v=1)
 
+**[📚 Documentation Site](https://tomskip123.github.io/EpicServer) | [💻 GitHub Repo](https://github.com/tomskip123/EpicServer)**
+
 ## ⚠️ Breaking Changes in v2.0.0
 
 Version 2.0.0 introduces significant improvements with breaking changes. See [CHANGELOG.md](CHANGELOG.md) for details and migration guide.
@@ -97,7 +99,9 @@ Version 2.0.3 improves test coverage and reliability:
 
 ## Documentation
 
-The complete documentation for EpicServer is available at [https://tomskip123.github.io/EpicServer](https://tomskip123.github.io/EpicServer) (once deployed).
+The complete documentation for EpicServer is available at [https://tomskip123.github.io/EpicServer](https://tomskip123.github.io/EpicServer).
+
+For comprehensive guides, API reference, examples, and more, please visit the documentation site. The documentation is built with Hugo and the Doks theme, providing a modern and searchable interface to help you get the most out of EpicServer.
 
 ### Documentation Features
 
