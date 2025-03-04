@@ -1,301 +1,491 @@
 ---
-title: "Basic API Server"
-description: "Build a basic RESTful API server with EpicServer."
-summary: "Step-by-step guide to create a simple RESTful API using EpicServer."
-date: 2023-09-07T16:06:50+02:00
-lastmod: 2023-09-07T16:06:50+02:00
+title: "Basic API Example"
+description: "A complete example of building a basic API with EpicServer."
+summary: "Learn how to build a complete API with EpicServer, including routing, database integration, and authentication."
+date: 2023-09-07T16:12:03+02:00
+lastmod: 2023-09-07T16:12:03+02:00
 draft: false
 weight: 10
 toc: true
 seo:
   title: "Building a Basic API with EpicServer" # custom title (optional)
-  description: "Learn how to build a RESTful API with CRUD operations using EpicServer." # custom description (recommended)
+  description: "Step-by-step guide to building a complete API with EpicServer, including routing, database integration, and authentication." # custom description (recommended)
   canonical: "" # custom canonical URL (optional)
   robots: "" # custom robot tags (optional)
 ---
 
-## Introduction
+## Complete API Example
 
-In this example, we'll build a simple RESTful API for managing tasks. Our API will support the following operations:
+This example demonstrates how to build a complete API with EpicServer, including routing, database integration, and authentication.
 
-- Get all tasks
-- Get a task by ID
-- Create a new task
-- Update a task
-- Delete a task
+### Project Structure
 
-## Project Setup
-
-First, create a new directory for your project and initialize a Go module:
-
-```bash
-mkdir task-api
-cd task-api
-go mod init task-api
+```
+myapi/
+├── main.go
+├── go.mod
+├── go.sum
+├── handlers/
+│   ├── users.go
+│   └── auth.go
+└── models/
+    └── user.go
 ```
 
-Install EpicServer:
-
-```bash
-go get -u github.com/tomskip123/EpicServer
-```
-
-## Define the Task Model
-
-Create a file named `models.go` with the following content:
+### Main Application
 
 ```go
-package main
-
-import "time"
-
-type Task struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Completed   bool      `json:"completed"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-// In-memory store for tasks
-var tasks = make(map[string]*Task)
-```
-
-## Create API Handlers
-
-Create a file named `handlers.go` with the following content:
-
-```go
+// main.go
 package main
 
 import (
-	"net/http"
-	"time"
-
-	"github.com/google/uuid"
-	"github.com/tomskip123/EpicServer"
-)
-
-// GetTasks returns all tasks
-func GetTasks(ctx *epicserver.Context) {
-	// Convert map to slice for JSON response
-	taskList := make([]*Task, 0, len(tasks))
-	for _, task := range tasks {
-		taskList = append(taskList, task)
-	}
-	
-	ctx.JSON(http.StatusOK, taskList)
-}
-
-// GetTask returns a task by ID
-func GetTask(ctx *epicserver.Context) {
-	id := ctx.Param("id")
-	
-	task, exists := tasks[id]
-	if !exists {
-		ctx.JSON(http.StatusNotFound, epicserver.H{
-			"error": "Task not found",
-		})
-		return
-	}
-	
-	ctx.JSON(http.StatusOK, task)
-}
-
-// CreateTask creates a new task
-func CreateTask(ctx *epicserver.Context) {
-	var taskInput struct {
-		Title       string `json:"title" binding:"required"`
-		Description string `json:"description"`
-	}
-	
-	if err := ctx.Bind(&taskInput); err != nil {
-		ctx.JSON(http.StatusBadRequest, epicserver.H{
-			"error": "Invalid input",
-		})
-		return
-	}
-	
-	now := time.Now()
-	task := &Task{
-		ID:          uuid.New().String(),
-		Title:       taskInput.Title,
-		Description: taskInput.Description,
-		Completed:   false,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-	}
-	
-	tasks[task.ID] = task
-	
-	ctx.JSON(http.StatusCreated, task)
-}
-
-// UpdateTask updates an existing task
-func UpdateTask(ctx *epicserver.Context) {
-	id := ctx.Param("id")
-	
-	task, exists := tasks[id]
-	if !exists {
-		ctx.JSON(http.StatusNotFound, epicserver.H{
-			"error": "Task not found",
-		})
-		return
-	}
-	
-	var taskInput struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
-		Completed   bool   `json:"completed"`
-	}
-	
-	if err := ctx.Bind(&taskInput); err != nil {
-		ctx.JSON(http.StatusBadRequest, epicserver.H{
-			"error": "Invalid input",
-		})
-		return
-	}
-	
-	// Update fields if provided
-	if taskInput.Title != "" {
-		task.Title = taskInput.Title
-	}
-	
-	if taskInput.Description != "" {
-		task.Description = taskInput.Description
-	}
-	
-	task.Completed = taskInput.Completed
-	task.UpdatedAt = time.Now()
-	
-	ctx.JSON(http.StatusOK, task)
-}
-
-// DeleteTask deletes a task
-func DeleteTask(ctx *epicserver.Context) {
-	id := ctx.Param("id")
-	
-	_, exists := tasks[id]
-	if !exists {
-		ctx.JSON(http.StatusNotFound, epicserver.H{
-			"error": "Task not found",
-		})
-		return
-	}
-	
-	delete(tasks, id)
-	
-	ctx.JSON(http.StatusNoContent, nil)
-}
-```
-
-## Create Main Application
-
-Create a file named `main.go` with the following content:
-
-```go
-package main
-
-import (
-	"log"
-
-	"github.com/tomskip123/EpicServer"
+    "github.com/gin-gonic/gin"
+    "github.com/tomskip123/EpicServer/v2"
+    "github.com/tomskip123/EpicServer/db"
+    
+    "myapi/handlers"
 )
 
 func main() {
-	// Create a new server with default configuration
-	server := epicserver.NewServer(&epicserver.Config{
-		Port:         8080,
-		ReadTimeout:  30,
-		WriteTimeout: 30,
-	})
+    // Initialize server with options
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetHost("localhost", 8080),
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
 
-	// Add middleware
-	server.Use(epicserver.Logger())
-	server.Use(epicserver.Recovery())
+    // Configure server with app layers
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Add MongoDB connection
+        EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
+            ConnectionName: "default",
+            URI:           "mongodb://localhost:27017",
+            DatabaseName:  "myapi",
+        }),
+        
+        // Configure routes
+        EpicServer.WithRoutes(
+            EpicServer.RouteGroup{
+                Prefix: "/api/v1",
+                Routes: []EpicServer.Route{
+                    EpicServer.Get("/users", handlers.GetUsers),
+                    EpicServer.Get("/users/:id", handlers.GetUser),
+                    EpicServer.Post("/users", handlers.CreateUser),
+                    EpicServer.Put("/users/:id", handlers.UpdateUser),
+                    EpicServer.Delete("/users/:id", handlers.DeleteUser),
+                },
+            },
+        ),
+        
+        // Add CORS support
+        EpicServer.WithCors([]string{
+            "http://localhost:3000",
+            "https://myapp.example.com",
+        }),
+        
+        // Add authentication
+        EpicServer.WithAuth([]EpicServer.Provider{
+            {
+                Name:         "google",
+                ClientId:     "your-client-id",
+                ClientSecret: "your-client-secret",
+                Callback:     "http://localhost:8080/auth/google/callback",
+            },
+        }, &EpicServer.SessionConfig{
+            CookieName:      "auth_session",
+            CookieDomain:    "localhost",
+            CookieSecure:    false,
+            CookieHTTPOnly:  true,
+            SessionDuration: time.Hour * 24,
+        }),
+        
+        // Add authentication middleware
+        EpicServer.WithAuthMiddleware(EpicServer.SessionConfig{
+            CookieName:   "auth_session",
+            CookieDomain: "localhost",
+            CookieSecure: false,
+        }),
+        
+        // Configure public paths that don't require authentication
+        EpicServer.WithPublicPaths(EpicServer.PublicPathConfig{
+            Exact: []string{
+                "/health",
+                "/api/v1/users",
+            },
+            Prefix: []string{
+                "/auth",
+                "/public",
+            },
+        }),
+    })
 
-	// Define API routes
-	api := server.Group("/api")
-	{
-		tasks := api.Group("/tasks")
-		{
-			tasks.GET("", GetTasks)
-			tasks.GET("/:id", GetTask)
-			tasks.POST("", CreateTask)
-			tasks.PUT("/:id", UpdateTask)
-			tasks.DELETE("/:id", DeleteTask)
-		}
-	}
-
-	// Start the server
-	log.Println("API server starting on :8080...")
-	if err := server.Start(); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+    // Start the server
+    server.Start()
 }
 ```
 
-## Run the API Server
+### User Model
 
-Run the server with:
+```go
+// models/user.go
+package models
 
-```bash
-go run .
+import (
+    "time"
+    
+    "go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+type User struct {
+    ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+    Name      string             `bson:"name" json:"name"`
+    Email     string             `bson:"email" json:"email"`
+    CreatedAt time.Time          `bson:"created_at" json:"created_at"`
+    UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
+}
 ```
 
-## Test the API
+### User Handlers
 
-You can test the API using curl or any API client like Postman:
+```go
+// handlers/users.go
+package handlers
 
-### Create a Task
+import (
+    "context"
+    "net/http"
+    "time"
+    
+    "github.com/gin-gonic/gin"
+    "github.com/tomskip123/EpicServer/v2"
+    "github.com/tomskip123/EpicServer/db"
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson/primitive"
+    
+    "myapi/models"
+)
 
-```bash
-curl -X POST http://localhost:8080/api/tasks \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Learn EpicServer","description":"Build a simple REST API with EpicServer"}'
+// GetUsers returns all users
+func GetUsers(c *gin.Context, s *EpicServer.Server) {
+    // Get MongoDB client
+    client, ok := EpicServerDb.GetMongoClient(s, "default")
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Database connection failed"})
+        return
+    }
+    
+    // Get users collection
+    collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapi", "users")
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access collection"})
+        return
+    }
+    
+    // Find all users
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    cursor, err := collection.Find(ctx, bson.M{})
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    defer cursor.Close(ctx)
+    
+    // Decode users
+    var users []models.User
+    if err := cursor.All(ctx, &users); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    
+    c.JSON(http.StatusOK, users)
+}
+
+// GetUser returns a single user by ID
+func GetUser(c *gin.Context, s *EpicServer.Server) {
+    // Get user ID from URL parameter
+    id := c.Param("id")
+    
+    // Convert string ID to ObjectID
+    objectID, err := primitive.ObjectIDFromHex(id)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+        return
+    }
+    
+    // Get MongoDB collection
+    collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapi", "users")
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access collection"})
+        return
+    }
+    
+    // Find user by ID
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    var user models.User
+    err = collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&user)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    
+    c.JSON(http.StatusOK, user)
+}
+
+// CreateUser creates a new user
+func CreateUser(c *gin.Context, s *EpicServer.Server) {
+    // Parse request body
+    var user models.User
+    if err := c.ShouldBindJSON(&user); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    
+    // Set timestamps
+    now := time.Now()
+    user.CreatedAt = now
+    user.UpdatedAt = now
+    
+    // Get MongoDB collection
+    collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapi", "users")
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access collection"})
+        return
+    }
+    
+    // Insert user
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    result, err := collection.InsertOne(ctx, user)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    
+    // Get inserted ID
+    user.ID = result.InsertedID.(primitive.ObjectID)
+    
+    c.JSON(http.StatusCreated, user)
+}
+
+// UpdateUser updates an existing user
+func UpdateUser(c *gin.Context, s *EpicServer.Server) {
+    // Get user ID from URL parameter
+    id := c.Param("id")
+    
+    // Convert string ID to ObjectID
+    objectID, err := primitive.ObjectIDFromHex(id)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+        return
+    }
+    
+    // Parse request body
+    var user models.User
+    if err := c.ShouldBindJSON(&user); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    
+    // Set update timestamp
+    user.UpdatedAt = time.Now()
+    
+    // Get MongoDB collection
+    collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapi", "users")
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access collection"})
+        return
+    }
+    
+    // Update user
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    update := bson.M{
+        "$set": bson.M{
+            "name":       user.Name,
+            "email":      user.Email,
+            "updated_at": user.UpdatedAt,
+        },
+    }
+    
+    result, err := collection.UpdateOne(ctx, bson.M{"_id": objectID}, update)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    
+    if result.MatchedCount == 0 {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    
+    c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+}
+
+// DeleteUser deletes a user
+func DeleteUser(c *gin.Context, s *EpicServer.Server) {
+    // Get user ID from URL parameter
+    id := c.Param("id")
+    
+    // Convert string ID to ObjectID
+    objectID, err := primitive.ObjectIDFromHex(id)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+        return
+    }
+    
+    // Get MongoDB collection
+    collection, err := EpicServerDb.GetMongoCollection(s, "default", "myapi", "users")
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to access collection"})
+        return
+    }
+    
+    // Delete user
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    result, err := collection.DeleteOne(ctx, bson.M{"_id": objectID})
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    
+    if result.DeletedCount == 0 {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+    
+    c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
 ```
 
-### Get All Tasks
+### Authentication Hooks
 
-```bash
-curl http://localhost:8080/api/tasks
+```go
+// handlers/auth.go
+package handlers
+
+import (
+    "context"
+    "time"
+    
+    "github.com/tomskip123/EpicServer/v2"
+    "github.com/tomskip123/EpicServer/db"
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson/primitive"
+    
+    "myapi/models"
+)
+
+// AuthHooks implements the EpicServer.AuthHooks interface
+type AuthHooks struct {
+    server *EpicServer.Server
+}
+
+// NewAuthHooks creates a new AuthHooks instance
+func NewAuthHooks(server *EpicServer.Server) *AuthHooks {
+    return &AuthHooks{
+        server: server,
+    }
+}
+
+// OnUserCreate is called when a new user is created during authentication
+func (h *AuthHooks) OnUserCreate(claims EpicServer.Claims) (string, error) {
+    // Get MongoDB collection
+    collection, err := EpicServerDb.GetMongoCollection(h.server, "default", "myapi", "users")
+    if err != nil {
+        return "", err
+    }
+    
+    // Create new user
+    user := models.User{
+        Name:      claims.Name,
+        Email:     claims.Email,
+        CreatedAt: time.Now(),
+        UpdatedAt: time.Now(),
+    }
+    
+    // Insert user
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    result, err := collection.InsertOne(ctx, user)
+    if err != nil {
+        return "", err
+    }
+    
+    // Return user ID
+    return result.InsertedID.(primitive.ObjectID).Hex(), nil
+}
+
+// GetUserOrCreate is called during authentication to get or create a user
+func (h *AuthHooks) GetUserOrCreate(claims EpicServer.Claims) (*EpicServer.CookieContents, error) {
+    // Get MongoDB collection
+    collection, err := EpicServerDb.GetMongoCollection(h.server, "default", "myapi", "users")
+    if err != nil {
+        return nil, err
+    }
+    
+    // Try to find existing user
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
+    
+    var user models.User
+    err = collection.FindOne(ctx, bson.M{"email": claims.Email}).Decode(&user)
+    
+    // If user doesn't exist, create a new one
+    if err != nil {
+        userID, err := h.OnUserCreate(claims)
+        if err != nil {
+            return nil, err
+        }
+        
+        // Return session data
+        return &EpicServer.CookieContents{
+            UserId:     userID,
+            Email:      claims.Email,
+            SessionId:  primitive.NewObjectID().Hex(),
+            IsLoggedIn: true,
+            ExpiresOn:  time.Now().Add(time.Hour * 24),
+        }, nil
+    }
+    
+    // Return session data for existing user
+    return &EpicServer.CookieContents{
+        UserId:     user.ID.Hex(),
+        Email:      user.Email,
+        SessionId:  primitive.NewObjectID().Hex(),
+        IsLoggedIn: true,
+        ExpiresOn:  time.Now().Add(time.Hour * 24),
+    }, nil
+}
 ```
 
-### Get a Task by ID
+### Registering Auth Hooks
 
-```bash
-curl http://localhost:8080/api/tasks/{task_id}
+Add this to your main.go:
+
+```go
+// Register auth hooks
+authHooks := handlers.NewAuthHooks(server)
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithAuthHooks(authHooks),
+})
 ```
 
-### Update a Task
+## Running the API
+
+To run the API:
 
 ```bash
-curl -X PUT http://localhost:8080/api/tasks/{task_id} \
-  -H "Content-Type: application/json" \
-  -d '{"completed":true}'
+go mod init myapi
+go mod tidy
+go run main.go
 ```
 
-### Delete a Task
-
-```bash
-curl -X DELETE http://localhost:8080/api/tasks/{task_id}
-```
-
-## Conclusion
-
-You've built a basic RESTful API using EpicServer! This example demonstrates how to:
-
-- Set up a server with EpicServer
-- Define and organize routes
-- Create handlers for CRUD operations
-- Use middleware for logging and recovery
-- Work with JSON requests and responses
-
-This is just a starting point. You can extend this example by adding:
-
-- Database integration (e.g., PostgreSQL, MongoDB)
-- Authentication and authorization
-- Input validation
-- Error handling middleware
-- Swagger documentation
+The API will be available at http://localhost:8080/api/v1/users.

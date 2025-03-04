@@ -7,21 +7,56 @@
     <generator>Hugo</generator>
     <language>en</language>
     <copyright>Copyright (c) 2020-2024 Thulite</copyright>
-    <lastBuildDate>Thu, 07 Sep 2023 16:06:50 +0200</lastBuildDate>
+    <lastBuildDate>Thu, 07 Sep 2023 16:12:03 +0200</lastBuildDate>
     <atom:link href="http://localhost:1313/docs/guides/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Routing</title>
       <link>http://localhost:1313/docs/guides/routing/</link>
-      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
       <guid>http://localhost:1313/docs/guides/routing/</guid>
-      <description>Complete guide to defining and managing HTTP routes in EpicServer.</description>
+      <description>A comprehensive guide to setting up routes and handling requests in EpicServer.</description>
     </item>
     <item>
       <title>Middleware</title>
       <link>http://localhost:1313/docs/guides/middleware/</link>
-      <pubDate>Thu, 07 Sep 2023 16:06:50 +0200</pubDate>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
       <guid>http://localhost:1313/docs/guides/middleware/</guid>
-      <description>Complete guide to using and implementing middleware in EpicServer.</description>
+      <description>A comprehensive guide to using built-in middleware and creating custom middleware in EpicServer.</description>
+    </item>
+    <item>
+      <title>Database Support</title>
+      <link>http://localhost:1313/docs/guides/database-support/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/database-support/</guid>
+      <description>A comprehensive guide to using different database adapters in EpicServer.</description>
+    </item>
+    <item>
+      <title>Authentication</title>
+      <link>http://localhost:1313/docs/guides/authentication/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/authentication/</guid>
+      <description>A comprehensive guide to setting up authentication in EpicServer.</description>
+    </item>
+    <item>
+      <title>Caching</title>
+      <link>http://localhost:1313/docs/guides/caching/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/caching/</guid>
+      <description>A comprehensive guide to implementing caching in EpicServer.</description>
+    </item>
+    <item>
+      <title>Logging</title>
+      <link>http://localhost:1313/docs/guides/logging/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/logging/</guid>
+      <description>A comprehensive guide to configuring and using the structured logging system in EpicServer.</description>
+    </item>
+    <item>
+      <title>Configuration</title>
+      <link>http://localhost:1313/docs/guides/configuration/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/guides/configuration/</guid>
+      <description>A comprehensive guide to configuring EpicServer using different methods.</description>
     </item>
     <item>
       <title>Example Guide</title>

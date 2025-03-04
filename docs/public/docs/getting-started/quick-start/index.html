@@ -172,7 +172,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/concepts/server-architecture/">Server Architecture</a>
+      <a href="/docs/concepts/architecture/">Architecture</a>
   </li>
       </ul>
     </details>
@@ -192,6 +192,26 @@
   </li>
 
   <li>
+      <a href="/docs/guides/database-support/">Database Support</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/authentication/">Authentication</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/caching/">Caching</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/logging/">Logging</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/configuration/">Configuration</a>
+  </li>
+
+  <li>
       <a href="/docs/guides/example-guide/">Example Guide</a>
   </li>
       </ul>
@@ -204,7 +224,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/examples/basic-api-server/">Basic API Server</a>
+      <a href="/docs/examples/basic-api-example/">Basic API Example</a>
   </li>
       </ul>
     </details>
@@ -217,6 +237,10 @@
 
   <li>
       <a href="/docs/reference/api-reference/">API Reference</a>
+  </li>
+
+  <li>
+      <a href="/docs/reference/migration-guide/">Migration Guide</a>
   </li>
 
   <li>
@@ -384,7 +408,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/concepts/server-architecture/">Server Architecture</a>
+      <a href="/docs/concepts/architecture/">Architecture</a>
   </li>
       </ul>
     </details>
@@ -404,6 +428,26 @@
   </li>
 
   <li>
+      <a href="/docs/guides/database-support/">Database Support</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/authentication/">Authentication</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/caching/">Caching</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/logging/">Logging</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/configuration/">Configuration</a>
+  </li>
+
+  <li>
       <a href="/docs/guides/example-guide/">Example Guide</a>
   </li>
       </ul>
@@ -416,7 +460,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/examples/basic-api-server/">Basic API Server</a>
+      <a href="/docs/examples/basic-api-example/">Basic API Example</a>
   </li>
       </ul>
     </details>
@@ -429,6 +473,10 @@
 
   <li>
       <a href="/docs/reference/api-reference/">API Reference</a>
+  </li>
+
+  <li>
+      <a href="/docs/reference/migration-guide/">Migration Guide</a>
   </li>
 
   <li>
@@ -452,6 +500,7 @@
     <li><a href="#create-a-new-project">Create a New Project</a></li>
     <li><a href="#install-epicserver">Install EpicServer</a></li>
     <li><a href="#create-a-basic-server">Create a Basic Server</a></li>
+    <li><a href="#complete-example">Complete Example</a></li>
     <li><a href="#run-your-server">Run Your Server</a></li>
     <li><a href="#next-steps">Next Steps</a></li>
   </ul>
@@ -472,6 +521,7 @@
     <li><a href="#create-a-new-project">Create a New Project</a></li>
     <li><a href="#install-epicserver">Install EpicServer</a></li>
     <li><a href="#create-a-basic-server">Create a Basic Server</a></li>
+    <li><a href="#complete-example">Complete Example</a></li>
     <li><a href="#run-your-server">Run Your Server</a></li>
     <li><a href="#next-steps">Next Steps</a></li>
   </ul>
@@ -506,7 +556,7 @@
   <figcaption class="header">
     <span class="title"></span>
   </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">go get -u github.com/tomskip123/EpicServer</span></span></code></pre></div>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">go get github.com/tomskip123/EpicServer/v2</span></span></code></pre></div>
   </figure>
 </div>
 <h2 id="create-a-basic-server">Create a Basic Server<a href="#create-a-basic-server" class="anchor" aria-hidden="true">#</a> </h2>
@@ -521,30 +571,72 @@
   </figcaption>
   <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
 </span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="s">&#34;github.com/tomskip123/EpicServer/v2&#34;</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">Option</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">EpicServer</span><span class="p">.</span><span class="nf">SetSecretKey</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;your-secret-key&#34;</span><span class="p">)),</span>
+</span></span><span class="line"><span class="cl">	<span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">server</span><span class="p">.</span><span class="nf">UpdateAppLayer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithHealthCheck</span><span class="p">(</span><span class="s">&#34;/health&#34;</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithEnvironment</span><span class="p">(</span><span class="s">&#34;development&#34;</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">	<span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl">	<span class="nx">server</span><span class="p">.</span><span class="nf">Start</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+  </figure>
+</div>
+<p>This creates a minimal server with a health check endpoint and sets the environment to development.</p>
+<h2 id="complete-example">Complete Example<a href="#complete-example" class="anchor" aria-hidden="true">#</a> </h2>
+<p>Here&rsquo;s a more complete example with routing, database, and authentication:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
+</span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/tomskip123/EpicServer&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;log&#34;</span>
-</span></span><span class="line"><span class="cl">	<span class="s">&#34;net/http&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/gin-gonic/gin&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/tomskip123/EpicServer/v2&#34;</span>
+</span></span><span class="line"><span class="cl">	<span class="s">&#34;github.com/tomskip123/EpicServer/db&#34;</span>
 </span></span><span class="line"><span class="cl"><span class="p">)</span>
 </span></span><span class="line"><span class="cl">
 </span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">	<span class="c1">// Create a new server with default configuration</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">server</span> <span class="o">:=</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">Port</span><span class="p">:</span>         <span class="mi">8080</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ReadTimeout</span><span class="p">:</span>  <span class="mi">30</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">WriteTimeout</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">Option</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">EpicServer</span><span class="p">.</span><span class="nf">SetHost</span><span class="p">(</span><span class="s">&#34;localhost&#34;</span><span class="p">,</span> <span class="mi">8080</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">EpicServer</span><span class="p">.</span><span class="nf">SetSecretKey</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;your-secret-key&#34;</span><span class="p">)),</span>
 </span></span><span class="line"><span class="cl">	<span class="p">})</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Add a simple route</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">server</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34;/hello&#34;</span><span class="p">,</span> <span class="kd">func</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">ctx</span><span class="p">.</span><span class="nf">String</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="p">,</span> <span class="s">&#34;Hello, EpicServer!&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">server</span><span class="p">.</span><span class="nf">UpdateAppLayer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithRoutes</span><span class="p">(</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">EpicServer</span><span class="p">.</span><span class="nx">RouteGroup</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">Prefix</span><span class="p">:</span> <span class="s">&#34;/api/v1&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">				<span class="nx">Routes</span><span class="p">:</span> <span class="p">[]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">Route</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">					<span class="nx">EpicServer</span><span class="p">.</span><span class="nf">Get</span><span class="p">(</span><span class="s">&#34;/users&#34;</span><span class="p">,</span> <span class="nx">HandleUsers</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">				<span class="p">},</span>
+</span></span><span class="line"><span class="cl">			<span class="p">},</span>
+</span></span><span class="line"><span class="cl">		<span class="p">),</span>
+</span></span><span class="line"><span class="cl">		<span class="nx">EpicServerDb</span><span class="p">.</span><span class="nf">WithMongo</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">EpicServerDb</span><span class="p">.</span><span class="nx">MongoConfig</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">ConnectionName</span><span class="p">:</span> <span class="s">&#34;default&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">URI</span><span class="p">:</span>           <span class="s">&#34;mongodb://localhost:27017&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">			<span class="nx">DatabaseName</span><span class="p">:</span>  <span class="s">&#34;myapp&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">		<span class="p">}),</span>
 </span></span><span class="line"><span class="cl">	<span class="p">})</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl">	<span class="c1">// Start the server</span>
-</span></span><span class="line"><span class="cl">	<span class="nx">log</span><span class="p">.</span><span class="nf">Println</span><span class="p">(</span><span class="s">&#34;Server starting on :8080...&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">Start</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">		<span class="nx">log</span><span class="p">.</span><span class="nf">Fatalf</span><span class="p">(</span><span class="s">&#34;Failed to start server: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">	<span class="p">}</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">server</span><span class="p">.</span><span class="nf">Start</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">HandleUsers</span><span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">,</span> <span class="nx">s</span> <span class="o">*</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">Server</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">client</span> <span class="o">:=</span> <span class="nx">EpicServerDb</span><span class="p">.</span><span class="nf">GetMongoClient</span><span class="p">(</span><span class="nx">s</span><span class="p">,</span> <span class="s">&#34;default&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">db</span> <span class="o">:=</span> <span class="nx">client</span><span class="p">.</span><span class="nf">Database</span><span class="p">(</span><span class="s">&#34;myapp&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">collection</span> <span class="o">:=</span> <span class="nx">db</span><span class="p">.</span><span class="nf">Collection</span><span class="p">(</span><span class="s">&#34;users&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">	<span class="c1">// Handle request using MongoDB...</span>
+</span></span><span class="line"><span class="cl">	<span class="nx">c</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="nx">gin</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span><span class="s">&#34;message&#34;</span><span class="p">:</span> <span class="s">&#34;users endpoint&#34;</span><span class="p">})</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
   </figure>
 </div>
@@ -561,7 +653,7 @@
   <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">go run main.go</span></span></code></pre></div>
   </figure>
 </div>
-<p>Visit <code>http://localhost:8080/hello</code> in your browser or use curl:</p>
+<p>Visit <code>http://localhost:8080/health</code> in your browser or use curl to check if your server is running:</p>
 
 
 
@@ -570,16 +662,17 @@
   <figcaption class="header">
     <span class="title"></span>
   </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">curl http://localhost:8080/hello</span></span></code></pre></div>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">curl http://localhost:8080/health</span></span></code></pre></div>
   </figure>
 </div>
-<p>You should see the message &ldquo;Hello, EpicServer!&rdquo;.</p>
+<p>You should see a response indicating the server is healthy.</p>
 <h2 id="next-steps">Next Steps<a href="#next-steps" class="anchor" aria-hidden="true">#</a> </h2>
 <p>Now that you have a basic server running, you can:</p>
 <ol>
 <li>Learn about <a href="../../guides/routing/">Routing</a> to add more endpoints</li>
 <li>Set up <a href="../../guides/middleware/">Middleware</a> for request processing</li>
-<li>Implement <a href="../../guides/authentication/">Authentication</a> for your application</li>
+<li>Explore <a href="../../guides/database/">Database Support</a> for your application</li>
+<li>Implement <a href="../../guides/authentication/">Authentication</a> for secure access</li>
 </ol>
 
 			<div class="page-footer-meta d-flex flex-column flex-md-row justify-content-between">
@@ -598,7 +691,7 @@
 				</div>
 				<div class="d-flex flex-column">
 					<div class="text-body-secondary">Prev</div>
-					<a href="/docs/concepts/server-architecture/" class="stretched-link text-reset text-decoration-none">Server Architecture</a>
+					<a href="/docs/reference/migration-guide/" class="stretched-link text-reset text-decoration-none">Migration Guide</a>
 				</div>
 			</div>
 		</div>
@@ -607,7 +700,7 @@
 			<div class="card-body d-flex justify-content-end">
 				<div class="d-flex flex-column">
 					<div class="text-body-secondary">Next</div>
-					<a href="/docs/guides/middleware/" class="stretched-link text-reset text-decoration-none">Middleware</a>
+					<a href="/docs/guides/database-support/" class="stretched-link text-reset text-decoration-none">Database Support</a>
 				</div>
 				<div class="d-flex flex-column justify-content-center">
 					<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrow-right" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">

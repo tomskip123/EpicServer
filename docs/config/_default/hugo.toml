@@ -1,5 +1,5 @@
-title = "My Docs"
-baseurl = "http://localhost/"
+title = "EpicServer Documentation"
+baseurl = "https://tomskip123.github.io/EpicServer/"
 canonifyURLs = false
 disableAliases = true
 disableHugoGeneratorInject = true

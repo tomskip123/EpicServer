@@ -49,3 +49,11 @@ seo:
 - **Getting Started with EpicServer**: A video tutorial series covering the basics
 - **Advanced EpicServer Patterns**: Deep dive into advanced usage patterns
 - **Scaling EpicServer Applications**: Best practices for scaling your application
+
+## Official Resources
+
+- **GitHub Repository**: [EpicServer on GitHub](https://github.com/tomskip123/EpicServer)
+- **Issues**: [Report bugs or request features](https://github.com/tomskip123/EpicServer/issues)
+- **Discussions**: [Join the community discussions](https://github.com/tomskip123/EpicServer/discussions)
+
+> **Note:** Version 2.x is the only supported version of EpicServer. Version 1.x is deprecated and will not receive updates or security patches. All users are strongly encouraged to migrate to v2.x as soon as possible.

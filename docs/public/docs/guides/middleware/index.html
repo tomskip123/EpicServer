@@ -54,8 +54,8 @@
   <meta property="og:locale" content="en">
   <meta property="og:type" content="article">
     <meta property="article:section" content="docs">
-    <meta property="article:published_time" content="2023-09-07T16:06:50+02:00">
-    <meta property="article:modified_time" content="2023-09-07T16:06:50+02:00">
+    <meta property="article:published_time" content="2023-09-07T16:12:03+02:00">
+    <meta property="article:modified_time" content="2023-09-07T16:12:03+02:00">
     <meta property="og:image" content="http://localhost:1313/cover.png">
 
   <meta name="twitter:card" content="summary_large_image">
@@ -172,7 +172,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/concepts/server-architecture/">Server Architecture</a>
+      <a href="/docs/concepts/architecture/">Architecture</a>
   </li>
       </ul>
     </details>
@@ -192,6 +192,26 @@
   </li>
 
   <li>
+      <a href="/docs/guides/database-support/">Database Support</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/authentication/">Authentication</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/caching/">Caching</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/logging/">Logging</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/configuration/">Configuration</a>
+  </li>
+
+  <li>
       <a href="/docs/guides/example-guide/">Example Guide</a>
   </li>
       </ul>
@@ -204,7 +224,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/examples/basic-api-server/">Basic API Server</a>
+      <a href="/docs/examples/basic-api-example/">Basic API Example</a>
   </li>
       </ul>
     </details>
@@ -217,6 +237,10 @@
 
   <li>
       <a href="/docs/reference/api-reference/">API Reference</a>
+  </li>
+
+  <li>
+      <a href="/docs/reference/migration-guide/">Migration Guide</a>
   </li>
 
   <li>
@@ -384,7 +408,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/concepts/server-architecture/">Server Architecture</a>
+      <a href="/docs/concepts/architecture/">Architecture</a>
   </li>
       </ul>
     </details>
@@ -404,6 +428,26 @@
   </li>
 
   <li>
+      <a href="/docs/guides/database-support/">Database Support</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/authentication/">Authentication</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/caching/">Caching</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/logging/">Logging</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/configuration/">Configuration</a>
+  </li>
+
+  <li>
       <a href="/docs/guides/example-guide/">Example Guide</a>
   </li>
       </ul>
@@ -416,7 +460,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/examples/basic-api-server/">Basic API Server</a>
+      <a href="/docs/examples/basic-api-example/">Basic API Example</a>
   </li>
       </ul>
     </details>
@@ -429,6 +473,10 @@
 
   <li>
       <a href="/docs/reference/api-reference/">API Reference</a>
+  </li>
+
+  <li>
+      <a href="/docs/reference/migration-guide/">Migration Guide</a>
   </li>
 
   <li>
@@ -449,19 +497,19 @@
   <h3>On this page</h3>
     <nav id="toc">
   <ul>
-    <li><a href="#introduction-to-middleware">Introduction to Middleware</a></li>
-    <li><a href="#using-built-in-middleware">Using Built-in Middleware</a>
+    <li><a href="#middleware-in-epicserver">Middleware in EpicServer</a>
       <ul>
-        <li><a href="#logger-middleware">Logger Middleware</a></li>
-        <li><a href="#recovery-middleware">Recovery Middleware</a></li>
-        <li><a href="#cors-middleware">CORS Middleware</a></li>
+        <li><a href="#default-middleware">Default Middleware</a></li>
         <li><a href="#compression-middleware">Compression Middleware</a></li>
+        <li><a href="#cors-middleware">CORS Middleware</a></li>
+        <li><a href="#csrf-protection">CSRF Protection</a></li>
+        <li><a href="#www-redirect-middleware">WWW Redirect Middleware</a></li>
+        <li><a href="#custom-middleware">Custom Middleware</a></li>
+        <li><a href="#middleware-order">Middleware Order</a></li>
+        <li><a href="#built-in-security-headers">Built-in Security Headers</a></li>
+        <li><a href="#replacing-default-middleware">Replacing Default Middleware</a></li>
       </ul>
     </li>
-    <li><a href="#creating-custom-middleware">Creating Custom Middleware</a></li>
-    <li><a href="#middleware-order">Middleware Order</a></li>
-    <li><a href="#aborting-middleware-chain">Aborting Middleware Chain</a></li>
-    <li><a href="#best-practices">Best Practices</a></li>
   </ul>
 </nav>
 </div>
@@ -477,31 +525,29 @@
     <div class="page-links">
       <nav id="TableOfContents">
   <ul>
-    <li><a href="#introduction-to-middleware">Introduction to Middleware</a></li>
-    <li><a href="#using-built-in-middleware">Using Built-in Middleware</a>
+    <li><a href="#middleware-in-epicserver">Middleware in EpicServer</a>
       <ul>
-        <li><a href="#logger-middleware">Logger Middleware</a></li>
-        <li><a href="#recovery-middleware">Recovery Middleware</a></li>
-        <li><a href="#cors-middleware">CORS Middleware</a></li>
+        <li><a href="#default-middleware">Default Middleware</a></li>
         <li><a href="#compression-middleware">Compression Middleware</a></li>
+        <li><a href="#cors-middleware">CORS Middleware</a></li>
+        <li><a href="#csrf-protection">CSRF Protection</a></li>
+        <li><a href="#www-redirect-middleware">WWW Redirect Middleware</a></li>
+        <li><a href="#custom-middleware">Custom Middleware</a></li>
+        <li><a href="#middleware-order">Middleware Order</a></li>
+        <li><a href="#built-in-security-headers">Built-in Security Headers</a></li>
+        <li><a href="#replacing-default-middleware">Replacing Default Middleware</a></li>
       </ul>
     </li>
-    <li><a href="#creating-custom-middleware">Creating Custom Middleware</a></li>
-    <li><a href="#middleware-order">Middleware Order</a></li>
-    <li><a href="#aborting-middleware-chain">Aborting Middleware Chain</a></li>
-    <li><a href="#best-practices">Best Practices</a></li>
   </ul>
 </nav>
     </div>
   </details>
 
 			</nav>
-			<h2 id="introduction-to-middleware">Introduction to Middleware<a href="#introduction-to-middleware" class="anchor" aria-hidden="true">#</a> </h2>
-<p>Middleware are functions that process HTTP requests before they reach your route handlers or after the response is generated. They are a powerful way to add common functionality to your web application, such as authentication, logging, CORS support, and more.</p>
-<h2 id="using-built-in-middleware">Using Built-in Middleware<a href="#using-built-in-middleware" class="anchor" aria-hidden="true">#</a> </h2>
-<p>EpicServer comes with several built-in middleware functions that you can use in your application:</p>
-<h3 id="logger-middleware">Logger Middleware<a href="#logger-middleware" class="anchor" aria-hidden="true">#</a> </h3>
-<p>The logger middleware logs information about incoming HTTP requests:</p>
+			<h2 id="middleware-in-epicserver">Middleware in EpicServer<a href="#middleware-in-epicserver" class="anchor" aria-hidden="true">#</a> </h2>
+<p>EpicServer provides several built-in middleware options and supports custom middleware creation.</p>
+<h3 id="default-middleware">Default Middleware<a href="#default-middleware" class="anchor" aria-hidden="true">#</a> </h3>
+<p>EpicServer includes the following middleware by default:</p>
 
 
 
@@ -510,47 +556,20 @@
   <figcaption class="header">
     <span class="title"></span>
   </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">server</span> <span class="o">:=</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Config</span><span class="p">{})</span>
-</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">epicserver</span><span class="p">.</span><span class="nf">Logger</span><span class="p">())</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="recovery-middleware">Recovery Middleware<a href="#recovery-middleware" class="anchor" aria-hidden="true">#</a> </h3>
-<p>The recovery middleware recovers from panics and returns a 500 response:</p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">epicserver</span><span class="p">.</span><span class="nf">Recovery</span><span class="p">())</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="cors-middleware">CORS Middleware<a href="#cors-middleware" class="anchor" aria-hidden="true">#</a> </h3>
-<p>The CORS middleware adds Cross-Origin Resource Sharing headers to responses:</p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">corsConfig</span> <span class="o">:=</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nx">CORSConfig</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">AllowOrigins</span><span class="p">:</span>     <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;https://example.com&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">AllowMethods</span><span class="p">:</span>     <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;GET&#34;</span><span class="p">,</span> <span class="s">&#34;POST&#34;</span><span class="p">,</span> <span class="s">&#34;PUT&#34;</span><span class="p">,</span> <span class="s">&#34;DELETE&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">AllowHeaders</span><span class="p">:</span>     <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Origin&#34;</span><span class="p">,</span> <span class="s">&#34;Content-Type&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">ExposeHeaders</span><span class="p">:</span>    <span class="p">[]</span><span class="kt">string</span><span class="p">{</span><span class="s">&#34;Content-Length&#34;</span><span class="p">},</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">AllowCredentials</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">MaxAge</span><span class="p">:</span>           <span class="mi">12</span> <span class="o">*</span> <span class="nx">time</span><span class="p">.</span><span class="nx">Hour</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span>
-</span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">epicserver</span><span class="p">.</span><span class="nf">CORSWithConfig</span><span class="p">(</span><span class="nx">corsConfig</span><span class="p">))</span></span></span></code></pre></div>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// These are already applied by default, you don&#39;t need to add them manually</span>
+</span></span><span class="line"><span class="cl"><span class="nx">defaultLayers</span> <span class="o">:=</span> <span class="p">[]</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">WithLoggerMiddleware</span><span class="p">(),</span> <span class="c1">// Add the logger to the context first</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">WithHealthCheck</span><span class="p">(</span><span class="s">&#34;/health&#34;</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">WithCompression</span><span class="p">(),</span>      <span class="c1">// Compression is already here!</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">WithRemoveWWW</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">    <span class="nf">WithEnvironment</span><span class="p">(</span><span class="nx">config</span><span class="p">.</span><span class="nx">Server</span><span class="p">.</span><span class="nx">Environment</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
   </figure>
 </div>
 <h3 id="compression-middleware">Compression Middleware<a href="#compression-middleware" class="anchor" aria-hidden="true">#</a> </h3>
-<p>The compression middleware compresses response data:</p>
+<blockquote>
+<p>⚠️ <strong>Important Note</strong>: Compression middleware is <strong>already included by default</strong> in the server initialization. You do not need to add it manually with <code>WithCompression()</code>. Adding it again will result in the middleware being applied twice, which can cause issues.</p></blockquote>
+<p>If you need to customize compression settings, you can replace the default middleware with your own implementation.</p>
 
 
 
@@ -559,43 +578,26 @@
   <figcaption class="header">
     <span class="title"></span>
   </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">epicserver</span><span class="p">.</span><span class="nf">Compression</span><span class="p">())</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h2 id="creating-custom-middleware">Creating Custom Middleware<a href="#creating-custom-middleware" class="anchor" aria-hidden="true">#</a> </h2>
-<p>You can create your own middleware functions to add custom functionality:</p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">AuthMiddleware</span><span class="p">()</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nx">HandlerFunc</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kd">func</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="c1">// Get token from request</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">token</span> <span class="o">:=</span> <span class="nx">ctx</span><span class="p">.</span><span class="nf">GetHeader</span><span class="p">(</span><span class="s">&#34;Authorization&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        
-</span></span><span class="line"><span class="cl">        <span class="c1">// Validate token</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="p">!</span><span class="nf">validateToken</span><span class="p">(</span><span class="nx">token</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">ctx</span><span class="p">.</span><span class="nf">AbortWithStatusJSON</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusUnauthorized</span><span class="p">,</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nx">H</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">                <span class="s">&#34;error&#34;</span><span class="p">:</span> <span class="s">&#34;Unauthorized&#34;</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">            <span class="p">})</span>
-</span></span><span class="line"><span class="cl">            <span class="k">return</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">        
-</span></span><span class="line"><span class="cl">        <span class="c1">// Set user info in context</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">userID</span> <span class="o">:=</span> <span class="nf">getUserIDFromToken</span><span class="p">(</span><span class="nx">token</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">ctx</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;userID&#34;</span><span class="p">,</span> <span class="nx">userID</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        
-</span></span><span class="line"><span class="cl">        <span class="c1">// Continue to the next middleware or handler</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">ctx</span><span class="p">.</span><span class="nf">Next</span><span class="p">()</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// DO NOT add compression middleware like this unless you have a specific reason</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// as it&#39;s already included by default:</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">NewServerParam</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">AppLayer</span><span class="p">:</span> <span class="p">[]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// EpicServer.WithCompression(), // This is redundant! Already included by default</span>
+</span></span><span class="line"><span class="cl">        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
   </figure>
 </div>
-<p>Then use your custom middleware:</p>
+<p>Features:</p>
+<ul>
+<li>Automatic gzip compression</li>
+<li>Smart cache control headers</li>
+<li>Asset-specific caching rules</li>
+<li>Conditional compression based on Accept-Encoding</li>
+</ul>
+<h3 id="cors-middleware">CORS Middleware<a href="#cors-middleware" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Configure Cross-Origin Resource Sharing:</p>
 
 
 
@@ -604,58 +606,200 @@
   <figcaption class="header">
     <span class="title"></span>
   </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Apply to all routes</span>
-</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nf">AuthMiddleware</span><span class="p">())</span>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">NewServerParam</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">AppLayer</span><span class="p">:</span> <span class="p">[]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithCors</span><span class="p">([]</span><span class="kt">string</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="s">&#34;https://example.com&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">                <span class="s">&#34;https://api.example.com&#34;</span><span class="p">,</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}),</span>
+</span></span><span class="line"><span class="cl">        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+  </figure>
+</div>
+<p>Features:</p>
+<ul>
+<li>Origin validation</li>
+<li>Configurable allowed origins</li>
+<li>Preflight request handling</li>
+<li>Custom headers support</li>
+<li>Credential support</li>
+</ul>
+<h3 id="csrf-protection">CSRF Protection<a href="#csrf-protection" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Enable CSRF token validation:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">NewServerParam</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">AppLayer</span><span class="p">:</span> <span class="p">[]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithCSRFProtection</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
 </span></span><span class="line"><span class="cl">
-</span></span><span class="line"><span class="cl"><span class="c1">// Or apply to specific route groups</span>
-</span></span><span class="line"><span class="cl"><span class="nx">api</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">Group</span><span class="p">(</span><span class="s">&#34;/api&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nx">api</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nf">AuthMiddleware</span><span class="p">())</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h2 id="middleware-order">Middleware Order<a href="#middleware-order" class="anchor" aria-hidden="true">#</a> </h2>
-<p>The order of middleware is important. Middleware are executed in the order they are added:</p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">epicserver</span><span class="p">.</span><span class="nf">Logger</span><span class="p">())</span>   <span class="c1">// Executed first</span>
-</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">epicserver</span><span class="p">.</span><span class="nf">Recovery</span><span class="p">())</span> <span class="c1">// Executed second</span>
-</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nf">AuthMiddleware</span><span class="p">())</span>      <span class="c1">// Executed third</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h2 id="aborting-middleware-chain">Aborting Middleware Chain<a href="#aborting-middleware-chain" class="anchor" aria-hidden="true">#</a> </h2>
-<p>Middleware can abort the request handling pipeline using <code>Abort</code> or <code>AbortWithStatus</code>:</p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">RateLimiter</span><span class="p">()</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nx">HandlerFunc</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kd">func</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="k">if</span> <span class="nf">isRateLimited</span><span class="p">(</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">ClientIP</span><span class="p">())</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">            <span class="nx">ctx</span><span class="p">.</span><span class="nf">AbortWithStatus</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusTooManyRequests</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">            <span class="k">return</span>
-</span></span><span class="line"><span class="cl">        <span class="p">}</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">ctx</span><span class="p">.</span><span class="nf">Next</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// In your handlers</span>
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">MyHandler</span><span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Generate CSRF token</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">token</span><span class="p">,</span> <span class="nx">_</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">GenerateCSRFToken</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Validate token in POST/PUT/DELETE requests</span>
+</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="p">!</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nf">IsTrustedSource</span><span class="p">(</span><span class="nx">c</span><span class="p">.</span><span class="nx">Request</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// Handle CSRF validation</span>
 </span></span><span class="line"><span class="cl">    <span class="p">}</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
   </figure>
 </div>
-<h2 id="best-practices">Best Practices<a href="#best-practices" class="anchor" aria-hidden="true">#</a> </h2>
-<ol>
-<li><strong>Keep Middleware Focused</strong>: Each middleware should have a single responsibility.</li>
-<li><strong>Consider Performance</strong>: Be aware of the performance impact of your middleware, especially for high-traffic applications.</li>
-<li><strong>Order Matters</strong>: Place critical middleware like recovery and security early in the chain.</li>
-<li><strong>Use Middleware for Cross-Cutting Concerns</strong>: Authentication, logging, error handling, etc., are perfect use cases for middleware.</li>
-<li><strong>Test Middleware Independently</strong>: Write unit tests for your middleware functions.</li>
-</ol>
+<p>Features:</p>
+<ul>
+<li>Automatic token generation</li>
+<li>Token validation</li>
+<li>Trusted source bypass</li>
+<li>Custom token storage</li>
+<li>Header/Form support</li>
+</ul>
+<h3 id="www-redirect-middleware">WWW Redirect Middleware<a href="#www-redirect-middleware" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Remove &lsquo;www&rsquo; prefix from domains:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">NewServerParam</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">AppLayer</span><span class="p">:</span> <span class="p">[]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithRemoveWWW</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">        <span class="p">},</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
+  </figure>
+</div>
+<p>Features:</p>
+<ul>
+<li>Automatic www detection</li>
+<li>Permanent redirects (301)</li>
+<li>HTTPS upgrade support</li>
+<li>Path preservation</li>
+</ul>
+<h3 id="custom-middleware">Custom Middleware<a href="#custom-middleware" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Create your own middleware:</p>
+<blockquote>
+<p>⚠️ <strong>Important Note</strong>: When adding custom middleware, be aware of the default middleware that&rsquo;s already included (WithLoggerMiddleware, WithHealthCheck, WithCompression, WithRemoveWWW, WithEnvironment). Avoid duplicating functionality that&rsquo;s already provided by default middleware.</p></blockquote>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">MyCustomMiddleware</span><span class="p">()</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="k">return</span> <span class="kd">func</span><span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">Server</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">s</span><span class="p">.</span><span class="nx">Engine</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="kd">func</span><span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">gin</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">            <span class="c1">// Pre-processing</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">c</span><span class="p">.</span><span class="nf">Set</span><span class="p">(</span><span class="s">&#34;custom_key&#34;</span><span class="p">,</span> <span class="s">&#34;custom_value&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="nx">c</span><span class="p">.</span><span class="nf">Next</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">            
+</span></span><span class="line"><span class="cl">            <span class="c1">// Post-processing</span>
+</span></span><span class="line"><span class="cl">            <span class="nx">status</span> <span class="o">:=</span> <span class="nx">c</span><span class="p">.</span><span class="nx">Writer</span><span class="p">.</span><span class="nf">Status</span><span class="p">()</span>
+</span></span><span class="line"><span class="cl">            <span class="k">if</span> <span class="nx">status</span> <span class="o">&gt;=</span> <span class="mi">500</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">                <span class="nx">s</span><span class="p">.</span><span class="nx">Logger</span><span class="p">.</span><span class="nf">Error</span><span class="p">(</span><span class="s">&#34;Server error occurred&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">            <span class="p">}</span>
+</span></span><span class="line"><span class="cl">        <span class="p">})</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Usage</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">NewServerParam</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">AppLayer</span><span class="p">:</span> <span class="p">[]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">MyCustomMiddleware</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">    <span class="p">},</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span></span></span></code></pre></div>
+  </figure>
+</div>
+<h3 id="middleware-order">Middleware Order<a href="#middleware-order" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Middleware is executed in the order it&rsquo;s added. Be aware that some middleware is already included by default (as shown in the Compression Middleware section).</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Default middleware is applied first in this order:</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 1. WithLoggerMiddleware()</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 2. WithHealthCheck(&#34;/health&#34;)</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 3. WithCompression()</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 4. WithRemoveWWW()</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// 5. WithEnvironment(config.Server.Environment)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Then your custom middleware is applied:</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">NewServerParam</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">AppLayer</span><span class="p">:</span> <span class="p">[]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// DO NOT add middleware that&#39;s already included by default</span>
+</span></span><span class="line"><span class="cl">        <span class="c1">// EpicServer.WithCompression(),    // WRONG: Already included by default</span>
+</span></span><span class="line"><span class="cl">        
+</span></span><span class="line"><span class="cl">        <span class="c1">// DO add custom middleware you need</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithCors</span><span class="p">(</span><span class="nx">origins</span><span class="p">),</span>    <span class="c1">// This will be 6th in execution order</span>
+</span></span><span class="line"><span class="cl">        <span class="nf">MyCustomMiddleware</span><span class="p">(),</span>            <span class="c1">// This will be 7th in execution order</span>
+</span></span><span class="line"><span class="cl">    <span class="p">},</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span></span></span></code></pre></div>
+  </figure>
+</div>
+<p>When adding your own middleware, remember that it will be executed after the default middleware. If you need to replace or customize default middleware, you should use a different approach (see Custom Configuration section).</p>
+<h3 id="built-in-security-headers">Built-in Security Headers<a href="#built-in-security-headers" class="anchor" aria-hidden="true">#</a> </h3>
+<p>All responses automatically include security headers:</p>
+<ul>
+<li>X-Content-Type-Options: nosniff</li>
+<li>X-Frame-Options: DENY</li>
+<li>X-XSS-Protection: 1; mode=block</li>
+<li>Strict-Transport-Security: max-age=31536000; includeSubDomains</li>
+<li>Content-Security-Policy: configurable</li>
+</ul>
+<h3 id="replacing-default-middleware">Replacing Default Middleware<a href="#replacing-default-middleware" class="anchor" aria-hidden="true">#</a> </h3>
+<p>If you need to replace or customize default middleware (such as compression), you can create a custom server initialization that skips the default middleware:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Create a server without default middleware</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span> <span class="o">:=</span> <span class="o">&amp;</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">Server</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Config</span><span class="p">:</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">defaultConfig</span><span class="p">(),</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Engine</span><span class="p">:</span> <span class="nx">gin</span><span class="p">.</span><span class="nf">New</span><span class="p">(),</span> <span class="c1">// Use gin.New() instead of gin.Default() to avoid default middleware</span>
+</span></span><span class="line"><span class="cl"><span class="p">}</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Initialize the logger</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nx">Logger</span> <span class="p">=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">defaultLogger</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Setup default hooks</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nx">Hooks</span> <span class="p">=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">defaultHooks</span><span class="p">(</span><span class="nx">server</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Add only the middleware you want</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nx">Engine</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nf">LoggerMiddleware</span><span class="p">(</span><span class="nx">server</span><span class="p">.</span><span class="nx">Logger</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nx">Engine</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nf">RequestTimingMiddleware</span><span class="p">(</span><span class="nx">server</span><span class="p">.</span><span class="nx">Logger</span><span class="p">))</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nx">Engine</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nf">MyCustomCompressMiddleware</span><span class="p">())</span> <span class="c1">// Your custom compression middleware</span>
+</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nx">Engine</span><span class="p">.</span><span class="nf">Use</span><span class="p">(</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nf">RemoveWWWMiddleware</span><span class="p">())</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Continue with your custom configuration</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// ...</span></span></span></code></pre></div>
+  </figure>
+</div>
+<p>This approach gives you full control over which middleware is included and in what order.</p>
 
 			<div class="page-footer-meta d-flex flex-column flex-md-row justify-content-between">
 				</div>
@@ -673,7 +817,7 @@
 				</div>
 				<div class="d-flex flex-column">
 					<div class="text-body-secondary">Prev</div>
-					<a href="/docs/getting-started/quick-start/" class="stretched-link text-reset text-decoration-none">Quick Start</a>
+					<a href="/docs/reference/api-reference/" class="stretched-link text-reset text-decoration-none">API Reference</a>
 				</div>
 			</div>
 		</div>
@@ -682,7 +826,7 @@
 			<div class="card-body d-flex justify-content-end">
 				<div class="d-flex flex-column">
 					<div class="text-body-secondary">Next</div>
-					<a href="/docs/resources/" class="stretched-link text-reset text-decoration-none">Resources</a>
+					<a href="/docs/reference/migration-guide/" class="stretched-link text-reset text-decoration-none">Migration Guide</a>
 				</div>
 				<div class="d-flex flex-column justify-content-center">
 					<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrow-right" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">

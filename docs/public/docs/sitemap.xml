@@ -55,20 +55,50 @@
         <priority>0.5</priority>
       </url>
       <url>
-        <loc>http://localhost:1313/docs/concepts/server-architecture/</loc>
-        <lastmod>2023-09-07T16:06:50+02:00</lastmod>
+        <loc>http://localhost:1313/docs/concepts/architecture/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.5</priority>
       </url>
       <url>
         <loc>http://localhost:1313/docs/guides/routing/</loc>
-        <lastmod>2023-09-07T16:06:50+02:00</lastmod>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.5</priority>
       </url>
       <url>
         <loc>http://localhost:1313/docs/guides/middleware/</loc>
-        <lastmod>2023-09-07T16:06:50+02:00</lastmod>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+      </url>
+      <url>
+        <loc>http://localhost:1313/docs/guides/database-support/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+      </url>
+      <url>
+        <loc>http://localhost:1313/docs/guides/authentication/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+      </url>
+      <url>
+        <loc>http://localhost:1313/docs/guides/caching/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+      </url>
+      <url>
+        <loc>http://localhost:1313/docs/guides/logging/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+      </url>
+      <url>
+        <loc>http://localhost:1313/docs/guides/configuration/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.5</priority>
       </url>
@@ -79,14 +109,20 @@
         <priority>0.5</priority>
       </url>
       <url>
-        <loc>http://localhost:1313/docs/examples/basic-api-server/</loc>
-        <lastmod>2023-09-07T16:06:50+02:00</lastmod>
+        <loc>http://localhost:1313/docs/examples/basic-api-example/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.5</priority>
       </url>
       <url>
         <loc>http://localhost:1313/docs/reference/api-reference/</loc>
         <lastmod>2023-09-07T16:06:50+02:00</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+      </url>
+      <url>
+        <loc>http://localhost:1313/docs/reference/migration-guide/</loc>
+        <lastmod>2023-09-07T16:12:03+02:00</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.5</priority>
       </url>

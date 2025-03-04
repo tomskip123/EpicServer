@@ -17,6 +17,13 @@
       <description>Detailed documentation of all EpicServer&amp;rsquo;s public API methods and types.</description>
     </item>
     <item>
+      <title>Migration Guide</title>
+      <link>http://localhost:1313/docs/reference/migration-guide/</link>
+      <pubDate>Thu, 07 Sep 2023 16:12:03 +0200</pubDate>
+      <guid>http://localhost:1313/docs/reference/migration-guide/</guid>
+      <description>Learn how to upgrade your application from EpicServer v1.x to v2.x.</description>
+    </item>
+    <item>
       <title>Example Reference</title>
       <link>http://localhost:1313/docs/reference/example-reference/</link>
       <pubDate>Thu, 07 Sep 2023 16:13:18 +0200</pubDate>

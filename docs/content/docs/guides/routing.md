@@ -1,109 +1,177 @@
 ---
 title: "Routing"
-description: "Learn how to define and manage routes in EpicServer."
-summary: "Complete guide to defining and managing HTTP routes in EpicServer."
-date: 2023-09-07T16:06:50+02:00
-lastmod: 2023-09-07T16:06:50+02:00
+description: "Learn how to define routes in EpicServer."
+summary: "A comprehensive guide to setting up routes and handling requests in EpicServer."
+date: 2023-09-07T16:12:03+02:00
+lastmod: 2023-09-07T16:12:03+02:00
 draft: false
 weight: 10
 toc: true
 seo:
   title: "EpicServer Routing Guide" # custom title (optional)
-  description: "Learn how to define, manage, and organize HTTP routes in EpicServer." # custom description (recommended)
+  description: "Learn how to define routes, handle requests, and organize your API endpoints in EpicServer." # custom description (recommended)
   canonical: "" # custom canonical URL (optional)
   robots: "" # custom robot tags (optional)
 ---
 
-## Introduction to Routing
+## Routing in EpicServer
 
-Routing is a fundamental concept in web server development. In EpicServer, routing refers to how HTTP requests are directed to the appropriate handler functions based on the request URL and HTTP method.
+EpicServer provides a flexible routing system that allows you to organize your routes into groups and access server instance in your handlers.
 
-## Basic Routing
-
-EpicServer provides methods for all standard HTTP methods:
+### Basic Route Setup
 
 ```go
-server.GET("/users", GetUsers)
-server.POST("/users", CreateUser)
-server.PUT("/users/:id", UpdateUser)
-server.DELETE("/users/:id", DeleteUser)
-server.PATCH("/users/:id", PartialUpdateUser)
-server.HEAD("/status", CheckStatus)
-server.OPTIONS("/users", GetUserOptions)
-```
+package main
 
-## Route Parameters
+import (
+    "github.com/tomskip123/EpicServer/v2"
+)
 
-You can define route parameters using the `:param` syntax:
-
-```go
-server.GET("/users/:id", func(ctx *epicserver.Context) {
-    id := ctx.Param("id")
-    // Use the id parameter
-    ctx.String(http.StatusOK, "User ID: %s", id)
-})
-```
-
-## Route Groups
-
-Route groups allow you to organize routes and apply middleware to specific groups:
-
-```go
-// Create an API group
-api := server.Group("/api")
-
-// Apply middleware to all routes in this group
-api.Use(AuthMiddleware())
-
-// Define routes within the group
-api.GET("/users", GetUsers)
-api.POST("/users", CreateUser)
-
-// Create a nested group
-v1 := api.Group("/v1")
-v1.GET("/products", GetProductsV1)
-```
-
-## Query Parameters
-
-You can access query parameters using the `Query` method:
-
-```go
-server.GET("/search", func(ctx *epicserver.Context) {
-    query := ctx.Query("q")
-    page := ctx.DefaultQuery("page", "1")
-    
-    // Use the query parameters
-    ctx.JSON(http.StatusOK, gin.H{
-        "query": query,
-        "page": page,
+func main() {
+    server := EpicServer.NewServer(&EpicServer.NewServerParam{
+        AppLayer: []EpicServer.AppLayer{
+            // Configure routes
+            EpicServer.WithRoutes(
+                EpicServer.RouteGroup{
+                    Prefix: "/api/v1",
+                    Routes: []EpicServer.Route{
+                        EpicServer.Get("/users", HandleGetUsers),
+                        EpicServer.Post("/users", HandleCreateUser),
+                        EpicServer.Put("/users/:id", HandleUpdateUser),
+                        EpicServer.Delete("/users/:id", HandleDeleteUser),
+                    },
+                },
+                EpicServer.RouteGroup{
+                    Prefix: "/admin",
+                    Routes: []EpicServer.Route{
+                        EpicServer.Get("/stats", HandleAdminStats),
+                    },
+                },
+            ),
+        },
     })
-})
+
+    server.Start()
+}
 ```
 
-## Wildcard Routes
+### Route Handlers
 
-EpicServer supports wildcard routes for matching multiple path segments:
+Route handlers have access to both the Gin context and the server instance:
 
 ```go
-server.GET("/static/*filepath", func(ctx *epicserver.Context) {
-    filepath := ctx.Param("filepath")
-    // Serve static file from filepath
-})
+func HandleGetUsers(c *gin.Context, s *EpicServer.Server) {
+    // Access server components
+    db := EpicServerDb.GetMongoClient(s, "default")
+    cache := EpicServerCache.GetMemoryCache(s, "myCache")
+    
+    // Use gin context as normal
+    userId := c.Param("id")
+    query := c.Query("filter")
+    
+    // Send response
+    c.JSON(200, gin.H{"message": "success"})
+}
 ```
 
-## Custom HTTP Methods
+### Available Route Methods
 
-You can handle custom HTTP methods using the `Handle` method:
+* `Get(path string, handler HandlerFunc)` - HTTP GET
+* `Post(path string, handler HandlerFunc)` - HTTP POST
+* `Put(path string, handler HandlerFunc)` - HTTP PUT
+* `Patch(path string, handler HandlerFunc)` - HTTP PATCH
+* `Delete(path string, handler HandlerFunc)` - HTTP DELETE
+
+### Route Groups
+
+Group related routes with common prefix:
 
 ```go
-server.Handle("PROPFIND", "/resources", HandlePropFind)
+EpicServer.WithRoutes(
+    EpicServer.RouteGroup{
+        Prefix: "/api/v1",
+        Routes: []EpicServer.Route{
+            // All routes here will be prefixed with /api/v1
+        },
+    },
+)
 ```
 
-## Best Practices
+### Accessing Server Components
 
-1. **Organize Routes**: Use route groups to keep your code organized and apply middleware consistently.
-2. **Descriptive Names**: Use descriptive route paths that reflect your resource hierarchy.
-3. **Versioning**: Consider versioning your API routes (e.g., `/api/v1/users`).
-4. **RESTful Design**: Follow RESTful principles when designing your API endpoints.
-5. **Error Handling**: Implement consistent error handling across your routes. 
+Route handlers can access all server components:
+
+```go
+func MyHandler(c *gin.Context, s *EpicServer.Server) {
+    // Access configuration
+    port := s.Config.Server.Port
+    
+    // Access logger
+    s.Logger.Info("Handling request")
+    
+    // Access authentication
+    session, _ := EpicServer.GetSession(c)
+    
+    // Access databases
+    mongoClient := EpicServerDb.GetMongoClient(s, "mongodb")
+    postgresDB := EpicServerDb.GetPostgresDB(s, "postgres")
+    
+    // Access cache
+    cache := EpicServerCache.GetMemoryCache(s, "mycache")
+    
+    // Access hooks
+    s.Hooks.Auth.OnUserCreate(claims)
+}
+```
+
+### URL Parameters
+
+Access URL parameters using the Gin context:
+
+```go
+func HandleUser(c *gin.Context, s *EpicServer.Server) {
+    // Get URL parameter
+    userId := c.Param("id")
+    
+    // Use the parameter
+    c.JSON(200, gin.H{"userId": userId})
+}
+```
+
+### Query Parameters
+
+Access query parameters using the Gin context:
+
+```go
+func HandleUsers(c *gin.Context, s *EpicServer.Server) {
+    // Get query parameters
+    limit := c.DefaultQuery("limit", "10")
+    offset := c.DefaultQuery("offset", "0")
+    
+    // Use the parameters
+    c.JSON(200, gin.H{"limit": limit, "offset": offset})
+}
+```
+
+### Request Body
+
+Parse request body using the Gin context:
+
+```go
+func HandleCreateUser(c *gin.Context, s *EpicServer.Server) {
+    // Define a struct for the request body
+    var user struct {
+        Name  string `json:"name"`
+        Email string `json:"email"`
+    }
+    
+    // Parse the request body
+    if err := c.ShouldBindJSON(&user); err != nil {
+        c.JSON(400, gin.H{"error": err.Error()})
+        return
+    }
+    
+    // Use the parsed data
+    c.JSON(200, gin.H{"name": user.Name, "email": user.Email})
+}
+``` 

@@ -172,7 +172,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/concepts/server-architecture/">Server Architecture</a>
+      <a href="/docs/concepts/architecture/">Architecture</a>
   </li>
       </ul>
     </details>
@@ -192,6 +192,26 @@
   </li>
 
   <li>
+      <a href="/docs/guides/database-support/">Database Support</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/authentication/">Authentication</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/caching/">Caching</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/logging/">Logging</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/configuration/">Configuration</a>
+  </li>
+
+  <li>
       <a href="/docs/guides/example-guide/">Example Guide</a>
   </li>
       </ul>
@@ -204,7 +224,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/examples/basic-api-server/">Basic API Server</a>
+      <a href="/docs/examples/basic-api-example/">Basic API Example</a>
   </li>
       </ul>
     </details>
@@ -217,6 +237,10 @@
 
   <li class="active" >
       <a aria-current="page" href="/docs/reference/api-reference/">API Reference</a>
+  </li>
+
+  <li>
+      <a href="/docs/reference/migration-guide/">Migration Guide</a>
   </li>
 
   <li>
@@ -384,7 +408,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/concepts/server-architecture/">Server Architecture</a>
+      <a href="/docs/concepts/architecture/">Architecture</a>
   </li>
       </ul>
     </details>
@@ -404,6 +428,26 @@
   </li>
 
   <li>
+      <a href="/docs/guides/database-support/">Database Support</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/authentication/">Authentication</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/caching/">Caching</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/logging/">Logging</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/configuration/">Configuration</a>
+  </li>
+
+  <li>
       <a href="/docs/guides/example-guide/">Example Guide</a>
   </li>
       </ul>
@@ -416,7 +460,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/examples/basic-api-server/">Basic API Server</a>
+      <a href="/docs/examples/basic-api-example/">Basic API Example</a>
   </li>
       </ul>
     </details>
@@ -429,6 +473,10 @@
 
   <li class="active" >
       <a aria-current="page" href="/docs/reference/api-reference/">API Reference</a>
+  </li>
+
+  <li>
+      <a href="/docs/reference/migration-guide/">Migration Guide</a>
   </li>
 
   <li>
@@ -449,34 +497,21 @@
   <h3>On this page</h3>
     <nav id="toc">
   <ul>
-    <li><a href="#server">Server</a>
+    <li><a href="#server-options">Server Options</a></li>
+    <li><a href="#configuration-system">Configuration System</a>
       <ul>
-        <li><a href="#newserver">NewServer</a></li>
-        <li><a href="#serverstart">Server.Start</a></li>
-        <li><a href="#serverstop">Server.Stop</a></li>
-        <li><a href="#serverget-post-put-delete-etc">Server.GET, POST, PUT, DELETE, etc.</a></li>
+        <li><a href="#basic-configuration">Basic Configuration</a></li>
+        <li><a href="#available-configuration-options">Available Configuration Options</a></li>
+        <li><a href="#setting-server-options">Setting Server Options</a></li>
+        <li><a href="#setting-security-options">Setting Security Options</a></li>
       </ul>
     </li>
-    <li><a href="#context">Context</a>
-      <ul>
-        <li><a href="#contextparam">Context.Param</a></li>
-        <li><a href="#contextquery">Context.Query</a></li>
-        <li><a href="#contextdefaultquery">Context.DefaultQuery</a></li>
-        <li><a href="#contextbind">Context.Bind</a></li>
-        <li><a href="#contextjson">Context.JSON</a></li>
-      </ul>
-    </li>
-    <li><a href="#logger">Logger</a>
-      <ul>
-        <li><a href="#newlogger">NewLogger</a></li>
-        <li><a href="#loggerinfo-error-debug-etc">Logger.Info, Error, Debug, etc.</a></li>
-      </ul>
-    </li>
-    <li><a href="#configuration">Configuration</a>
-      <ul>
-        <li><a href="#config">Config</a></li>
-      </ul>
-    </li>
+    <li><a href="#database-methods">Database Methods</a></li>
+    <li><a href="#cache-methods">Cache Methods</a></li>
+    <li><a href="#authentication-methods">Authentication Methods</a></li>
+    <li><a href="#logging-system">Logging System</a></li>
+    <li><a href="#structured-logging-configuration">Structured Logging Configuration</a></li>
+    <li><a href="#module-based-logging-v202">Module-Based Logging (v2.0.2+)</a></li>
   </ul>
 </nav>
 </div>
@@ -492,63 +527,40 @@
     <div class="page-links">
       <nav id="TableOfContents">
   <ul>
-    <li><a href="#server">Server</a>
+    <li><a href="#server-options">Server Options</a></li>
+    <li><a href="#configuration-system">Configuration System</a>
       <ul>
-        <li><a href="#newserver">NewServer</a></li>
-        <li><a href="#serverstart">Server.Start</a></li>
-        <li><a href="#serverstop">Server.Stop</a></li>
-        <li><a href="#serverget-post-put-delete-etc">Server.GET, POST, PUT, DELETE, etc.</a></li>
+        <li><a href="#basic-configuration">Basic Configuration</a></li>
+        <li><a href="#available-configuration-options">Available Configuration Options</a></li>
+        <li><a href="#setting-server-options">Setting Server Options</a></li>
+        <li><a href="#setting-security-options">Setting Security Options</a></li>
       </ul>
     </li>
-    <li><a href="#context">Context</a>
-      <ul>
-        <li><a href="#contextparam">Context.Param</a></li>
-        <li><a href="#contextquery">Context.Query</a></li>
-        <li><a href="#contextdefaultquery">Context.DefaultQuery</a></li>
-        <li><a href="#contextbind">Context.Bind</a></li>
-        <li><a href="#contextjson">Context.JSON</a></li>
-      </ul>
-    </li>
-    <li><a href="#logger">Logger</a>
-      <ul>
-        <li><a href="#newlogger">NewLogger</a></li>
-        <li><a href="#loggerinfo-error-debug-etc">Logger.Info, Error, Debug, etc.</a></li>
-      </ul>
-    </li>
-    <li><a href="#configuration">Configuration</a>
-      <ul>
-        <li><a href="#config">Config</a></li>
-      </ul>
-    </li>
+    <li><a href="#database-methods">Database Methods</a></li>
+    <li><a href="#cache-methods">Cache Methods</a></li>
+    <li><a href="#authentication-methods">Authentication Methods</a></li>
+    <li><a href="#logging-system">Logging System</a></li>
+    <li><a href="#structured-logging-configuration">Structured Logging Configuration</a></li>
+    <li><a href="#module-based-logging-v202">Module-Based Logging (v2.0.2+)</a></li>
   </ul>
 </nav>
     </div>
   </details>
 
 			</nav>
-			<h2 id="server">Server<a href="#server" class="anchor" aria-hidden="true">#</a> </h2>
-<h3 id="newserver">NewServer<a href="#newserver" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">NewServer</span><span class="p">(</span><span class="nx">config</span> <span class="o">*</span><span class="nx">Config</span><span class="p">)</span> <span class="o">*</span><span class="nx">Server</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Creates a new EpicServer instance with the provided configuration.</p>
-<p><strong>Parameters:</strong></p>
+			<h2 id="server-options">Server Options<a href="#server-options" class="anchor" aria-hidden="true">#</a> </h2>
 <ul>
-<li><code>config</code> - The server configuration. If nil, default configuration is used.</li>
+<li><code>WithHealthCheck(path string)</code> - Adds a health check endpoint</li>
+<li><code>WithCompression()</code> - Enables response compression</li>
+<li><code>WithRemoveWWW()</code> - Removes www prefix from domain</li>
+<li><code>WithCors(origins []string)</code> - Configures CORS settings</li>
+<li><code>WithEnvironment(environment string)</code> - Sets runtime environment (development/production/test)</li>
+<li><code>WithTrustedProxies(proxies []string)</code> - Configures trusted proxy addresses</li>
+<li><code>WithHttp2()</code> - Enables HTTP/2 support</li>
 </ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>A new <code>Server</code> instance.</li>
-</ul>
-<p><strong>Example:</strong></p>
+<h2 id="configuration-system">Configuration System<a href="#configuration-system" class="anchor" aria-hidden="true">#</a> </h2>
+<p>EpicServer provides a flexible configuration system using options pattern.</p>
+<h3 id="basic-configuration">Basic Configuration<a href="#basic-configuration" class="anchor" aria-hidden="true">#</a> </h3>
 
 
 
@@ -557,374 +569,22 @@
   <figcaption class="header">
     <span class="title"></span>
   </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">server</span> <span class="o">:=</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Config</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">Port</span><span class="p">:</span>         <span class="mi">8080</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">ReadTimeout</span><span class="p">:</span>  <span class="mi">30</span><span class="p">,</span> <span class="c1">// seconds</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">WriteTimeout</span><span class="p">:</span> <span class="mi">30</span><span class="p">,</span> <span class="c1">// seconds</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="serverstart">Server.Start<a href="#serverstart" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">Start</span><span class="p">()</span> <span class="kt">error</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Starts the HTTP server.</p>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>An error if the server fails to start.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">Start</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">log</span><span class="p">.</span><span class="nf">Fatalf</span><span class="p">(</span><span class="s">&#34;Server failed to start: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kn">package</span> <span class="nx">main</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kn">import</span> <span class="p">(</span>
+</span></span><span class="line"><span class="cl">    <span class="s">&#34;github.com/tomskip123/EpicServer/v2&#34;</span>
+</span></span><span class="line"><span class="cl"><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">main</span><span class="p">()</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">server</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewServer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">Option</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">SetHost</span><span class="p">(</span><span class="s">&#34;localhost&#34;</span><span class="p">,</span> <span class="mi">8080</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">SetSecretKey</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;your-secret-key&#34;</span><span class="p">)),</span>
+</span></span><span class="line"><span class="cl">    <span class="p">})</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
   </figure>
 </div>
-<h3 id="serverstop">Server.Stop<a href="#serverstop" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">Stop</span><span class="p">()</span> <span class="kt">error</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Gracefully stops the HTTP server.</p>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>An error if the server fails to stop gracefully.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">server</span><span class="p">.</span><span class="nf">Stop</span><span class="p">();</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">log</span><span class="p">.</span><span class="nf">Printf</span><span class="p">(</span><span class="s">&#34;Error stopping server: %v&#34;</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="serverget-post-put-delete-etc">Server.GET, POST, PUT, DELETE, etc.<a href="#serverget-post-put-delete-etc" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">GET</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">handlers</span> <span class="o">...</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">IRoute</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">POST</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">handlers</span> <span class="o">...</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">IRoute</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">PUT</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">handlers</span> <span class="o">...</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">IRoute</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">DELETE</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">handlers</span> <span class="o">...</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">IRoute</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">PATCH</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">handlers</span> <span class="o">...</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">IRoute</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">HEAD</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">handlers</span> <span class="o">...</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">IRoute</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">s</span> <span class="o">*</span><span class="nx">Server</span><span class="p">)</span> <span class="nf">OPTIONS</span><span class="p">(</span><span class="nx">path</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">handlers</span> <span class="o">...</span><span class="nx">HandlerFunc</span><span class="p">)</span> <span class="nx">IRoute</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Registers a route with the given HTTP method, path, and handlers.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>path</code> - The URL path for the route.</li>
-<li><code>handlers</code> - One or more handler functions for the route.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>An <code>IRoute</code> instance that can be used for chaining.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">GET</span><span class="p">(</span><span class="s">&#34;/users&#34;</span><span class="p">,</span> <span class="nx">GetUsers</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="nx">server</span><span class="p">.</span><span class="nf">POST</span><span class="p">(</span><span class="s">&#34;/users&#34;</span><span class="p">,</span> <span class="nx">CreateUser</span><span class="p">)</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h2 id="context">Context<a href="#context" class="anchor" aria-hidden="true">#</a> </h2>
-<h3 id="contextparam">Context.Param<a href="#contextparam" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Context</span><span class="p">)</span> <span class="nf">Param</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Gets the value of a URL parameter.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>key</code> - The name of the parameter.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>The parameter value as a string.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">GetUser</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">id</span> <span class="o">:=</span> <span class="nx">ctx</span><span class="p">.</span><span class="nf">Param</span><span class="p">(</span><span class="s">&#34;id&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// ...</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="contextquery">Context.Query<a href="#contextquery" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Context</span><span class="p">)</span> <span class="nf">Query</span><span class="p">(</span><span class="nx">key</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Gets the value of a query parameter.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>key</code> - The name of the parameter.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>The parameter value as a string.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">SearchUsers</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">query</span> <span class="o">:=</span> <span class="nx">ctx</span><span class="p">.</span><span class="nf">Query</span><span class="p">(</span><span class="s">&#34;q&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// ...</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="contextdefaultquery">Context.DefaultQuery<a href="#contextdefaultquery" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Context</span><span class="p">)</span> <span class="nf">DefaultQuery</span><span class="p">(</span><span class="nx">key</span><span class="p">,</span> <span class="nx">defaultValue</span> <span class="kt">string</span><span class="p">)</span> <span class="kt">string</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Gets the value of a query parameter, or a default value if the parameter is not present.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>key</code> - The name of the parameter.</li>
-<li><code>defaultValue</code> - The default value to return if the parameter is not present.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>The parameter value as a string, or the default value.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">GetUsers</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">page</span> <span class="o">:=</span> <span class="nx">ctx</span><span class="p">.</span><span class="nf">DefaultQuery</span><span class="p">(</span><span class="s">&#34;page&#34;</span><span class="p">,</span> <span class="s">&#34;1&#34;</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// ...</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="contextbind">Context.Bind<a href="#contextbind" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Context</span><span class="p">)</span> <span class="nf">Bind</span><span class="p">(</span><span class="nx">obj</span> <span class="kt">any</span><span class="p">)</span> <span class="kt">error</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Binds the request body to the given struct.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>obj</code> - The struct to bind to.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>An error if binding fails.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">CreateUser</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="kd">var</span> <span class="nx">user</span> <span class="nx">User</span>
-</span></span><span class="line"><span class="cl">    <span class="k">if</span> <span class="nx">err</span> <span class="o">:=</span> <span class="nx">ctx</span><span class="p">.</span><span class="nf">Bind</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">user</span><span class="p">);</span> <span class="nx">err</span> <span class="o">!=</span> <span class="kc">nil</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">        <span class="nx">ctx</span><span class="p">.</span><span class="nf">AbortWithError</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusBadRequest</span><span class="p">,</span> <span class="nx">err</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl">        <span class="k">return</span>
-</span></span><span class="line"><span class="cl">    <span class="p">}</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// ...</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="contextjson">Context.JSON<a href="#contextjson" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">c</span> <span class="o">*</span><span class="nx">Context</span><span class="p">)</span> <span class="nf">JSON</span><span class="p">(</span><span class="nx">code</span> <span class="kt">int</span><span class="p">,</span> <span class="nx">obj</span> <span class="kt">any</span><span class="p">)</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Sends a JSON response.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>code</code> - The HTTP status code.</li>
-<li><code>obj</code> - The object to be serialized to JSON.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">GetUser</span><span class="p">(</span><span class="nx">ctx</span> <span class="o">*</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">Context</span><span class="p">)</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">user</span> <span class="o">:=</span> <span class="nf">GetUserByID</span><span class="p">(</span><span class="nx">ctx</span><span class="p">.</span><span class="nf">Param</span><span class="p">(</span><span class="s">&#34;id&#34;</span><span class="p">))</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">ctx</span><span class="p">.</span><span class="nf">JSON</span><span class="p">(</span><span class="nx">http</span><span class="p">.</span><span class="nx">StatusOK</span><span class="p">,</span> <span class="nx">user</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h2 id="logger">Logger<a href="#logger" class="anchor" aria-hidden="true">#</a> </h2>
-<h3 id="newlogger">NewLogger<a href="#newlogger" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="nf">NewLogger</span><span class="p">(</span><span class="nx">config</span> <span class="o">*</span><span class="nx">LoggerConfig</span><span class="p">)</span> <span class="o">*</span><span class="nx">Logger</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Creates a new structured logger.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>config</code> - The logger configuration.</li>
-</ul>
-<p><strong>Returns:</strong></p>
-<ul>
-<li>A new <code>Logger</code> instance.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">logger</span> <span class="o">:=</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nf">NewLogger</span><span class="p">(</span><span class="o">&amp;</span><span class="nx">epicserver</span><span class="p">.</span><span class="nx">LoggerConfig</span><span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">Level</span><span class="p">:</span>  <span class="nx">epicserver</span><span class="p">.</span><span class="nx">LogLevelInfo</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">Format</span><span class="p">:</span> <span class="nx">epicserver</span><span class="p">.</span><span class="nx">LogFormatJSON</span><span class="p">,</span>
-</span></span><span class="line"><span class="cl"><span class="p">})</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h3 id="loggerinfo-error-debug-etc">Logger.Info, Error, Debug, etc.<a href="#loggerinfo-error-debug-etc" class="anchor" aria-hidden="true">#</a> </h3>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nf">Info</span><span class="p">(</span><span class="nx">msg</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">fields</span> <span class="o">...</span><span class="nx">Field</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nf">Error</span><span class="p">(</span><span class="nx">msg</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">fields</span> <span class="o">...</span><span class="nx">Field</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nf">Debug</span><span class="p">(</span><span class="nx">msg</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">fields</span> <span class="o">...</span><span class="nx">Field</span><span class="p">)</span>
-</span></span><span class="line"><span class="cl"><span class="kd">func</span> <span class="p">(</span><span class="nx">l</span> <span class="o">*</span><span class="nx">Logger</span><span class="p">)</span> <span class="nf">Warn</span><span class="p">(</span><span class="nx">msg</span> <span class="kt">string</span><span class="p">,</span> <span class="nx">fields</span> <span class="o">...</span><span class="nx">Field</span><span class="p">)</span></span></span></code></pre></div>
-  </figure>
-</div>
-<p>Logs a message at the specified level with optional fields.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>msg</code> - The log message.</li>
-<li><code>fields</code> - Optional fields to include in the log entry.</li>
-</ul>
-<p><strong>Example:</strong></p>
-
-
-
-<div class="expressive-code">
-  <figure class="frame not-content">
-  <figcaption class="header">
-    <span class="title"></span>
-  </figcaption>
-  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">logger</span><span class="p">.</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;User created&#34;</span><span class="p">,</span> 
-</span></span><span class="line"><span class="cl">    <span class="nx">epicserver</span><span class="p">.</span><span class="nf">String</span><span class="p">(</span><span class="s">&#34;user_id&#34;</span><span class="p">,</span> <span class="s">&#34;123&#34;</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">epicserver</span><span class="p">.</span><span class="nf">Int</span><span class="p">(</span><span class="s">&#34;status&#34;</span><span class="p">,</span> <span class="mi">201</span><span class="p">),</span>
-</span></span><span class="line"><span class="cl"><span class="p">)</span></span></span></code></pre></div>
-  </figure>
-</div>
-<h2 id="configuration">Configuration<a href="#configuration" class="anchor" aria-hidden="true">#</a> </h2>
-<h3 id="config">Config<a href="#config" class="anchor" aria-hidden="true">#</a> </h3>
+<h3 id="available-configuration-options">Available Configuration Options<a href="#available-configuration-options" class="anchor" aria-hidden="true">#</a> </h3>
+<p>The <code>Config</code> struct supports the following configurations:</p>
 
 
 
@@ -934,24 +594,172 @@
     <span class="title"></span>
   </figcaption>
   <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="kd">type</span> <span class="nx">Config</span> <span class="kd">struct</span> <span class="p">{</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">Port</span>           <span class="kt">int</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">ReadTimeout</span>    <span class="kt">int</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">WriteTimeout</span>   <span class="kt">int</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">IdleTimeout</span>    <span class="kt">int</span>
-</span></span><span class="line"><span class="cl">    <span class="nx">MaxHeaderBytes</span> <span class="kt">int</span>
-</span></span><span class="line"><span class="cl">    <span class="c1">// other fields...</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Server</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Host</span>        <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Port</span>        <span class="kt">int</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Environment</span> <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Security</span> <span class="kd">struct</span> <span class="p">{</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">SecureCookie</span> <span class="kt">bool</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">CookieDomain</span> <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">CSPHeader</span>    <span class="kt">string</span>
+</span></span><span class="line"><span class="cl">        <span class="nx">Origins</span>      <span class="p">[]</span><span class="kt">string</span>
+</span></span><span class="line"><span class="cl">    <span class="p">}</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">SecretKey</span> <span class="p">[]</span><span class="kt">byte</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">Custom</span>    <span class="kd">interface</span><span class="p">{}</span>
 </span></span><span class="line"><span class="cl"><span class="p">}</span></span></span></code></pre></div>
   </figure>
 </div>
-<p>Configuration for the EpicServer.</p>
-<p><strong>Fields:</strong></p>
+<h3 id="setting-server-options">Setting Server Options<a href="#setting-server-options" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Configure server host and port:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">EpicServer</span><span class="p">.</span><span class="nf">SetHost</span><span class="p">(</span><span class="s">&#34;0.0.0.0&#34;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">)</span></span></span></code></pre></div>
+  </figure>
+</div>
+<h3 id="setting-security-options">Setting Security Options<a href="#setting-security-options" class="anchor" aria-hidden="true">#</a> </h3>
+<p>Configure secret key for encryption:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="nx">EpicServer</span><span class="p">.</span><span class="nf">SetSecretKey</span><span class="p">([]</span><span class="nb">byte</span><span class="p">(</span><span class="s">&#34;32-byte-long-secret-key-here....&#34;</span><span class="p">))</span></span></span></code></pre></div>
+  </figure>
+</div>
+<h2 id="database-methods">Database Methods<a href="#database-methods" class="anchor" aria-hidden="true">#</a> </h2>
+<p>MongoDB specific helpers:</p>
 <ul>
-<li><code>Port</code> - The port to listen on.</li>
-<li><code>ReadTimeout</code> - The maximum duration for reading the entire request, including the body.</li>
-<li><code>WriteTimeout</code> - The maximum duration before timing out writes of the response.</li>
-<li><code>IdleTimeout</code> - The maximum amount of time to wait for the next request when keep-alives are enabled.</li>
-<li><code>MaxHeaderBytes</code> - The maximum number of bytes the server will read parsing the request header.</li>
+<li><code>StringToObjectID(id string)</code> - Convert string to MongoDB ObjectID</li>
+<li><code>StringArrayToObjectIDArray(ids []string)</code> - Convert string array to ObjectID array</li>
+<li><code>UpdateIndexes(ctx, collection, indexes)</code> - Create or update collection indexes</li>
+<li><code>StringArrayContains(array []string, value string)</code> - Check if string array contains value</li>
 </ul>
+<p>GORM specific helpers:</p>
+<ul>
+<li><code>AutoMigrateModels(s *EpicServer.Server, connectionName string, models ...interface{}) error</code> - Run GORM AutoMigrate for the given models</li>
+</ul>
+<h2 id="cache-methods">Cache Methods<a href="#cache-methods" class="anchor" aria-hidden="true">#</a> </h2>
+<ul>
+<li><code>Set(key string, value interface{}, duration time.Duration)</code> - Store a value with expiration</li>
+<li><code>Get(key string) (interface{}, bool)</code> - Retrieve a value if it exists</li>
+<li><code>Delete(key string)</code> - Remove a value from the cache</li>
+</ul>
+<h2 id="authentication-methods">Authentication Methods<a href="#authentication-methods" class="anchor" aria-hidden="true">#</a> </h2>
+<ul>
+<li><code>GenerateCSRFToken() (string, error)</code> - Generate a CSRF token</li>
+<li><code>IsTrustedSource(req *http.Request) bool</code> - Validate CSRF token</li>
+<li><code>GetSession(c *gin.Context) (*Session, error)</code> - Retrieve session data</li>
+</ul>
+<h2 id="logging-system">Logging System<a href="#logging-system" class="anchor" aria-hidden="true">#</a> </h2>
+<ul>
+<li><code>Info(message string, args ...interface{})</code> - Logs an informational message</li>
+<li><code>Warn(message string, args ...interface{})</code> - Logs a warning message</li>
+<li><code>Error(message string, args ...interface{})</code> - Logs an error message</li>
+</ul>
+<h2 id="structured-logging-configuration">Structured Logging Configuration<a href="#structured-logging-configuration" class="anchor" aria-hidden="true">#</a> </h2>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Configure log level</span>
+</span></span><span class="line"><span class="cl"><span class="nx">s</span><span class="p">.</span><span class="nf">UpdateAppLayer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithLogLevel</span><span class="p">(</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogLevelDebug</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Configure log format</span>
+</span></span><span class="line"><span class="cl"><span class="nx">s</span><span class="p">.</span><span class="nf">UpdateAppLayer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithLogFormat</span><span class="p">(</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogFormatJSON</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Log with structured fields</span>
+</span></span><span class="line"><span class="cl"><span class="nx">s</span><span class="p">.</span><span class="nx">Logger</span><span class="p">.</span><span class="nf">Info</span><span class="p">(</span><span class="s">&#34;User authenticated&#34;</span><span class="p">,</span> 
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">F</span><span class="p">(</span><span class="s">&#34;user_id&#34;</span><span class="p">,</span> <span class="nx">userID</span><span class="p">),</span> 
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">F</span><span class="p">(</span><span class="s">&#34;ip&#34;</span><span class="p">,</span> <span class="nx">ip</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">F</span><span class="p">(</span><span class="s">&#34;duration_ms&#34;</span><span class="p">,</span> <span class="nx">authDuration</span><span class="p">.</span><span class="nf">Milliseconds</span><span class="p">()))</span></span></span></code></pre></div>
+  </figure>
+</div>
+<h2 id="module-based-logging-v202">Module-Based Logging (v2.0.2+)<a href="#module-based-logging-v202" class="anchor" aria-hidden="true">#</a> </h2>
+<p>EpicServer v2.0.2 introduces module-based logging, allowing you to control log levels for specific components of your application:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Set log level for specific modules</span>
+</span></span><span class="line"><span class="cl"><span class="nx">s</span><span class="p">.</span><span class="nf">UpdateAppLayer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="c1">// Set global default log level</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithLogLevel</span><span class="p">(</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogLevelInfo</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Enable debug logging only for authentication-related code</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithModuleLogLevel</span><span class="p">(</span><span class="s">&#34;auth&#34;</span><span class="p">,</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogLevelDebug</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl">    
+</span></span><span class="line"><span class="cl">    <span class="c1">// Set error-only logging for database operations</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithModuleLogLevel</span><span class="p">(</span><span class="s">&#34;db&#34;</span><span class="p">,</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogLevelError</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Create module-specific loggers in your code</span>
+</span></span><span class="line"><span class="cl"><span class="nx">authLogger</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">Logger</span><span class="p">.</span><span class="nf">WithModule</span><span class="p">(</span><span class="s">&#34;auth&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">dbLogger</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">Logger</span><span class="p">.</span><span class="nf">WithModule</span><span class="p">(</span><span class="s">&#34;db&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// These logs will respect their module&#39;s log level</span>
+</span></span><span class="line"><span class="cl"><span class="nx">authLogger</span><span class="p">.</span><span class="nf">Debug</span><span class="p">(</span><span class="s">&#34;OAuth flow started&#34;</span><span class="p">)</span> <span class="c1">// Will be logged (auth module is at Debug level)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">dbLogger</span><span class="p">.</span><span class="nf">Debug</span><span class="p">(</span><span class="s">&#34;Connection pool stats&#34;</span><span class="p">)</span> <span class="c1">// Won&#39;t be logged (db module is at Error level)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">dbLogger</span><span class="p">.</span><span class="nf">Error</span><span class="p">(</span><span class="s">&#34;Database connection failed&#34;</span><span class="p">)</span> <span class="c1">// Will be logged</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// You can also use hierarchical module names</span>
+</span></span><span class="line"><span class="cl"><span class="nx">authOAuthLogger</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">Logger</span><span class="p">.</span><span class="nf">WithModule</span><span class="p">(</span><span class="s">&#34;auth.oauth&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">authBasicLogger</span> <span class="o">:=</span> <span class="nx">s</span><span class="p">.</span><span class="nx">Logger</span><span class="p">.</span><span class="nf">WithModule</span><span class="p">(</span><span class="s">&#34;auth.basic&#34;</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// These will inherit from parent modules if no specific level is set</span>
+</span></span><span class="line"><span class="cl"><span class="c1">// In this case, both inherit LogLevelDebug from the &#34;auth&#34; module</span></span></span></code></pre></div>
+  </figure>
+</div>
+<p>Module-based logging features:</p>
+<ul>
+<li><strong>Hierarchical modules</strong>: Use dot notation (e.g., <code>auth.oauth</code>) to create a hierarchy of modules</li>
+<li><strong>Inheritance</strong>: Modules inherit log levels from parent modules if not explicitly set</li>
+<li><strong>Global registry</strong>: Module log levels are stored in a global registry by default</li>
+<li><strong>Custom registries</strong>: Create isolated log level registries for more complex applications</li>
+</ul>
+<p>Advanced usage with custom registry:</p>
+
+
+
+<div class="expressive-code">
+  <figure class="frame not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-go" data-lang="go"><span class="line"><span class="cl"><span class="c1">// Create a custom log registry</span>
+</span></span><span class="line"><span class="cl"><span class="nx">registry</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewLogRegistry</span><span class="p">(</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogLevelWarn</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl"><span class="nx">registry</span><span class="p">.</span><span class="nf">SetLevel</span><span class="p">(</span><span class="s">&#34;api&#34;</span><span class="p">,</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogLevelDebug</span><span class="p">)</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Use the custom registry</span>
+</span></span><span class="line"><span class="cl"><span class="nx">s</span><span class="p">.</span><span class="nf">UpdateAppLayer</span><span class="p">([]</span><span class="nx">EpicServer</span><span class="p">.</span><span class="nx">AppLayer</span><span class="p">{</span>
+</span></span><span class="line"><span class="cl">    <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">WithLogRegistry</span><span class="p">(</span><span class="nx">registry</span><span class="p">),</span>
+</span></span><span class="line"><span class="cl"><span class="p">})</span>
+</span></span><span class="line"><span class="cl">
+</span></span><span class="line"><span class="cl"><span class="c1">// Or create a logger with a custom registry directly</span>
+</span></span><span class="line"><span class="cl"><span class="nx">logger</span> <span class="o">:=</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nf">NewLoggerWithRegistry</span><span class="p">(</span><span class="nx">os</span><span class="p">.</span><span class="nx">Stdout</span><span class="p">,</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogLevelInfo</span><span class="p">,</span> <span class="nx">EpicServer</span><span class="p">.</span><span class="nx">LogFormatText</span><span class="p">,</span> <span class="nx">registry</span><span class="p">)</span></span></span></code></pre></div>
+  </figure>
+</div>
 
 			<div class="page-footer-meta d-flex flex-column flex-md-row justify-content-between">
 				</div>
@@ -969,7 +777,7 @@
 				</div>
 				<div class="d-flex flex-column">
 					<div class="text-body-secondary">Prev</div>
-					<a href="/docs/getting-started/installation/" class="stretched-link text-reset text-decoration-none">Installation</a>
+					<a href="/docs/guides/routing/" class="stretched-link text-reset text-decoration-none">Routing</a>
 				</div>
 			</div>
 		</div>
@@ -978,7 +786,7 @@
 			<div class="card-body d-flex justify-content-end">
 				<div class="d-flex flex-column">
 					<div class="text-body-secondary">Next</div>
-					<a href="/docs/examples/basic-api-server/" class="stretched-link text-reset text-decoration-none">Basic API Server</a>
+					<a href="/docs/guides/middleware/" class="stretched-link text-reset text-decoration-none">Middleware</a>
 				</div>
 				<div class="d-flex flex-column justify-content-center">
 					<svg xmlns="http://www.w3.org/2000/svg" class="icon icon-tabler icon-tabler-arrow-right" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">

@@ -31,7 +31,7 @@ go mod init myepicserver
 Add EpicServer to your project:
 
 ```bash
-go get -u github.com/tomskip123/EpicServer
+go get github.com/tomskip123/EpicServer/v2
 ```
 
 ## Create a Basic Server
@@ -41,30 +41,68 @@ Create a file named `main.go` with the following content:
 ```go
 package main
 
+import "github.com/tomskip123/EpicServer/v2"
+
+func main() {
+	server := EpicServer.NewServer([]EpicServer.Option{
+		EpicServer.SetSecretKey([]byte("your-secret-key")),
+	})
+
+	server.UpdateAppLayer([]EpicServer.AppLayer{
+		EpicServer.WithHealthCheck("/health"),
+		EpicServer.WithEnvironment("development"),
+	})
+
+	server.Start()
+}
+```
+
+This creates a minimal server with a health check endpoint and sets the environment to development.
+
+## Complete Example
+
+Here's a more complete example with routing, database, and authentication:
+
+```go
+package main
+
 import (
-	"github.com/tomskip123/EpicServer"
-	"log"
-	"net/http"
+	"github.com/gin-gonic/gin"
+	"github.com/tomskip123/EpicServer/v2"
+	"github.com/tomskip123/EpicServer/db"
 )
 
 func main() {
-	// Create a new server with default configuration
-	server := epicserver.NewServer(&epicserver.Config{
-		Port:         8080,
-		ReadTimeout:  30,
-		WriteTimeout: 30,
+	server := EpicServer.NewServer([]EpicServer.Option{
+		EpicServer.SetHost("localhost", 8080),
+		EpicServer.SetSecretKey([]byte("your-secret-key")),
 	})
 
-	// Add a simple route
-	server.GET("/hello", func(ctx *epicserver.Context) {
-		ctx.String(http.StatusOK, "Hello, EpicServer!")
+	server.UpdateAppLayer([]EpicServer.AppLayer{
+		EpicServer.WithRoutes(
+			EpicServer.RouteGroup{
+				Prefix: "/api/v1",
+				Routes: []EpicServer.Route{
+					EpicServer.Get("/users", HandleUsers),
+				},
+			},
+		),
+		EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
+			ConnectionName: "default",
+			URI:           "mongodb://localhost:27017",
+			DatabaseName:  "myapp",
+		}),
 	})
 
-	// Start the server
-	log.Println("Server starting on :8080...")
-	if err := server.Start(); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
-	}
+	server.Start()
+}
+
+func HandleUsers(c *gin.Context, s *EpicServer.Server) {
+	client := EpicServerDb.GetMongoClient(s, "default")
+	db := client.Database("myapp")
+	collection := db.Collection("users")
+	// Handle request using MongoDB...
+	c.JSON(200, gin.H{"message": "users endpoint"})
 }
 ```
 
@@ -76,13 +114,13 @@ Run your server with:
 go run main.go
 ```
 
-Visit `http://localhost:8080/hello` in your browser or use curl:
+Visit `http://localhost:8080/health` in your browser or use curl to check if your server is running:
 
 ```bash
-curl http://localhost:8080/hello
+curl http://localhost:8080/health
 ```
 
-You should see the message "Hello, EpicServer!".
+You should see a response indicating the server is healthy.
 
 ## Next Steps
 
@@ -90,4 +128,5 @@ Now that you have a basic server running, you can:
 
 1. Learn about [Routing](../../guides/routing/) to add more endpoints
 2. Set up [Middleware](../../guides/middleware/) for request processing
-3. Implement [Authentication](../../guides/authentication/) for your application 
+3. Explore [Database Support](../../guides/database/) for your application
+4. Implement [Authentication](../../guides/authentication/) for secure access 

@@ -50,7 +50,7 @@
 <meta property="og:url" content="http://localhost:1313/docs/">
   <meta property="og:site_name" content="My Docs">
   <meta property="og:title" content="EpicServer Documentation">
-  <meta property="og:description" content="Documentation for EpicServer, a powerful, flexible, and production-ready Go web server.">
+  <meta property="og:description" content="Documentation for EpicServer, a powerful, flexible, and production-ready Go web server built on top of Gin framework.">
   <meta property="og:locale" content="en">
   <meta property="og:type" content="website">
     <meta property="og:image" content="http://localhost:1313/cover.png">
@@ -58,7 +58,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="http://localhost:1313/cover.png">
   <meta name="twitter:title" content="EpicServer Documentation">
-  <meta name="twitter:description" content="Documentation for EpicServer, a powerful, flexible, and production-ready Go web server.">
+  <meta name="twitter:description" content="Documentation for EpicServer, a powerful, flexible, and production-ready Go web server built on top of Gin framework.">
       <meta name="twitter:site" content="@getdoks">
 
     <script type="application/ld+json">
@@ -155,7 +155,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/concepts/server-architecture/">Server Architecture</a>
+      <a href="/docs/concepts/architecture/">Architecture</a>
   </li>
       </ul>
     </details>
@@ -175,6 +175,26 @@
   </li>
 
   <li>
+      <a href="/docs/guides/database-support/">Database Support</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/authentication/">Authentication</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/caching/">Caching</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/logging/">Logging</a>
+  </li>
+
+  <li>
+      <a href="/docs/guides/configuration/">Configuration</a>
+  </li>
+
+  <li>
       <a href="/docs/guides/example-guide/">Example Guide</a>
   </li>
       </ul>
@@ -187,7 +207,7 @@
       <ul class="list-unstyled list-nested">
 
   <li>
-      <a href="/docs/examples/basic-api-server/">Basic API Server</a>
+      <a href="/docs/examples/basic-api-example/">Basic API Example</a>
   </li>
       </ul>
     </details>
@@ -200,6 +220,10 @@
 
   <li>
       <a href="/docs/reference/api-reference/">API Reference</a>
+  </li>
+
+  <li>
+      <a href="/docs/reference/migration-guide/">Migration Guide</a>
   </li>
 
   <li>
@@ -341,7 +365,61 @@
   <div class="col-md-12 col-lg-10 col-xl-8">
     <article>
       <h1 class="text-center">Docs</h1>
-      <div class="text-center"><p>Welcome to the official documentation for EpicServer, a powerful, flexible, and production-ready Go web server built on top of the Gin framework. This documentation will help you get started with EpicServer and provide detailed information on its features and capabilities.</p>
+      <div class="text-center"><h1 id="epicserver">EpicServer</h1>
+<blockquote>
+<p>A powerful, flexible, and production-ready Go web server built on top of Gin framework.</p></blockquote>
+<p><strong>Go Version:</strong> &gt;=1.16 | <strong>Current Version:</strong> 2.0.3 | <a href="https://coveralls.io/github/tomskip123/EpicServer?branch=main&amp;v=1"><strong>Coverage Status</strong></a></p>
+<h2 id="-installation">📥 Installation</h2>
+
+
+
+<div class="expressive-code">
+  <figure class="frame is-terminal not-content">
+  <figcaption class="header">
+    <span class="title"></span>
+  </figcaption>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-bash" data-lang="bash"><span class="line"><span class="cl">go get github.com/tomskip123/EpicServer/v2</span></span></code></pre></div>
+  </figure>
+</div>
+<blockquote>
+<p><strong>Note:</strong> Version 2.x is the only supported version. Version 1.x is deprecated and should not be used for new projects.</p></blockquote>
+<h2 id="-breaking-changes-in-v200">⚠️ Breaking Changes in v2.0.0</h2>
+<p>Version 2.0.0 introduces significant improvements with breaking changes. See <a href="https://github.com/tomskip123/EpicServer/blob/main/CHANGELOG.md">CHANGELOG.md</a> for details and migration guide.</p>
+<p>Key changes:</p>
+<ul>
+<li>Structured logging replaces variadic logging</li>
+<li>Database connections now return errors instead of panicking</li>
+<li>Enhanced configuration system with validation</li>
+<li>Improved security features</li>
+</ul>
+<h2 id="-enhanced-documentation-in-v201">📝 Enhanced Documentation in v2.0.1</h2>
+<p>Version 2.0.1 improves documentation with:</p>
+<ul>
+<li>Detailed migration guide with code examples</li>
+<li>Comprehensive API usage examples</li>
+<li>Improved integration examples with imports and context</li>
+<li>Enhanced changelog maintenance</li>
+</ul>
+<h2 id="-enhanced-test-coverage-in-v203">🧪 Enhanced Test Coverage in v2.0.3</h2>
+<p>Version 2.0.3 improves test coverage and reliability:</p>
+<ul>
+<li>Improved overall test coverage to 80.7%, surpassing the minimum threshold of 80%</li>
+<li>Added comprehensive tests for CSRF protection functionality</li>
+<li>Enhanced logging test suite with additional test cases</li>
+<li>Fixed edge cases in authentication tests</li>
+<li>Added specific tests for middleware components</li>
+</ul>
+<h2 id="-recent-improvements-in-unreleased-version">🔧 Recent Improvements in Unreleased Version</h2>
+<ul>
+<li><strong>Thread Safety Improvements</strong>:
+<ul>
+<li>Fixed data race condition in Server struct by adding a mutex to protect concurrent access</li>
+<li>Updated <code>Start()</code> and <code>Stop()</code> methods to use mutex protection when accessing the HTTP server</li>
+<li>Enhanced tests to properly handle concurrent access to server resources</li>
+</ul>
+</li>
+</ul>
+<p>Welcome to the official documentation for EpicServer, a powerful, flexible, and production-ready Go web server built on top of the Gin framework. This documentation will help you get started with EpicServer and provide detailed information on its features and capabilities.</p>
 </div>
 			<div class="card-list">
 				
@@ -357,7 +435,47 @@
 					
 						<div class="card my-3">
 							<div class="card-body">
-								<a class="stretched-link" href="/docs/examples/basic-api-server/">Basic API Server &rarr;</a>
+								<a class="stretched-link" href="/docs/concepts/architecture/">Architecture &rarr;</a>
+							</div>
+						</div>
+					
+				
+					
+						<div class="card my-3">
+							<div class="card-body">
+								<a class="stretched-link" href="/docs/guides/authentication/">Authentication &rarr;</a>
+							</div>
+						</div>
+					
+				
+					
+						<div class="card my-3">
+							<div class="card-body">
+								<a class="stretched-link" href="/docs/examples/basic-api-example/">Basic API Example &rarr;</a>
+							</div>
+						</div>
+					
+				
+					
+						<div class="card my-3">
+							<div class="card-body">
+								<a class="stretched-link" href="/docs/guides/caching/">Caching &rarr;</a>
+							</div>
+						</div>
+					
+				
+					
+						<div class="card my-3">
+							<div class="card-body">
+								<a class="stretched-link" href="/docs/guides/configuration/">Configuration &rarr;</a>
+							</div>
+						</div>
+					
+				
+					
+						<div class="card my-3">
+							<div class="card-body">
+								<a class="stretched-link" href="/docs/guides/database-support/">Database Support &rarr;</a>
 							</div>
 						</div>
 					
@@ -389,7 +507,23 @@
 					
 						<div class="card my-3">
 							<div class="card-body">
+								<a class="stretched-link" href="/docs/guides/logging/">Logging &rarr;</a>
+							</div>
+						</div>
+					
+				
+					
+						<div class="card my-3">
+							<div class="card-body">
 								<a class="stretched-link" href="/docs/guides/middleware/">Middleware &rarr;</a>
+							</div>
+						</div>
+					
+				
+					
+						<div class="card my-3">
+							<div class="card-body">
+								<a class="stretched-link" href="/docs/reference/migration-guide/">Migration Guide &rarr;</a>
 							</div>
 						</div>
 					
@@ -414,14 +548,6 @@
 						<div class="card my-3">
 							<div class="card-body">
 								<a class="stretched-link" href="/docs/guides/routing/">Routing &rarr;</a>
-							</div>
-						</div>
-					
-				
-					
-						<div class="card my-3">
-							<div class="card-body">
-								<a class="stretched-link" href="/docs/concepts/server-architecture/">Server Architecture &rarr;</a>
 							</div>
 						</div>
 					
