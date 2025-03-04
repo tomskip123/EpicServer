@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Get started with EpicServer, a powerful Go web server framework. Learn about installation, basic usage, configuration, middleware, and routing.">
+    <meta name="keywords" content="Go, Golang, Web Server, Getting Started, EpicServer, Installation, Configuration, Middleware, Routing">
+    <meta name="author" content="tomskip123">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Getting Started - EpicServer Documentation">
+    <meta property="og:description" content="Get started with EpicServer, a powerful Go web server framework. Learn about installation, basic usage, configuration, middleware, and routing.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="/EpicServer/getting-started.html">
+    <title>Getting Started - EpicServer Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js"></script>
+    <link rel="canonical" href="/EpicServer/getting-started.html">
+    <!-- Add highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/bash.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
+            });
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <nav class="nav" aria-label="Main Navigation">
+            <a href="index.html">Home</a>
+            <a href="getting-started.html">Getting Started</a>
+            <a href="core-features.html">Core Features</a>
+            <a href="advanced-usage.html">Advanced Usage</a>
+            <a href="security.html">Security</a>
+            <a href="package-reference.html">Package Reference</a>
+            <a href="changelog.html">Changelog</a>
+        </nav>
+    </header>
+
+    <div class="container">
+        <h1>Getting Started with EpicServer</h1>
+        
+        <div class="toc">
+            <h3>On This Page</h3>
+            <ul>
+                <li><a href="#installation">Installation</a></li>
+                <li><a href="#quick-start">Quick Start</a></li>
+                <li><a href="#basic-example">Basic Example</a></li>
+                <li><a href="#default-middleware">Default Middleware</a></li>
+            </ul>
+        </div>
+
+        <h2 id="installation">Installation</h2>
+        <p>To use EpicServer in your Go project, you need to install it using Go modules:</p>
+        <div class="code-container">
+            <div class="code-header">Terminal</div>
+            <pre><code class="language-bash">go get github.com/tomskip123/EpicServer/v2</code></pre>
+        </div>
+        <div class="note">
+            <p><strong>Note:</strong> Version 2.x is the only supported version. Version 1.x is deprecated and should not be used for new projects.</p>
+        </div>
+        <p>Make sure you're using Go 1.23 or later, as EpicServer requires this version for its dependencies.</p>
+
+        <h2 id="quick-start">Quick Start</h2>
+        <p>Create a new web server in just a few lines:</p>
+        <div class="code-container">
+            <div class="code-header">main.go</div>
+            <pre><code class="language-go">package main
+
+import "github.com/tomskip123/EpicServer/v2"
+
+func main() {
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+
+    // No need to add default middleware like WithHealthCheck or WithEnvironment
+    // as they are already included by default
+
+    server.Start()
+}</code></pre>
+        </div>
+
+        <h2 id="basic-example">Basic Example</h2>
+        <p>Here's a complete example with routing, database, and authentication:</p>
+        <div class="code-container">
+            <div class="code-header">main.go</div>
+            <pre><code class="language-go">package main
+
+import (
+    "fmt"
+    "log"
+    
+    "github.com/gin-gonic/gin"
+    "github.com/tomskip123/EpicServer/v2"
+    "github.com/tomskip123/EpicServer/v2/db"
+)
+
+func main() {
+    // Create a new server with options
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetHost("localhost", 8080),
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+    })
+    
+    // Check for initialization errors
+    if server.HasErrors() {
+        for _, err := range server.GetErrors() {
+            log.Fatalf("Server initialization error: %v", err)
+        }
+    }
+
+    // Add application layers
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        // Add routes
+        EpicServer.WithRoutes(
+            EpicServer.RouteGroup{
+                Prefix: "/api/v1",
+                Routes: []EpicServer.Route{
+                    EpicServer.Get("/users", HandleUsers),
+                },
+            },
+        ),
+        // Add MongoDB connection
+        EpicServerDb.WithMongo(&EpicServerDb.MongoConfig{
+            ConnectionName: "default",
+            URI:           "mongodb://localhost:27017",
+            DatabaseName:  "myapp",
+        }),
+        // Add logging middleware
+        EpicServer.WithLoggerMiddleware(),
+        // Add security headers
+        EpicServer.WithSecurityHeaders(&EpicServer.SecurityHeadersConfig{
+            EnableHSTS:               true,
+            EnableContentTypeOptions: true,
+            EnableFrameOptions:       true,
+            FrameOption:              "DENY",
+            EnableXSSProtection:      true,
+        }),
+    })
+
+    // Start the server
+    if err := server.Start(); err != nil {
+        log.Fatalf("Server error: %v", err)
+    }
+}
+
+func HandleUsers(c *gin.Context, s *EpicServer.Server) {
+    // Get MongoDB client
+    client, ok := EpicServerDb.GetMongoClient(s, "default")
+    if !ok {
+        c.JSON(500, gin.H{"error": "MongoDB client not found"})
+        return
+    }
+    
+    // Use the client
+    db := client.Database("myapp")
+    collection := db.Collection("users")
+    
+    // Log with module-based logging
+    logger := s.Logger.WithModule("api.users")
+    logger.Info("Handling users request", EpicServer.F("path", c.Request.URL.Path))
+    
+    // Handle request
+    c.JSON(200, gin.H{"message": "users endpoint"})
+}</code></pre>
+        </div>
+
+        <h2 id="default-middleware">Default Middleware</h2>
+        <p>When you create a new server using <code>EpicServer.NewServer()</code>, several middleware layers are automatically applied. You don't need to add these manually:</p>
+        
+        <div class="code-container">
+            <div class="code-header">Default Middleware Layers</div>
+            <pre><code class="language-go">// These are already applied by default, you don't need to add them manually
+defaultLayers := []AppLayer{
+    WithLoggerMiddleware(), // Add the logger to the context first
+    WithHealthCheck("/health"),
+    WithCompression(),      // Compression is already here!
+    WithRemoveWWW(),
+    WithEnvironment(config.Server.Environment),
+}</code></pre>
+        </div>
+        
+        <div class="note">
+            <p><strong>Important:</strong> Do not add these middleware layers again in your <code>UpdateAppLayer()</code> call, as they are already included by default. Adding them again will result in the middleware being applied twice, which can cause issues.</p>
+            <p>If you need to customize these default middleware layers, see the <a href="advanced-usage.html#custom-configuration">Custom Configuration</a> section in Advanced Usage.</p>
+        </div>
+
+        <div class="note">
+            <p>This example demonstrates several key features of EpicServer:</p>
+            <ul>
+                <li>Server initialization with options</li>
+                <li>Error handling during initialization</li>
+                <li>Route configuration with handler functions</li>
+                <li>Database integration (MongoDB)</li>
+                <li>Structured logging with module support</li>
+                <li>Security headers configuration</li>
+            </ul>
+        </div>
+    </div>
+    
+    <footer class="footer">
+        <p>Powered by EpicServer - A powerful, flexible, and production-ready web server</p>
+        <p>Documentation generated from README.md</p>
+    </footer>
+
+    <script>
+        // Add a timestamp to the footer
+        document.addEventListener('DOMContentLoaded', function() {
+            const footer = document.querySelector('.footer');
+            if (footer) {
+                const timestamp = document.createElement('p');
+                timestamp.textContent = 'Last updated: ' + new Date().toLocaleString();
+                timestamp.style.fontSize = '0.8em';
+                timestamp.setAttribute('data-generated', 'timestamp');
+                footer.appendChild(timestamp);
+            }
+        });
+    </script>
+</body>
+</html> 

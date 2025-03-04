@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Core features of EpicServer including configuration system, routing, authentication, database support, caching, static file serving, and middleware.">
+    <meta name="keywords" content="Go, Golang, Web Server, Gin Framework, EpicServer, Routing, Middleware, Database, Logging, Configuration, Security, Static Files">
+    <meta name="author" content="tomskip123">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="Core Features - EpicServer Documentation">
+    <meta property="og:description" content="Core features of EpicServer including configuration system, routing, authentication, database support, caching, static file serving, and middleware.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tomskip123.github.io/EpicServer/core-features.html">
+    <title>Core Features - EpicServer Documentation</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js"></script>
+    <link rel="canonical" href="https://tomskip123.github.io/EpicServer/core-features.html">
+    <!-- Add highlight.js for syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/languages/go.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            document.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightBlock(block);
+            });
+        });
+    </script>
+</head>
+<body>
+    <header>
+        <nav class="nav" aria-label="Main Navigation">
+            <a href="index.html">Home</a>
+            <a href="getting-started.html">Getting Started</a>
+            <a href="core-features.html">Core Features</a>
+            <a href="advanced-usage.html">Advanced Usage</a>
+            <a href="security.html">Security</a>
+            <a href="package-reference.html">Package Reference</a>
+            <a href="changelog.html">Changelog</a>
+        </nav>
+    </header>
+
+    <main class="container">
+        <article>
+            <header>
+                <h1>Core Features</h1>
+            </header>
+            
+            <nav class="toc" aria-labelledby="page-contents">
+                <h3 id="page-contents">On This Page</h3>
+                <ul>
+                    <li><a href="#configuration-system">Configuration System</a></li>
+                    <li><a href="#routing">Routing</a></li>
+                    <li><a href="#authentication">Authentication</a></li>
+                    <li><a href="#database-support">Database Support</a></li>
+                    <li><a href="#caching">Caching</a></li>
+                    <li><a href="#static-file-serving">Static File Serving</a></li>
+                    <li><a href="#middleware">Middleware</a></li>
+                </ul>
+            </nav>
+
+            <section id="configuration-system" aria-labelledby="configuration-system-title">
+                <h2 id="configuration-system-title">Configuration System</h2>
+                <p>EpicServer provides a flexible configuration system:</p>
+
+                <h3>Server Configuration</h3>
+                <div class="code-container">
+                    <div class="code-header">config.go</div>
+                    <pre><code class="language-go">server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetPort(8080),
+    EpicServer.SetEnvironment("development"),
+    EpicServer.SetLogLevel("info"),
+    EpicServer.SetReadTimeout(15),
+    EpicServer.SetWriteTimeout(15),
+    EpicServer.SetShutdownTimeout(5),
+    EpicServer.SetTrustedProxies([]string{"127.0.0.1"}),
+})</code></pre>
+                </div>
+
+                <h3>Environment Variables</h3>
+                <p>You can load configuration from environment variables:</p>
+                <div class="code-container">
+                    <div class="code-header">env_config.go</div>
+                    <pre><code class="language-go">config := EpicServer.Config{
+    Port:        getEnvInt("SERVER_PORT", 8080),
+    Environment: getEnv("SERVER_ENV", "development"),
+    LogLevel:    getEnv("LOG_LEVEL", "info"),
+}
+
+func getEnv(key, fallback string) string {
+    if value, exists := os.LookupEnv(key); exists {
+        return value
+    }
+    return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+    if value, exists := os.LookupEnv(key); exists {
+        if i, err := strconv.Atoi(value); err == nil {
+            return i
+        }
+    }
+    return fallback
+}</code></pre>
+                </div>
+            </section>
+
+            <section id="routing" aria-labelledby="routing-title">
+                <h2 id="routing-title">Routing</h2>
+                <p>EpicServer provides a declarative routing system that makes it easy to organize your API endpoints:</p>
+                
+                <h3>Route Groups</h3>
+                <p>Routes can be organized into groups with shared prefixes and middleware:</p>
+                <div class="code-container">
+                    <div class="code-header">routes.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRoutes(
+        // Public API routes
+        EpicServer.RouteGroup{
+            Prefix: "/api/v1",
+            Routes: []EpicServer.Route{
+                EpicServer.Get("/status", HandleStatus),
+                EpicServer.Get("/info", HandleInfo),
+            },
+        },
+        // Protected API routes
+        EpicServer.RouteGroup{
+            Prefix:      "/api/v1/admin",
+            Middlewares: []gin.HandlerFunc{AuthMiddleware()},
+            Routes: []EpicServer.Route{
+                EpicServer.Get("/users", HandleGetUsers),
+                EpicServer.Post("/users", HandleCreateUser),
+            },
+        },
+    ),
+})</code></pre>
+                </div>
+
+                <h3>HTTP Methods</h3>
+                <p>EpicServer supports all standard HTTP methods:</p>
+                <ul>
+                    <li><code>EpicServer.Get(path, handler)</code></li>
+                    <li><code>EpicServer.Post(path, handler)</code></li>
+                    <li><code>EpicServer.Put(path, handler)</code></li>
+                    <li><code>EpicServer.Delete(path, handler)</code></li>
+                    <li><code>EpicServer.Patch(path, handler)</code></li>
+                    <li><code>EpicServer.Head(path, handler)</code></li>
+                    <li><code>EpicServer.Options(path, handler)</code></li>
+                </ul>
+
+                <h3>Route Parameters</h3>
+                <p>You can define dynamic route parameters using the Gin syntax:</p>
+                <div class="code-container">
+                    <div class="code-header">user_handler.go</div>
+                    <pre><code class="language-go">EpicServer.Get("/users/:id", func(c *gin.Context, s *EpicServer.Server) {
+    id := c.Param("id")
+    // Use the id parameter
+    user, err := s.DB.GetUser(id)
+    if err != nil {
+        c.JSON(404, gin.H{"error": "User not found"})
+        return
+    }
+    c.JSON(200, user)
+})</code></pre>
+                </div>
+            </section>
+
+            <section id="authentication" aria-labelledby="authentication-title">
+                <h2 id="authentication-title">Authentication</h2>
+                <p>EpicServer includes several security features to help protect your application:</p>
+
+                <h3>CORS Protection</h3>
+                <div class="code-container">
+                    <div class="code-header">cors.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithCors([]string{"https://example.com", "https://api.example.com"}),
+})</code></pre>
+                </div>
+
+                <h3>Rate Limiting</h3>
+                <div class="code-container">
+                    <div class="code-header">rate_limiter.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRateLimiter(EpicServer.RateLimiterConfig{
+        MaxRequests:   100,
+        Interval:      time.Minute,
+        BlockDuration: 5 * time.Minute,
+        ExcludedPaths: []string{"/health", "/static/*"},
+    }),
+})</code></pre>
+                </div>
+
+                <h3>CSRF Protection</h3>
+                <div class="code-container">
+                    <div class="code-header">csrf.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithCSRFProtection(&EpicServer.SessionConfig{
+        CookieName:      "session",
+        CookieDomain:    "example.com",
+        CookieMaxAge:    3600,
+        CookieSecure:    true,
+        CookieHTTPOnly:  true,
+        SessionDuration: 24 * time.Hour,
+    }),
+})</code></pre>
+                </div>
+
+                <h3>Security Headers</h3>
+                <div class="code-container">
+                    <div class="code-header">security_headers.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithSecurityHeaders(),
+})</code></pre>
+                </div>
+                <p>This adds the following headers to all responses:</p>
+                <ul>
+                    <li>X-Content-Type-Options: nosniff</li>
+                    <li>X-Frame-Options: DENY</li>
+                    <li>Content-Security-Policy: default-src 'self'</li>
+                    <li>X-XSS-Protection: 1; mode=block</li>
+                    <li>Strict-Transport-Security: max-age=31536000; includeSubDomains</li>
+                </ul>
+            </section>
+
+            <section id="database-support" aria-labelledby="database-support-title">
+                <h2 id="database-support-title">Database Support</h2>
+                <p>EpicServer provides built-in database integration with GORM, supporting multiple database engines:</p>
+
+                <h3>Supported Databases</h3>
+                <ul>
+                    <li>PostgreSQL</li>
+                    <li>MySQL</li>
+                    <li>SQLite</li>
+                    <li>SQL Server</li>
+                </ul>
+
+                <h3>Database Configuration</h3>
+                <div class="code-container">
+                    <div class="code-header">database_config.go</div>
+                    <pre><code class="language-go">dbConfig := EpicServer.DatabaseConfig{
+    Driver:   "postgres",
+    Host:     "localhost",
+    Port:     5432,
+    User:     "postgres",
+    Password: "password",
+    Database: "myapp",
+    SSLMode:  "disable",
+}
+
+// Connect to the database
+if err := server.ConnectDatabase(dbConfig); err != nil {
+    log.Fatalf("Failed to connect to database: %v", err)
+}</code></pre>
+                </div>
+
+                <h3>Using the Database</h3>
+                <p>Once connected, you can access the database through the server instance in your handlers:</p>
+                <div class="code-container">
+                    <div class="code-header">user_handler.go</div>
+                    <pre><code class="language-go">func GetUsers(c *gin.Context, s *EpicServer.Server) {
+    var users []User
+    if err := s.DB.Find(&users).Error; err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(200, users)
+}</code></pre>
+                </div>
+
+                <h3>Migrations</h3>
+                <p>EpicServer supports automatic database migrations:</p>
+                <div class="code-container">
+                    <div class="code-header">models.go</div>
+                    <pre><code class="language-go">// Define your models
+type User struct {
+    gorm.Model
+    Name     string
+    Email    string `gorm:"uniqueIndex"`
+    Password string
+}
+
+// Auto-migrate the schema
+if err := server.DB.AutoMigrate(&User{}); err != nil {
+    log.Fatalf("Failed to migrate database: %v", err)
+}</code></pre>
+                </div>
+            </section>
+
+            <section id="caching" aria-labelledby="caching-title">
+                <h2 id="caching-title">Caching</h2>
+                <p>EpicServer provides built-in caching capabilities:</p>
+
+                <h3>Cache Configuration</h3>
+                <div class="code-container">
+                    <div class="code-header">cache_config.go</div>
+                    <pre><code class="language-go">cacheConfig := EpicServer.CacheConfig{
+    Driver:   "redis",
+    Host:     "localhost",
+    Port:     6379,
+    Password: "",
+    Database: 0,
+}
+
+// Connect to the cache
+if err := server.ConnectCache(cacheConfig); err != nil {
+    log.Fatalf("Failed to connect to cache: %v", err)
+}</code></pre>
+                </div>
+
+                <h3>Using the Cache</h3>
+                <p>Once connected, you can use the cache in your handlers:</p>
+                <div class="code-container">
+                    <div class="code-header">user_handler.go</div>
+                    <pre><code class="language-go">func GetUsers(c *gin.Context, s *EpicServer.Server) {
+    var users []User
+    if err := s.Cache.Find(&users).Error; err != nil {
+        c.JSON(500, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(200, users)
+}</code></pre>
+                </div>
+            </section>
+
+            <section id="static-file-serving" aria-labelledby="static-file-serving-title">
+                <h2 id="static-file-serving-title">Static File Serving</h2>
+                <p>EpicServer can serve static files from a directory:</p>
+                <div class="code-container">
+                    <div class="code-header">static_files.go</div>
+                    <pre><code class="language-go">// In your main.go file
+staticDir := "static"
+absStaticPath, _ := filepath.Abs(staticDir)
+
+// Create directory if it doesn't exist
+if _, err := os.Stat(staticDir); os.IsNotExist(err) {
+    os.MkdirAll(staticDir, 0755)
+}
+
+// Serve static files from the static directory
+server.Engine.Static("/site", absStaticPath)
+
+// Add a redirect from root to the static index.html
+server.Engine.GET("/", func(c *gin.Context) {
+    c.Redirect(302, "/site/index.html")
+})</code></pre>
+                </div>
+            </section>
+
+            <section id="middleware" aria-labelledby="middleware-title">
+                <h2 id="middleware-title">Middleware</h2>
+                <p>EpicServer includes a comprehensive middleware system that allows you to add functionality to your application:</p>
+
+                <h3>Built-in Middleware</h3>
+                <ul>
+                    <li><strong>WithLoggerMiddleware</strong>: Adds structured request logging with configurable log levels</li>
+                    <li><strong>WithCors</strong>: Configures Cross-Origin Resource Sharing with customizable allowed origins</li>
+                    <li><strong>WithRateLimiter</strong>: Adds rate limiting to protect against abuse</li>
+                    <li><strong>WithHealthCheck</strong>: Adds a health check endpoint for monitoring</li>
+                    <li><strong>WithCSRFProtection</strong>: Adds CSRF protection for forms</li>
+                    <li><strong>WithSecurityHeaders</strong>: Adds security-related HTTP headers</li>
+                    <li><strong>WithJWT</strong>: Adds JWT authentication</li>
+                    <li><strong>WithHttp2</strong>: Enables HTTP/2 protocol support for improved performance</li>
+                    <li><strong>WithTrustedProxies</strong>: Configures trusted proxies for proper handling of forwarded headers</li>
+                    <li><strong>WithLogLevel</strong>: Sets the global log level for the server</li>
+                    <li><strong>WithLogFormat</strong>: Configures the log format (JSON or text)</li>
+                    <li><strong>WithModuleLogLevel</strong>: Sets log levels for specific modules</li>
+                    <li><strong>WithLogRegistry</strong>: Provides a custom log registry for centralized log level management</li>
+                    <li><strong>WithCustomLogger</strong>: Allows using a custom logger implementation</li>
+                    <li><strong>WithStaticDirectory</strong>: Serves a directory of static files</li>
+                    <li><strong>WithStaticFile</strong>: Serves an individual static file with custom MIME type</li>
+                    <li><strong>WithSPACatchAll</strong>: Configures Single-Page Application (SPA) routing support</li>
+                    <li><strong>WithRecovery</strong>: Recovers from panics and returns 500 error</li>
+                </ul>
+
+                <h3>Custom Middleware</h3>
+                <p>You can create custom middleware functions that have access to both the Gin context and the EpicServer instance:</p>
+                <div class="code-container">
+                    <div class="code-header">middleware_example.go</div>
+                    <pre><code class="language-go">func CustomMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Perform operations before the request is processed
+        startTime := time.Now()
+        
+        // Pass control to the next middleware/handler
+        c.Next()
+        
+        // Perform operations after the request is processed
+        duration := time.Since(startTime)
+        log.Printf("Request processed in %v", duration)
+    }
+}
+
+// Add the custom middleware to a route group
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRoutes(
+        EpicServer.RouteGroup{
+            Prefix:      "/api",
+            Middlewares: []gin.HandlerFunc{CustomMiddleware()},
+            Routes:      []EpicServer.Route{/* routes */},
+        },
+    ),
+})</code></pre>
+                </div>
+
+                <div class="code-container">
+                    <div class="code-header">middleware.go</div>
+                    <pre><code class="language-go">func CustomMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        // Perform operations before the request is processed
+        startTime := time.Now()
+        
+        // Pass control to the next middleware/handler
+        c.Next()
+        
+        // Perform operations after the request is processed
+        duration := time.Since(startTime)
+        log.Printf("Request processed in %v", duration)
+    }
+}
+
+// Add the custom middleware to a route group
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRoutes(
+        EpicServer.RouteGroup{
+            Prefix:      "/api",
+            Middlewares: []gin.HandlerFunc{CustomMiddleware()},
+            Routes:      []EpicServer.Route{/* routes */},
+        },
+    ),
+})</code></pre>
+                </div>
+            </section>
+
+            <section class="content-section" id="http2-support">
+                <h2>HTTP/2 Support</h2>
+                <p>HTTP/2 provides significant performance improvements over HTTP/1.1, including multiplexing, header compression, and prioritization.</p>
+
+                <div class="code-container">
+                    <div class="code-header">server.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithHttp2(),
+})</code></pre>
+                </div>
+
+                <p>Features:</p>
+                <ul>
+                    <li><strong>Multiplexing</strong>: Send multiple requests in parallel over a single connection</li>
+                    <li><strong>Header Compression</strong>: Reduce overhead by compressing HTTP headers</li>
+                    <li><strong>Server Push</strong>: Push resources to clients before they request them</li>
+                    <li><strong>Binary Protocol</strong>: More efficient parsing than text-based HTTP/1.1</li>
+                    <li><strong>Backward Compatibility</strong>: Clients that don't support HTTP/2 fall back to HTTP/1.1</li>
+                </ul>
+            </section>
+
+            <section class="content-section" id="trusted-proxies">
+                <h2>Trusted Proxies Configuration</h2>
+                <p>When running your server behind load balancers, CDNs, or reverse proxies, properly configuring trusted proxies is essential for security and correct client IP detection.</p>
+
+                <div class="code-container">
+                    <div class="code-header">server.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithTrustedProxies([]string{
+        "127.0.0.1",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+    }),
+})</code></pre>
+                </div>
+
+                <p>Features:</p>
+                <ul>
+                    <li><strong>X-Forwarded Headers</strong>: Properly handle X-Forwarded-For, X-Forwarded-Proto, etc.</li>
+                    <li><strong>Client IP Detection</strong>: Correctly identify the original client IP address</li>
+                    <li><strong>CIDR Support</strong>: Specify trusted proxies using IP ranges</li>
+                    <li><strong>Enhanced Security</strong>: Prevent IP spoofing and header manipulation</li>
+                </ul>
+            </section>
+
+            <section class="content-section" id="advanced-logging">
+                <h2>Advanced Logging Configuration</h2>
+                <p>EpicServer's logging system provides granular control over log levels, formats, and modules.</p>
+
+                <div class="code-container">
+                    <div class="code-header">logger.go</div>
+                    <pre><code class="language-go">server.UpdateAppLayer([]EpicServer.AppLayer{
+    // Set global log level
+    EpicServer.WithLogLevel(EpicServer.LogLevelDebug),
+    
+    // Configure log format (JSON or Text)
+    EpicServer.WithLogFormat(EpicServer.LogFormatJSON),
+    
+    // Set log level for specific modules
+    EpicServer.WithModuleLogLevel("auth", EpicServer.LogLevelDebug),
+    EpicServer.WithModuleLogLevel("db", EpicServer.LogLevelInfo),
+    
+    // Or use a custom log registry for more control
+    EpicServer.WithLogRegistry(customRegistry),
+    
+    // Use a completely custom logger implementation
+    EpicServer.WithCustomLogger(myCustomLogger),
+})</code></pre>
+                </div>
+
+                <p>Available log levels:</p>
+                <ul>
+                    <li><strong>LogLevelDebug</strong>: Most detailed information, useful for development</li>
+                    <li><strong>LogLevelInfo</strong>: General operational information</li>
+                    <li><strong>LogLevelWarn</strong>: Warning conditions that might lead to errors</li>
+                    <li><strong>LogLevelError</strong>: Error conditions that need attention</li>
+                    <li><strong>LogLevelFatal</strong>: Critical errors that cause termination</li>
+                </ul>
+
+                <p>Log formats:</p>
+                <ul>
+                    <li><strong>LogFormatJSON</strong>: Structured JSON format suitable for log aggregation systems</li>
+                    <li><strong>LogFormatText</strong>: Human-readable text format for local development</li>
+                </ul>
+            </section>
+
+            <section class="content-section" id="static-files">
+                <h2>Static File Serving</h2>
+                <p>EpicServer makes it easy to serve static files and single-page applications (SPAs).</p>
+
+                <div class="code-container">
+                    <div class="code-header">static.go</div>
+                    <pre><code class="language-go">//go:embed static
+var staticFiles embed.FS
+
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    // Serve a directory of static files
+    EpicServer.WithStaticDirectory("/static", &staticFiles, "static"),
+    
+    // Serve individual files with custom MIME types
+    EpicServer.WithStaticFile("/favicon.ico", &staticFiles, "static/favicon.ico", "image/x-icon"),
+    
+    // Handle SPA routing (serve index.html for non-matched routes)
+    EpicServer.WithSPACatchAll(&staticFiles, "static", "static/index.html"),
+})</code></pre>
+                </div>
+
+                <p>Features:</p>
+                <ul>
+                    <li><strong>Embedded Files</strong>: Use Go 1.16+ embed package to include static files in your binary</li>
+                    <li><strong>Directory Serving</strong>: Serve entire directories with proper path mapping</li>
+                    <li><strong>Individual Files</strong>: Serve specific files with custom MIME types</li>
+                    <li><strong>SPA Support</strong>: Handle client-side routing in single-page applications</li>
+                    <li><strong>Caching</strong>: Automatically set appropriate caching headers</li>
+                </ul>
+            </section>
+
+            <div class="card">
+                <h3>Next Steps</h3>
+                <p>Now that you understand the core features, check out these resources:</p>
+                <ul>
+                    <li><a href="/site/advanced-usage.html">Advanced Usage</a> - Discover advanced techniques and patterns</li>
+                    <li><a href="/site/security.html">Security</a> - Learn more about security features</li>
+                    <li><a href="/site/package-reference.html">Package Reference</a> - Detailed documentation of all package types and functions</li>
+                </ul>
+            </div>
+        </article>
+    </main>
+    
+    <footer class="footer">
+        <p>Powered by EpicServer - A powerful, flexible, and production-ready web server</p>
+        <p>Documentation generated from README.md</p>
+    </footer>
+
+    <script>
+        // Add a timestamp to the footer
+        document.addEventListener('DOMContentLoaded', function() {
+            const footer = document.querySelector('.footer');
+            if (footer) {
+                const timestamp = document.createElement('p');
+                timestamp.textContent = 'Last updated: ' + new Date().toLocaleString();
+                timestamp.style.fontSize = '0.8em';
+                timestamp.setAttribute('data-generated', 'timestamp');
+                footer.appendChild(timestamp);
+            }
+        });
+    </script>
+</body>
+</html> 
