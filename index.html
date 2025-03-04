@@ -1,0 +1,3949 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>EpicServer Documentation</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <h1>EpicServer Documentation</h1>
+    <div class="content">
+       <section class="Documentation-overview">
+    <h3 tabindex="-1" id="pkg-overview" class="Documentation-overviewHeader">Overview <a href="#pkg-overview" title="Go to Overview" aria-label="Go to Overview">¶</a></h3>
+
+<div role="navigation" aria-label="Table of Contents">
+  <ul class="Documentation-toc">
+      <li class="Documentation-tocItem"><a href="#hdr-Basic_Logging_Example">Basic Logging Example</a></li>
+      <li class="Documentation-tocItem"><a href="#hdr-Module_Based_Logging_Example">Module-Based Logging Example</a></li>
+      <li class="Documentation-tocItem"><a href="#hdr-Key_Features">Key Features</a></li>
+      <li class="Documentation-tocItem"><a href="#hdr-Basic_Usage">Basic Usage</a></li>
+      <li class="Documentation-tocItem"><a href="#hdr-Authentication_Example">Authentication Example</a></li>
+  </ul>
+</div>
+<p>Package EpicServer provides a comprehensive web server framework with built-in
+logging, authentication, database connections, caching, and more.
+</p><p>The logging system in this package offers structured logging with multiple levels,
+formats, and module-based filtering. It supports both human-readable text output
+and machine-readable JSON format.
+</p><h4 id="hdr-Basic_Logging_Example">Basic Logging Example <a class="Documentation-idLink" href="#hdr-Basic_Logging_Example" title="Go to Basic Logging Example" aria-label="Go to Basic Logging Example">¶</a></h4><pre>import (
+    "os"
+    "github.com/tomskip123/EpicServer/v2"
+)
+
+// Create a new logger
+logger := EpicServer.NewLogger(os.Stdout, EpicServer.LogLevelInfo, EpicServer.LogFormatText)
+
+// Log messages at different levels
+logger.Info("Server starting", EpicServer.F("port", 8080))
+logger.Debug("Connection details", EpicServer.F("timeout", "30s"))
+
+// Add structured fields
+logger = logger.WithFields(
+    EpicServer.F("app", "myapp"),
+    EpicServer.F("env", "production"),
+)
+logger.Info("Application context")
+
+// Log for specific modules
+authLogger := logger.WithModule("auth")
+authLogger.Info("User authenticated", EpicServer.F("user_id", "123"))
+</pre><h4 id="hdr-Module_Based_Logging_Example">Module-Based Logging Example <a class="Documentation-idLink" href="#hdr-Module_Based_Logging_Example" title="Go to Module-Based Logging Example" aria-label="Go to Module-Based Logging Example">¶</a></h4><pre>// Set log levels for specific modules
+EpicServer.SetModuleLevel("auth", EpicServer.LogLevelDebug)
+EpicServer.SetModuleLevel("db", EpicServer.LogLevelWarn)
+
+// Now auth module will show debug logs, but db will only show warnings and above
+</pre><p>Package EpicServer provides a powerful, flexible, and production-ready web server built on top of Gin framework.
+</p><p>EpicServer is designed to simplify the development of robust web applications by providing
+a comprehensive set of features, sensible defaults, and a clean API. It handles many of the
+common tasks required when building web services, allowing developers to focus on business logic.
+</p><h4 id="hdr-Key_Features">Key Features <a class="Documentation-idLink" href="#hdr-Key_Features" title="Go to Key Features" aria-label="Go to Key Features">¶</a></h4><ul class="Documentation-bulletList">
+  <li>Flexible configuration system with environment variable support</li>
+  <li>Built-in authentication with OAuth2/OIDC support (Google, GitHub, etc.)</li>
+  <li>Database integrations (MongoDB, PostgreSQL, MySQL, GORM)</li>
+  <li>Caching system for improved performance</li>
+  <li>Static file serving and SPA support</li>
+  <li>Extensive middleware options (logging, CORS, compression, etc.)</li>
+  <li>Graceful shutdown handling</li>
+</ul><h4 id="hdr-Basic_Usage">Basic Usage <a class="Documentation-idLink" href="#hdr-Basic_Usage" title="Go to Basic Usage" aria-label="Go to Basic Usage">¶</a></h4><pre>package main
+
+import (
+    "github.com/tomskip123/EpicServer/v2"
+)
+
+func main() {
+    // Create a new server with basic configuration
+    server := EpicServer.NewServer([]EpicServer.Option{
+        EpicServer.SetSecretKey([]byte("your-secret-key")),
+        EpicServer.SetPort(8080),
+    })
+
+    // Apply application layers for additional functionality
+    server.UpdateAppLayer([]EpicServer.AppLayer{
+        EpicServer.WithHealthCheck("/health"),
+        EpicServer.WithEnvironment("development"),
+        EpicServer.WithLoggerMiddleware(),
+    })
+
+    // Add routes
+    apiGroup := server.Engine.Group("/api")
+    apiGroup.GET("/hello", func(c *gin.Context) {
+        c.JSON(200, gin.H{"message": "Hello World"})
+    })
+
+    // Start the server (blocking call)
+    if err := server.Start(); err != nil {
+        panic(err)
+    }
+}
+</pre><h4 id="hdr-Authentication_Example">Authentication Example <a class="Documentation-idLink" href="#hdr-Authentication_Example" title="Go to Authentication Example" aria-label="Go to Authentication Example">¶</a></h4><pre>// Configure OAuth providers
+providers := []EpicServer.Provider{
+    {
+        Name:         "google",
+        ClientId:     os.Getenv("GOOGLE_CLIENT_ID"),
+        ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+        Callback:     "http://localhost:8080/auth/callback/google",
+    },
+}
+
+// Apply authentication middleware
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithAuth(providers, &amp;EpicServer.SessionConfig{
+        CookieName:      "auth_session",
+        CookieSecure:    true,
+        SessionDuration: 24 * time.Hour,
+    }),
+    EpicServer.WithAuthMiddleware(EpicServer.SessionConfig{
+        CookieName: "auth_session",
+    }),
+})
+</pre><p>For more extensive documentation and examples, see the documentation site
+or the repository README.
+</p>
+</section><section class="Documentation-index">
+    <h3 id="pkg-index" class="Documentation-indexHeader">Index <a href="#pkg-index" title="Go to Index" aria-label="Go to Index">¶</a></h3>
+
+<ul class="Documentation-indexList">
+<li class="Documentation-indexFunction">
+        <a href="#CheckKeys">func CheckKeys()</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#CompressMiddleware">func CompressMiddleware(ctx *gin.Context)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#CorsMiddleware">func CorsMiddleware(origins []string) gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#DecodeStateString">func DecodeStateString(stateString string) ([]byte, error)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#DefaultAuthErrorHandler">func DefaultAuthErrorHandler(c *gin.Context, err error)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#EncodeStateString">func EncodeStateString(s *Server, stateString []byte) string</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#GenerateCSRFToken">func GenerateCSRFToken() (string, error)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#GenerateEncryptionKey">func GenerateEncryptionKey() (string, error)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#GetCustomConfig">func GetCustomConfig(s *Server) interface{}</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#HandleAuthCallback">func HandleAuthCallback(s *Server, providers []Provider, cookiename string, domain string, secure bool, ...) gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#HandleAuthLogin">func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain string, secure bool) gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#HandleAuthLogout">func HandleAuthLogout(cookiename string, cookieDomain string, cookieSecure bool) gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#IsTrustedSource">func IsTrustedSource(r *http.Request) bool</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#LoggerMiddleware">func LoggerMiddleware(logger Logger) gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#RegisterAuthRoutes">func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#RemoveWWWMiddleware">func RemoveWWWMiddleware() gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#RequestTimingMiddleware">func RequestTimingMiddleware(logger Logger) gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#SecurityHeadersMiddleware">func SecurityHeadersMiddleware(config *SecurityHeadersConfig) gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#ServeEmbededFile">func ServeEmbededFile(server *Server, embededFS *embed.FS, path string, file string, ...)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#SetDefaultLevel">func SetDefaultLevel(level LogLevel)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#SetModuleLevel">func SetModuleLevel(module string, level LogLevel)</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#VerifyCSRFToken">func VerifyCSRFToken() gin.HandlerFunc</a></li>
+<li class="Documentation-indexFunction">
+        <a href="#WithCSRFProtection">func WithCSRFProtection(cfg *SessionConfig) gin.HandlerFunc</a></li>
+<li class="Documentation-indexType">
+          <a href="#AppLayer">type AppLayer</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#WithAuth">func WithAuth(providers []Provider, sessionConfig *SessionConfig) AppLayer</a></li>
+<li>
+            <a href="#WithAuthHooks">func WithAuthHooks(hooks AuthenticationHooks) AppLayer</a></li>
+<li>
+            <a href="#WithAuthMiddleware">func WithAuthMiddleware(config SessionConfig) AppLayer</a></li>
+<li>
+            <a href="#WithCompression">func WithCompression() AppLayer</a></li>
+<li>
+            <a href="#WithCors">func WithCors(origins []string) AppLayer</a></li>
+<li>
+            <a href="#WithCustomLogger">func WithCustomLogger(logger Logger) AppLayer</a></li>
+<li>
+            <a href="#WithEnvironment">func WithEnvironment(environment string) AppLayer</a></li>
+<li>
+            <a href="#WithHealthCheck">func WithHealthCheck(path string) AppLayer</a></li>
+<li>
+            <a href="#WithHttp2">func WithHttp2() AppLayer</a></li>
+<li>
+            <a href="#WithLogFormat">func WithLogFormat(format LogFormat) AppLayer</a></li>
+<li>
+            <a href="#WithLogLevel">func WithLogLevel(level LogLevel) AppLayer</a></li>
+<li>
+            <a href="#WithLogRegistry">func WithLogRegistry(registry *LogRegistry) AppLayer</a></li>
+<li>
+            <a href="#WithLoggerMiddleware">func WithLoggerMiddleware() AppLayer</a></li>
+<li>
+            <a href="#WithModuleLogLevel">func WithModuleLogLevel(module string, level LogLevel) AppLayer</a></li>
+<li>
+            <a href="#WithPublicPaths">func WithPublicPaths(config PublicPathConfig) AppLayer</a></li>
+<li>
+            <a href="#WithRateLimiter">func WithRateLimiter(config RateLimiterConfig) AppLayer</a></li>
+<li>
+            <a href="#WithRemoveWWW">func WithRemoveWWW() AppLayer</a></li>
+<li>
+            <a href="#WithRoutes">func WithRoutes(groups ...RouteGroup) AppLayer</a></li>
+<li>
+            <a href="#WithSPACatchAll">func WithSPACatchAll(embededFs *embed.FS, filesystemPath string, spaEntryPointPath string) AppLayer</a></li>
+<li>
+            <a href="#WithSecurityHeaders">func WithSecurityHeaders(config *SecurityHeadersConfig) AppLayer</a></li>
+<li>
+            <a href="#WithStaticDirectory">func WithStaticDirectory(path string, embededFS *embed.FS, fileSystemPath string) AppLayer</a></li>
+<li>
+            <a href="#WithStaticFile">func WithStaticFile(path string, embededFS *embed.FS, filesystemPath string, mimetype string) AppLayer</a></li>
+<li>
+            <a href="#WithTrustedProxies">func WithTrustedProxies(proxies []string) AppLayer</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#Auth">type Auth</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#NewAuthConfig">func NewAuthConfig(ctx context.Context, clientId string, clientSecret string, cookieName string, ...) *Auth</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#AuthErrorHandler">type AuthErrorHandler</a></li>
+<li class="Documentation-indexType">
+          <a href="#AuthenticationHooks">type AuthenticationHooks</a></li>
+<li class="Documentation-indexType">
+          <a href="#Claims">type Claims</a></li>
+<li class="Documentation-indexType">
+          <a href="#Config">type Config</a></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#Config.Validate">func (c *Config) Validate() error</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#ConfigValidationError">type ConfigValidationError</a></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#ConfigValidationError.Error">func (e *ConfigValidationError) Error() string</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#CookieContents">type CookieContents</a></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#CookieContents.DeserialiseCookie">func (cc *CookieContents) DeserialiseCookie(cookieString string) (*CookieContents, error)</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#CookieHandler">type CookieHandler</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#NewCookieHandler">func NewCookieHandler() *CookieHandler</a></li>
+</ul></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#CookieHandler.ReadCookieHandler">func (ch *CookieHandler) ReadCookieHandler(ctx *gin.Context, cookieName string) (*CookieContents, error)</a></li>
+<li>
+            <a href="#CookieHandler.SetCookieHandler">func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContents, provider string, cookieName string, ...) error</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#DefaultAuthHooks">type DefaultAuthHooks</a></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#DefaultAuthHooks.GetUserOrCreate">func (d *DefaultAuthHooks) GetUserOrCreate(user Claims) (*CookieContents, error)</a></li>
+<li>
+            <a href="#DefaultAuthHooks.OnAuthenticate">func (d *DefaultAuthHooks) OnAuthenticate(username, password string, state OAuthState) (bool, error)</a></li>
+<li>
+            <a href="#DefaultAuthHooks.OnOAuthCallbackSuccess">func (d *DefaultAuthHooks) OnOAuthCallbackSuccess(ctx *gin.Context, state OAuthState) error</a></li>
+<li>
+            <a href="#DefaultAuthHooks.OnSessionCreate">func (d *DefaultAuthHooks) OnSessionCreate(userID string) (string, error)</a></li>
+<li>
+            <a href="#DefaultAuthHooks.OnSessionDestroy">func (d *DefaultAuthHooks) OnSessionDestroy(sessionToken string) error</a></li>
+<li>
+            <a href="#DefaultAuthHooks.OnSessionValidate">func (d *DefaultAuthHooks) OnSessionValidate(sessionToken *CookieContents) (interface{}, error)</a></li>
+<li>
+            <a href="#DefaultAuthHooks.OnUserCreate">func (d *DefaultAuthHooks) OnUserCreate(user Claims) (string, error)</a></li>
+<li>
+            <a href="#DefaultAuthHooks.OnUserGet">func (d *DefaultAuthHooks) OnUserGet(userID string) (any, error)</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#HandlerFunc">type HandlerFunc</a></li>
+<li class="Documentation-indexType">
+          <a href="#Hooks">type Hooks</a></li>
+<li class="Documentation-indexType">
+          <a href="#LogField">type LogField</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#F">func F(key string, value interface{}) LogField</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#LogFormat">type LogFormat</a></li>
+<li class="Documentation-indexType">
+          <a href="#LogLevel">type LogLevel</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#GetDefaultLevel">func GetDefaultLevel() LogLevel</a></li>
+<li>
+            <a href="#GetModuleLevel">func GetModuleLevel(module string) LogLevel</a></li>
+</ul></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#LogLevel.String">func (l LogLevel) String() string</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#LogRegistry">type LogRegistry</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#NewLogRegistry">func NewLogRegistry(defaultLevel LogLevel) *LogRegistry</a></li>
+</ul></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#LogRegistry.ClearLevels">func (r *LogRegistry) ClearLevels()</a></li>
+<li>
+            <a href="#LogRegistry.GetDefaultLevel">func (r *LogRegistry) GetDefaultLevel() LogLevel</a></li>
+<li>
+            <a href="#LogRegistry.GetLevel">func (r *LogRegistry) GetLevel(module string) LogLevel</a></li>
+<li>
+            <a href="#LogRegistry.SetDefaultLevel">func (r *LogRegistry) SetDefaultLevel(level LogLevel)</a></li>
+<li>
+            <a href="#LogRegistry.SetLevel">func (r *LogRegistry) SetLevel(module string, level LogLevel)</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#Logger">type Logger</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#NewLogger">func NewLogger(w io.Writer, level LogLevel, format LogFormat) Logger</a></li>
+<li>
+            <a href="#NewLoggerWithRegistry">func NewLoggerWithRegistry(w io.Writer, level LogLevel, format LogFormat, registry *LogRegistry) Logger</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#OAuthState">type OAuthState</a></li>
+<li class="Documentation-indexType">
+          <a href="#Option">type Option</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#SetCORSOrigins">func SetCORSOrigins(origins []string) Option</a></li>
+<li>
+            <a href="#SetCSPHeader">func SetCSPHeader(csp string) Option</a></li>
+<li>
+            <a href="#SetCookieDomain">func SetCookieDomain(domain string) Option</a></li>
+<li>
+            <a href="#SetCustomConfig">func SetCustomConfig(customConfig interface{}) Option</a></li>
+<li>
+            <a href="#SetEnvironment">func SetEnvironment(env string) Option</a></li>
+<li>
+            <a href="#SetHost">func SetHost(host string, port int) Option</a></li>
+<li>
+            <a href="#SetSecretKey">func SetSecretKey(secretKey []byte) Option</a></li>
+<li>
+            <a href="#SetSecureCookie">func SetSecureCookie(secure bool) Option</a></li>
+<li>
+            <a href="#WithEnvVars">func WithEnvVars() Option</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#Provider">type Provider</a></li>
+<li class="Documentation-indexType">
+          <a href="#PublicPathConfig">type PublicPathConfig</a></li>
+<li class="Documentation-indexType">
+          <a href="#RateLimiter">type RateLimiter</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#NewRateLimiter">func NewRateLimiter(config RateLimiterConfig) *RateLimiter</a></li>
+</ul></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#RateLimiter.Middleware">func (r *RateLimiter) Middleware() gin.HandlerFunc</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#RateLimiterConfig">type RateLimiterConfig</a></li>
+<li class="Documentation-indexType">
+          <a href="#RedirectError">type RedirectError</a></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#RedirectError.Error">func (e *RedirectError) Error() string</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#Route">type Route</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#Delete">func Delete(path string, handler HandlerFunc) Route</a></li>
+<li>
+            <a href="#Get">func Get(path string, handler HandlerFunc) Route</a></li>
+<li>
+            <a href="#Patch">func Patch(path string, handler HandlerFunc) Route</a></li>
+<li>
+            <a href="#Post">func Post(path string, handler HandlerFunc) Route</a></li>
+<li>
+            <a href="#Put">func Put(path string, handler HandlerFunc) Route</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#RouteGroup">type RouteGroup</a></li>
+<li class="Documentation-indexType">
+          <a href="#SecurityHeadersConfig">type SecurityHeadersConfig</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#DefaultSecurityHeadersConfig">func DefaultSecurityHeadersConfig() *SecurityHeadersConfig</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#Server">type Server</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#NewServer">func NewServer(options []Option) *Server</a></li>
+</ul></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#Server.AddError">func (s *Server) AddError(err error)</a></li>
+<li>
+            <a href="#Server.GetErrors">func (s *Server) GetErrors() []error</a></li>
+<li>
+            <a href="#Server.HasErrors">func (s *Server) HasErrors() bool</a></li>
+<li>
+            <a href="#Server.Start">func (s *Server) Start() error</a></li>
+<li>
+            <a href="#Server.Stop">func (s *Server) Stop() error</a></li>
+<li>
+            <a href="#Server.UpdateAppLayer">func (s *Server) UpdateAppLayer(layers []AppLayer)</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#ServerOption">type ServerOption</a></li>
+<li class="Documentation-indexType">
+          <a href="#Session">type Session</a></li>
+<li><ul class="Documentation-indexTypeFunctions">
+<li>
+            <a href="#GetSession">func GetSession(c *gin.Context) (*Session, error)</a></li>
+<li>
+            <a href="#GetSessionFromCookie">func GetSessionFromCookie(s *Server, c *gin.Context, cookieName string) (*Session, error)</a></li>
+<li>
+            <a href="#MustGetSession">func MustGetSession(c *gin.Context) (*Session, error)</a></li>
+</ul></li>
+<li class="Documentation-indexType">
+          <a href="#SessionConfig">type SessionConfig</a></li>
+<li class="Documentation-indexType">
+          <a href="#StructuredLogger">type StructuredLogger</a></li>
+<li><ul class="Documentation-indexTypeMethods">
+<li>
+            <a href="#StructuredLogger.Debug">func (l *StructuredLogger) Debug(msg string, fields ...LogField)</a></li>
+<li>
+            <a href="#StructuredLogger.Error">func (l *StructuredLogger) Error(msg string, fields ...LogField)</a></li>
+<li>
+            <a href="#StructuredLogger.Fatal">func (l *StructuredLogger) Fatal(msg string, fields ...LogField)</a></li>
+<li>
+            <a href="#StructuredLogger.Info">func (l *StructuredLogger) Info(msg string, fields ...LogField)</a></li>
+<li>
+            <a href="#StructuredLogger.SetFormat">func (l *StructuredLogger) SetFormat(format LogFormat)</a></li>
+<li>
+            <a href="#StructuredLogger.SetLevel">func (l *StructuredLogger) SetLevel(level LogLevel)</a></li>
+<li>
+            <a href="#StructuredLogger.SetOutput">func (l *StructuredLogger) SetOutput(w io.Writer)</a></li>
+<li>
+            <a href="#StructuredLogger.SetRegistry">func (l *StructuredLogger) SetRegistry(registry *LogRegistry)</a></li>
+<li>
+            <a href="#StructuredLogger.Warn">func (l *StructuredLogger) Warn(msg string, fields ...LogField)</a></li>
+<li>
+            <a href="#StructuredLogger.WithFields">func (l *StructuredLogger) WithFields(fields ...LogField) Logger</a></li>
+<li>
+            <a href="#StructuredLogger.WithModule">func (l *StructuredLogger) WithModule(module string) Logger</a></li>
+</ul></li>
+</ul>
+</section><h3 tabindex="-1" id="pkg-constants" class="Documentation-constantsHeader">Constants <a href="#pkg-constants" title="Go to Constants" aria-label="Go to Constants">¶</a></h3>
+
+  <section class="Documentation-constants"><p class="Documentation-empty">This section is empty.</p></section>
+
+  <h3 tabindex="-1" id="pkg-variables" class="Documentation-variablesHeader">Variables <a href="#pkg-variables" title="Go to Variables" aria-label="Go to Variables">¶</a></h3>
+
+  <section class="Documentation-variables"><p class="Documentation-empty">This section is empty.</p></section>
+
+  <h3 tabindex="-1" id="pkg-functions" class="Documentation-functionsHeader">Functions <a href="#pkg-functions" title="Go to Functions" aria-label="Go to Functions">¶</a></h3>
+
+  <section class="Documentation-functions"><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="CheckKeys" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L867">CheckKeys</a> <a class="Documentation-idLink" href="#CheckKeys" title="Go to CheckKeys" aria-label="Go to CheckKeys">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func CheckKeys()</pre>
+    </div>
+  <p>CheckKeys is a helper method that only ensures the validity of a HASH AND BLOCK key
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="CompressMiddleware" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L31">CompressMiddleware</a> <a class="Documentation-idLink" href="#CompressMiddleware" title="Go to CompressMiddleware" aria-label="Go to CompressMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func CompressMiddleware(ctx *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>)</pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="CorsMiddleware" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L118">CorsMiddleware</a> <a class="Documentation-idLink" href="#CorsMiddleware" title="Go to CorsMiddleware" aria-label="Go to CorsMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func CorsMiddleware(origins []<a href="/builtin#string">string</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  <p>CorsMiddleware handles Cross-Origin Resource Sharing (CORS)
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="DecodeStateString" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L625">DecodeStateString</a> <a class="Documentation-idLink" href="#DecodeStateString" title="Go to DecodeStateString" aria-label="Go to DecodeStateString">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func DecodeStateString(stateString <a href="/builtin#string">string</a>) ([]<a href="/builtin#byte">byte</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthErrorHandler" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L249">DefaultAuthErrorHandler</a> <a class="Documentation-idLink" href="#DefaultAuthErrorHandler" title="Go to DefaultAuthErrorHandler" aria-label="Go to DefaultAuthErrorHandler">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func DefaultAuthErrorHandler(c *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, err <a href="/builtin#error">error</a>)</pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="EncodeStateString" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L593">EncodeStateString</a> <a class="Documentation-idLink" href="#EncodeStateString" title="Go to EncodeStateString" aria-label="Go to EncodeStateString">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func EncodeStateString(s *<a href="#Server">Server</a>, stateString []<a href="/builtin#byte">byte</a>) <a href="/builtin#string">string</a></pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="GenerateCSRFToken" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L1036">GenerateCSRFToken</a> <a class="Documentation-idLink" href="#GenerateCSRFToken" title="Go to GenerateCSRFToken" aria-label="Go to GenerateCSRFToken">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func GenerateCSRFToken() (<a href="/builtin#string">string</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="GenerateEncryptionKey" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L987">GenerateEncryptionKey</a> <a class="Documentation-idLink" href="#GenerateEncryptionKey" title="Go to GenerateEncryptionKey" aria-label="Go to GenerateEncryptionKey">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func GenerateEncryptionKey() (<a href="/builtin#string">string</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>GenerateEncryptionKey generates a 32-byte (256-bit) key suitable for AES-256 encryption
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="GetCustomConfig" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L117">GetCustomConfig</a> <a class="Documentation-idLink" href="#GetCustomConfig" title="Go to GetCustomConfig" aria-label="Go to GetCustomConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func GetCustomConfig(s *<a href="#Server">Server</a>) interface{}</pre>
+    </div>
+  <p>GetCustomConfig gets the custom configuration from the server
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="HandleAuthCallback" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L664">HandleAuthCallback</a> <a class="Documentation-idLink" href="#HandleAuthCallback" title="Go to HandleAuthCallback" aria-label="Go to HandleAuthCallback">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func HandleAuthCallback(s *<a href="#Server">Server</a>, providers []<a href="#Provider">Provider</a>, cookiename <a href="/builtin#string">string</a>, domain <a href="/builtin#string">string</a>, secure <a href="/builtin#bool">bool</a>, hooks <a href="#AuthenticationHooks">AuthenticationHooks</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="HandleAuthLogin" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L485">HandleAuthLogin</a> <a class="Documentation-idLink" href="#HandleAuthLogin" title="Go to HandleAuthLogin" aria-label="Go to HandleAuthLogin">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func HandleAuthLogin(s *<a href="#Server">Server</a>, providers []<a href="#Provider">Provider</a>, cookieName <a href="/builtin#string">string</a>, domain <a href="/builtin#string">string</a>, secure <a href="/builtin#bool">bool</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="HandleAuthLogout" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L781">HandleAuthLogout</a> <a class="Documentation-idLink" href="#HandleAuthLogout" title="Go to HandleAuthLogout" aria-label="Go to HandleAuthLogout">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func HandleAuthLogout(cookiename <a href="/builtin#string">string</a>, cookieDomain <a href="/builtin#string">string</a>, cookieSecure <a href="/builtin#bool">bool</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  <p>HandleAuthLogout registers handler for the route that provides functionality to frontend for logging out.
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="IsTrustedSource" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L1046">IsTrustedSource</a> <a class="Documentation-idLink" href="#IsTrustedSource" title="Go to IsTrustedSource" aria-label="Go to IsTrustedSource">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func IsTrustedSource(r *<a href="/net/http">http</a>.<a href="/net/http#Request">Request</a>) <a href="/builtin#bool">bool</a></pre>
+    </div>
+  <p>IsTrustedSource IsTrustedSource checks if the request is from a trusted source
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="LoggerMiddleware" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L744">LoggerMiddleware</a> <a class="Documentation-idLink" href="#LoggerMiddleware" title="Go to LoggerMiddleware" aria-label="Go to LoggerMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func LoggerMiddleware(logger <a href="#Logger">Logger</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  <p>LoggerMiddleware adds the server's logger to the gin context
+so it can be accessed by other middleware components
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="RegisterAuthRoutes" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L258">RegisterAuthRoutes</a> <a class="Documentation-idLink" href="#RegisterAuthRoutes" title="Go to RegisterAuthRoutes" aria-label="Go to RegisterAuthRoutes">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func RegisterAuthRoutes(s *<a href="#Server">Server</a>, providers []<a href="#Provider">Provider</a>, cookieName <a href="/builtin#string">string</a>, domain <a href="/builtin#string">string</a>, secure <a href="/builtin#bool">bool</a>)</pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="RemoveWWWMiddleware" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L271">RemoveWWWMiddleware</a> <a class="Documentation-idLink" href="#RemoveWWWMiddleware" title="Go to RemoveWWWMiddleware" aria-label="Go to RemoveWWWMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func RemoveWWWMiddleware() <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  <p>RemoveWWWMiddleware redirects requests from www.domain.com to domain.com
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="RequestTimingMiddleware" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L558">RequestTimingMiddleware</a> <a class="Documentation-idLink" href="#RequestTimingMiddleware" title="Go to RequestTimingMiddleware" aria-label="Go to RequestTimingMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func RequestTimingMiddleware(logger <a href="#Logger">Logger</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="SecurityHeadersMiddleware" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L620">SecurityHeadersMiddleware</a> <a class="Documentation-idLink" href="#SecurityHeadersMiddleware" title="Go to SecurityHeadersMiddleware" aria-label="Go to SecurityHeadersMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SecurityHeadersMiddleware(config *<a href="#SecurityHeadersConfig">SecurityHeadersConfig</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  <p>SecurityHeadersMiddleware adds various security headers to responses
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="ServeEmbededFile" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/static.go#L90">ServeEmbededFile</a> <a class="Documentation-idLink" href="#ServeEmbededFile" title="Go to ServeEmbededFile" aria-label="Go to ServeEmbededFile">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func ServeEmbededFile(server *<a href="#Server">Server</a>, embededFS *<a href="/embed">embed</a>.<a href="/embed#FS">FS</a>, path <a href="/builtin#string">string</a>, file <a href="/builtin#string">string</a>, defaultContentType <a href="/builtin#string">string</a>)</pre>
+    </div>
+  
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="SetDefaultLevel" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L258">SetDefaultLevel</a> <a class="Documentation-idLink" href="#SetDefaultLevel" title="Go to SetDefaultLevel" aria-label="Go to SetDefaultLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetDefaultLevel(level <a href="#LogLevel">LogLevel</a>)</pre>
+    </div>
+  <p>SetDefaultLevel sets the default log level in the global registry.
+This is a convenience function that uses the global registry.
+</p><p>Example:
+</p><pre>// Set default level to warn
+EpicServer.SetDefaultLevel(EpicServer.LogLevelWarn)
+</pre>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="SetModuleLevel" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L236">SetModuleLevel</a> <a class="Documentation-idLink" href="#SetModuleLevel" title="Go to SetModuleLevel" aria-label="Go to SetModuleLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetModuleLevel(module <a href="/builtin#string">string</a>, level <a href="#LogLevel">LogLevel</a>)</pre>
+    </div>
+  <p>SetModuleLevel sets the log level for a specific module in the global registry.
+This is a convenience function that uses the global registry.
+</p><p>Example:
+</p><pre>// Set auth module to debug level
+EpicServer.SetModuleLevel("auth", EpicServer.LogLevelDebug)
+</pre>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="VerifyCSRFToken" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L218">VerifyCSRFToken</a> <a class="Documentation-idLink" href="#VerifyCSRFToken" title="Go to VerifyCSRFToken" aria-label="Go to VerifyCSRFToken">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func VerifyCSRFToken() <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  <p>VerifyCSRFToken validates CSRF tokens in requests that modify data
+</p>
+
+  
+
+        </div><div class="Documentation-function">
+	  
+  
+  
+    <h4 tabindex="-1" id="WithCSRFProtection" data-kind="function" class="Documentation-functionHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L194">WithCSRFProtection</a> <a class="Documentation-idLink" href="#WithCSRFProtection" title="Go to WithCSRFProtection" aria-label="Go to WithCSRFProtection">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithCSRFProtection(cfg *<a href="#SessionConfig">SessionConfig</a>) <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  
+
+  
+
+        </div></section>
+
+  <h3 tabindex="-1" id="pkg-types" class="Documentation-typesHeader">Types <a href="#pkg-types" title="Go to Types" aria-label="Go to Types">¶</a></h3>
+
+  <section class="Documentation-types"><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="AppLayer" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L427">AppLayer</a> <a class="Documentation-idLink" href="#AppLayer" title="Go to AppLayer" aria-label="Go to AppLayer">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type AppLayer func(*<a href="#Server">Server</a>)</pre>
+    </div>
+  <p>AppLayer defines a function type that can modify the server configuration.
+App layers are the primary way to add functionality to an EpicServer instance.
+They are applied through the NewServer function or later via UpdateAppLayer.
+</p><p>Common app layers include:
+</p><ul class="Documentation-bulletList">
+  <li>WithHealthCheck: Adds a health check endpoint</li>
+  <li>WithEnvironment: Sets the server environment</li>
+  <li>WithAuth: Adds authentication support</li>
+  <li>WithMongoDB/WithPostgreSQL/WithMySQL: Adds database connections</li>
+  <li>WithMemoryCache: Adds caching support</li>
+  <li>WithStaticFiles: Serves static files</li>
+  <li>WithSPA: Serves a Single Page Application</li>
+</ul><p>Example usage:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithHealthCheck("/health"),
+    EpicServer.WithEnvironment("production"),
+})
+</pre>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithAuth" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L203">WithAuth</a> <a class="Documentation-idLink" href="#WithAuth" title="Go to WithAuth" aria-label="Go to WithAuth">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithAuth(
+	providers []<a href="#Provider">Provider</a>,
+	sessionConfig *<a href="#SessionConfig">SessionConfig</a>,
+) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>the Authentication is going to be a large configurable ServerOption
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithAuthHooks" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L469">WithAuthHooks</a> <a class="Documentation-idLink" href="#WithAuthHooks" title="Go to WithAuthHooks" aria-label="Go to WithAuthHooks">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithAuthHooks(hooks <a href="#AuthenticationHooks">AuthenticationHooks</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithAuthHooks allows you to define hooks to listen into when creating the server and customising how the user is stored
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithAuthMiddleware" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L264">WithAuthMiddleware</a> <a class="Documentation-idLink" href="#WithAuthMiddleware" title="Go to WithAuthMiddleware" aria-label="Go to WithAuthMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithAuthMiddleware(config <a href="#SessionConfig">SessionConfig</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithCompression" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L462">WithCompression</a> <a class="Documentation-idLink" href="#WithCompression" title="Go to WithCompression" aria-label="Go to WithCompression">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithCompression() <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithCompression adds gzip compression middleware to the server.
+This reduces response size for compressible content types,
+improving transfer times and bandwidth usage.
+</p><p>The middleware automatically detects if the client supports compression
+and only applies it to appropriate content types.
+</p><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithCompression(),
+})
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithCors" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L506">WithCors</a> <a class="Documentation-idLink" href="#WithCors" title="Go to WithCors" aria-label="Go to WithCors">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithCors(origins []<a href="/builtin#string">string</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithCors configures Cross-Origin Resource Sharing (CORS) settings for the specified origins.
+This allows browsers to make requests to your API from different domains.
+</p><p>Parameters:
+</p><ul class="Documentation-bulletList">
+  <li>origins: A slice of allowed origin domains or patterns (e.g., ["<a href="https://example.com">https://example.com</a>", "https://*.example.org"])</li>
+</ul><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithCors([]string{
+        "https://myapp.com",
+        "https://admin.myapp.com",
+        "http://localhost:3000",
+    }),
+})
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithCustomLogger" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L670">WithCustomLogger</a> <a class="Documentation-idLink" href="#WithCustomLogger" title="Go to WithCustomLogger" aria-label="Go to WithCustomLogger">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithCustomLogger(logger <a href="#Logger">Logger</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithCustomLogger sets a custom logger for the server
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithEnvironment" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L531">WithEnvironment</a> <a class="Documentation-idLink" href="#WithEnvironment" title="Go to WithEnvironment" aria-label="Go to WithEnvironment">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithEnvironment(environment <a href="/builtin#string">string</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithEnvironment sets the Gin framework's running mode based on the environment.
+This affects logging verbosity, error handling, and other behaviors.
+</p><p>Parameters:
+</p><ul class="Documentation-bulletList">
+  <li>environment: One of "development", "production", or "test"</li>
+</ul><p>In development mode, detailed error messages and stack traces are shown.
+In production mode, error details are hidden from responses for security.
+Test mode is optimized for running automated tests.
+</p><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithEnvironment("production"),
+})
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithHealthCheck" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L442">WithHealthCheck</a> <a class="Documentation-idLink" href="#WithHealthCheck" title="Go to WithHealthCheck" aria-label="Go to WithHealthCheck">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithHealthCheck(path <a href="/builtin#string">string</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithHealthCheck creates a basic health check endpoint at the specified path.
+The endpoint returns a 200 OK status code with an empty response when the server is running.
+</p><p>This is useful for load balancers, container orchestration systems, and monitoring tools
+that need to verify the server is operational.
+</p><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithHealthCheck("/health"),
+})
+</pre><p>Then you can check server health with: curl <a href="http://localhost:3000/health">http://localhost:3000/health</a>
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithHttp2" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L586">WithHttp2</a> <a class="Documentation-idLink" href="#WithHttp2" title="Go to WithHttp2" aria-label="Go to WithHttp2">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithHttp2() <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithHttp2 enables HTTP/2 support for the server using h2c (HTTP/2 cleartext).
+HTTP/2 provides benefits like multiplexing, header compression, and
+server push capabilities.
+</p><p>Note that h2c is HTTP/2 without TLS encryption. For production use,
+HTTP/2 with TLS is recommended for better security and compatibility.
+</p><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithHttp2(),
+})
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithLogFormat" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L684">WithLogFormat</a> <a class="Documentation-idLink" href="#WithLogFormat" title="Go to WithLogFormat" aria-label="Go to WithLogFormat">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithLogFormat(format <a href="#LogFormat">LogFormat</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithLogFormat sets the log format for the server
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithLogLevel" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L677">WithLogLevel</a> <a class="Documentation-idLink" href="#WithLogLevel" title="Go to WithLogLevel" aria-label="Go to WithLogLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithLogLevel(level <a href="#LogLevel">LogLevel</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithLogLevel sets the log level for the server
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithLogRegistry" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L698">WithLogRegistry</a> <a class="Documentation-idLink" href="#WithLogRegistry" title="Go to WithLogRegistry" aria-label="Go to WithLogRegistry">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithLogRegistry(registry *<a href="#LogRegistry">LogRegistry</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithLogRegistry sets a custom log registry for the server
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithLoggerMiddleware" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L615">WithLoggerMiddleware</a> <a class="Documentation-idLink" href="#WithLoggerMiddleware" title="Go to WithLoggerMiddleware" aria-label="Go to WithLoggerMiddleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithLoggerMiddleware() <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithLoggerMiddleware adds the structured logger to the Gin context,
+making it available to all request handlers. It also logs request information
+like method, path, status code, and timing.
+</p><p>This middleware should be added early in the chain to ensure all subsequent
+middleware and handlers can access the logger.
+</p><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithLoggerMiddleware(),
+})
+</pre><p>Then in your handlers:
+</p><pre>func MyHandler(c *gin.Context) {
+    logger := EpicServer.GetLogger(c)
+    logger.Info("Processing request", EpicServer.F("user_id", userID))
+}
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithModuleLogLevel" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L691">WithModuleLogLevel</a> <a class="Documentation-idLink" href="#WithModuleLogLevel" title="Go to WithModuleLogLevel" aria-label="Go to WithModuleLogLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithModuleLogLevel(module <a href="/builtin#string">string</a>, level <a href="#LogLevel">LogLevel</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithModuleLogLevel sets the log level for a specific module
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithPublicPaths" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L997">WithPublicPaths</a> <a class="Documentation-idLink" href="#WithPublicPaths" title="Go to WithPublicPaths" aria-label="Go to WithPublicPaths">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithPublicPaths(config <a href="#PublicPathConfig">PublicPathConfig</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>AppLayer function to configure public paths
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithRateLimiter" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L544">WithRateLimiter</a> <a class="Documentation-idLink" href="#WithRateLimiter" title="Go to WithRateLimiter" aria-label="Go to WithRateLimiter">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithRateLimiter(config <a href="#RateLimiterConfig">RateLimiterConfig</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithRateLimiter adds rate limiting to the server
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithRemoveWWW" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L481">WithRemoveWWW</a> <a class="Documentation-idLink" href="#WithRemoveWWW" title="Go to WithRemoveWWW" aria-label="Go to WithRemoveWWW">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithRemoveWWW() <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithRemoveWWW adds middleware to redirect requests from www.domain.com to domain.com.
+This is a common practice for maintaining a consistent domain across all requests
+and avoiding duplicate content issues for SEO.
+</p><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRemoveWWW(),
+})
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithRoutes" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L42">WithRoutes</a> <a class="Documentation-idLink" href="#WithRoutes" title="Go to WithRoutes" aria-label="Go to WithRoutes">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithRoutes(groups ...<a href="#RouteGroup">RouteGroup</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithRoutes registers route groups with the server.
+Example usage:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithRoutes(
+        EpicServer.RouteGroup{
+            Prefix: "/api/v1",
+            Routes: []EpicServer.Route{
+                EpicServer.Get("/users", HandleUsers),
+            },
+        },
+    ),
+})
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithSPACatchAll" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/static.go#L32">WithSPACatchAll</a> <a class="Documentation-idLink" href="#WithSPACatchAll" title="Go to WithSPACatchAll" aria-label="Go to WithSPACatchAll">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithSPACatchAll(
+	embededFs *<a href="/embed">embed</a>.<a href="/embed#FS">FS</a>,
+	filesystemPath <a href="/builtin#string">string</a>,
+	spaEntryPointPath <a href="/builtin#string">string</a>,
+) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithSecurityHeaders" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L724">WithSecurityHeaders</a> <a class="Documentation-idLink" href="#WithSecurityHeaders" title="Go to WithSecurityHeaders" aria-label="Go to WithSecurityHeaders">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithSecurityHeaders(config *<a href="#SecurityHeadersConfig">SecurityHeadersConfig</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithSecurityHeaders adds security headers to all responses
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithStaticDirectory" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/static.go#L15">WithStaticDirectory</a> <a class="Documentation-idLink" href="#WithStaticDirectory" title="Go to WithStaticDirectory" aria-label="Go to WithStaticDirectory">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithStaticDirectory(path <a href="/builtin#string">string</a>, embededFS *<a href="/embed">embed</a>.<a href="/embed#FS">FS</a>, fileSystemPath <a href="/builtin#string">string</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>This Static Directory
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithStaticFile" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/static.go#L26">WithStaticFile</a> <a class="Documentation-idLink" href="#WithStaticFile" title="Go to WithStaticFile" aria-label="Go to WithStaticFile">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithStaticFile(path <a href="/builtin#string">string</a>, embededFS *<a href="/embed">embed</a>.<a href="/embed#FS">FS</a>, filesystemPath <a href="/builtin#string">string</a>, mimetype <a href="/builtin#string">string</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithTrustedProxies" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L564">WithTrustedProxies</a> <a class="Documentation-idLink" href="#WithTrustedProxies" title="Go to WithTrustedProxies" aria-label="Go to WithTrustedProxies">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithTrustedProxies(proxies []<a href="/builtin#string">string</a>) <a href="#AppLayer">AppLayer</a></pre>
+    </div>
+  <p>WithTrustedProxies configures the trusted proxy addresses for the server.
+This is important when your server is behind load balancers, reverse proxies,
+or CDNs, as it allows proper handling of X-Forwarded-* headers.
+</p><p>Parameters:
+</p><ul class="Documentation-bulletList">
+  <li>proxies: A slice of IP addresses or CIDR ranges that are trusted</li>
+</ul><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithTrustedProxies([]string{
+        "127.0.0.1",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+    }),
+})
+</pre>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Auth" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L91">Auth</a> <a class="Documentation-idLink" href="#Auth" title="Go to Auth" aria-label="Go to Auth">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Auth struct {
+<span id="Auth.Provider" data-kind="field">	Provider       *oidc.Provider
+</span><span id="Auth.Config" data-kind="field">	Config         *<a href="/golang.org/x/oauth2">oauth2</a>.<a href="/golang.org/x/oauth2#Config">Config</a>
+</span><span id="Auth.Verifier" data-kind="field">	Verifier       *oidc.IDTokenVerifier
+</span><span id="Auth.CookieHandler" data-kind="field">	CookieHandler  *<a href="#CookieHandler">CookieHandler</a>
+</span><span id="Auth.AuthCookieName" data-kind="field">	AuthCookieName <a href="/builtin#string">string</a>
+</span><span id="Auth.RedirectOnFail" data-kind="field">	RedirectOnFail <a href="/builtin#string">string</a>
+</span>}</pre>
+    </div>
+  <p>Auth represents the configuration for an authentication provider.
+It holds references to the OIDC provider, OAuth2 config, cookie handling,
+and other authentication-related settings.
+</p><p>Auth instances are created automatically when using WithAuth() and
+are accessible via the Server.AuthConfigs map.
+</p>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="NewAuthConfig" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L815">NewAuthConfig</a> <a class="Documentation-idLink" href="#NewAuthConfig" title="Go to NewAuthConfig" aria-label="Go to NewAuthConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func NewAuthConfig(
+	ctx <a href="/context">context</a>.<a href="/context#Context">Context</a>,
+	clientId <a href="/builtin#string">string</a>,
+	clientSecret <a href="/builtin#string">string</a>,
+	cookieName <a href="/builtin#string">string</a>,
+	redirect <a href="/builtin#string">string</a>,
+	providerName <a href="/builtin#string">string</a>,
+) *<a href="#Auth">Auth</a></pre>
+    </div>
+  <p>NewAuthConfig creates and spits out an auth config
+</p>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="AuthErrorHandler" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L247">AuthErrorHandler</a> <a class="Documentation-idLink" href="#AuthErrorHandler" title="Go to AuthErrorHandler" aria-label="Go to AuthErrorHandler">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type AuthErrorHandler func(*<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="AuthenticationHooks" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L378">AuthenticationHooks</a> <a class="Documentation-idLink" href="#AuthenticationHooks" title="Go to AuthenticationHooks" aria-label="Go to AuthenticationHooks">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type AuthenticationHooks interface {
+<span id="AuthenticationHooks.OnUserCreate" data-kind="method">	<span class="comment">// OnUserCreate is called when a new user authenticates via OAuth.</span>
+</span>	<span class="comment">// It should create the user in your system if they don't exist</span>
+	<span class="comment">// and return a unique user ID.</span>
+	OnUserCreate(user <a href="#Claims">Claims</a>) (<a href="/builtin#string">string</a>, <a href="/builtin#error">error</a>)
+
+<span id="AuthenticationHooks.GetUserOrCreate" data-kind="method">	<span class="comment">// GetUserOrCreate fetches or creates a user based on OAuth claims.</span>
+</span>	<span class="comment">// It should return the user details for session creation.</span>
+	GetUserOrCreate(user <a href="#Claims">Claims</a>) (*<a href="#CookieContents">CookieContents</a>, <a href="/builtin#error">error</a>)
+
+<span id="AuthenticationHooks.OnAuthenticate" data-kind="method">	<span class="comment">// OnAuthenticate validates username/password credentials.</span>
+</span>	<span class="comment">// Used for custom (non-OAuth) authentication flows.</span>
+	OnAuthenticate(username, password <a href="/builtin#string">string</a>, state <a href="#OAuthState">OAuthState</a>) (<a href="/builtin#bool">bool</a>, <a href="/builtin#error">error</a>)
+
+<span id="AuthenticationHooks.OnUserGet" data-kind="method">	<span class="comment">// OnUserGet retrieves a user by their ID.</span>
+</span>	<span class="comment">// This is used to populate session data after validating a token.</span>
+	OnUserGet(userID <a href="/builtin#string">string</a>) (<a href="/builtin#any">any</a>, <a href="/builtin#error">error</a>)
+
+<span id="AuthenticationHooks.OnSessionValidate" data-kind="method">	<span class="comment">// OnSessionValidate validates a session token and returns the user.</span>
+</span>	<span class="comment">// This is called on each authenticated request.</span>
+	OnSessionValidate(sessionToken *<a href="#CookieContents">CookieContents</a>) (interface{}, <a href="/builtin#error">error</a>)
+
+<span id="AuthenticationHooks.OnSessionCreate" data-kind="method">	<span class="comment">// OnSessionCreate generates a new session token for a user.</span>
+</span>	<span class="comment">// Called after successful authentication.</span>
+	OnSessionCreate(userID <a href="/builtin#string">string</a>) (<a href="/builtin#string">string</a>, <a href="/builtin#error">error</a>)
+
+<span id="AuthenticationHooks.OnSessionDestroy" data-kind="method">	<span class="comment">// OnSessionDestroy invalidates a session token.</span>
+</span>	<span class="comment">// Called during logout.</span>
+	OnSessionDestroy(sessionToken <a href="/builtin#string">string</a>) <a href="/builtin#error">error</a>
+
+<span id="AuthenticationHooks.OnOAuthCallbackSuccess" data-kind="method">	<span class="comment">// OnOAuthCallbackSuccess is called after successful OAuth authentication.</span>
+</span>	<span class="comment">// Use this for any post-authentication actions.</span>
+	OnOAuthCallbackSuccess(ctx *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, state <a href="#OAuthState">OAuthState</a>) <a href="/builtin#error">error</a>
+}</pre>
+    </div>
+  <p>AuthenticationHooks defines the interface for customizing the authentication behavior.
+Implement this interface to integrate EpicServer authentication with your user management system.
+</p><p>The default implementation (DefaultAuthHooks) provides basic functionality,
+but for production use, you should implement this interface to:
+</p><ul class="Documentation-bulletList">
+  <li>Create and manage users in your database</li>
+  <li>Validate user credentials</li>
+  <li>Control session creation and validation</li>
+  <li>Handle post-authentication logic</li>
+</ul><p>Example implementation:
+</p><pre>type MyAuthHooks struct {
+    DB *sql.DB  // Your database connection
+}
+
+func (h *MyAuthHooks) OnUserCreate(user EpicServer.Claims) (string, error) {
+    // Create user in database if they don't exist
+    var userID string
+    err := h.DB.QueryRow("INSERT INTO users (email, name) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET name = $2 RETURNING id",
+        user.Email, user.Name).Scan(&amp;userID)
+    return userID, err
+}
+
+// Implement other required methods...
+
+// Register your hooks:
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithAuthHooks(&amp;MyAuthHooks{DB: myDatabase}),
+})
+</pre>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Claims" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L143">Claims</a> <a class="Documentation-idLink" href="#Claims" title="Go to Claims" aria-label="Go to Claims">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Claims struct {
+<span id="Claims.Email" data-kind="field">	Email       <a href="/builtin#string">string</a>   `json:"email"`
+</span><span id="Claims.Name" data-kind="field">	Name        <a href="/builtin#string">string</a>   `json:"name"`
+</span><span id="Claims.Verified" data-kind="field">	Verified    <a href="/builtin#bool">bool</a>     `json:"email_verified"`
+</span><span id="Claims.UserID" data-kind="field">	UserID      <a href="/builtin#string">string</a>   `json:"user_id"`
+</span><span id="Claims.Role" data-kind="field">	Role        <a href="/builtin#string">string</a>   `json:"role"`
+</span><span id="Claims.Permissions" data-kind="field">	Permissions []<a href="/builtin#string">string</a> `json:"permissions"`
+</span><span id="Claims.Picture" data-kind="field">	Picture     <a href="/builtin#string">string</a>   `json:"picture"`
+</span>}</pre>
+    </div>
+  <p>Claims represents the standard claims extracted from an OAuth provider's token.
+This is used to create or fetch user information in your application.
+</p><p>The Claims struct can be extended with custom fields by implementing
+custom authentication hooks.
+</p><p>Example accessing claims in a handler:
+</p><pre>func MyProtectedHandler(c *gin.Context) {
+    session, err := EpicServer.GetSession(c)
+    if err != nil {
+        // Handle error
+        return
+    }
+
+    // Access user information
+    fmt.Printf("User email: %s\n", session.Email)
+    fmt.Printf("User name: %s\n", session.User.(YourUserType).Name)
+}
+</pre>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Config" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L11">Config</a> <a class="Documentation-idLink" href="#Config" title="Go to Config" aria-label="Go to Config">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Config struct {
+<span id="Config.Server" data-kind="field">	Server struct {
+</span>		Host        <a href="/builtin#string">string</a>
+		Port        <a href="/builtin#int">int</a>
+		Environment <a href="/builtin#string">string</a>
+	}
+<span id="Config.Security" data-kind="field">	Security struct {
+</span>		SecureCookie <a href="/builtin#bool">bool</a>
+		CookieDomain <a href="/builtin#string">string</a>
+		CSPHeader    <a href="/builtin#string">string</a>
+		Origins      []<a href="/builtin#string">string</a>
+	}
+<span id="Config.SecretKey" data-kind="field">	SecretKey []<a href="/builtin#byte">byte</a>
+</span><span id="Config.Custom" data-kind="field">	Custom    interface{}
+</span>}</pre>
+    </div>
+  <p>Config represents the server configuration
+</p>
+<div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="Config.Validate" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*Config) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L41">Validate</a> <a class="Documentation-idLink" href="#Config.Validate" title="Go to Config.Validate" aria-label="Go to Config.Validate">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (c *<a href="#Config">Config</a>) Validate() <a href="/builtin#error">error</a></pre>
+    </div>
+  <p>Validate checks if the configuration is valid
+</p>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="ConfigValidationError" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L31">ConfigValidationError</a> <a class="Documentation-idLink" href="#ConfigValidationError" title="Go to ConfigValidationError" aria-label="Go to ConfigValidationError">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type ConfigValidationError struct {
+<span id="ConfigValidationError.Field" data-kind="field">	Field   <a href="/builtin#string">string</a>
+</span><span id="ConfigValidationError.Message" data-kind="field">	Message <a href="/builtin#string">string</a>
+</span>}</pre>
+    </div>
+  <p>ConfigValidationError represents an error in configuration validation
+</p>
+<div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="ConfigValidationError.Error" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*ConfigValidationError) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L36">Error</a> <a class="Documentation-idLink" href="#ConfigValidationError.Error" title="Go to ConfigValidationError.Error" aria-label="Go to ConfigValidationError.Error">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (e *<a href="#ConfigValidationError">ConfigValidationError</a>) Error() <a href="/builtin#string">string</a></pre>
+    </div>
+  
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="CookieContents" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L932">CookieContents</a> <a class="Documentation-idLink" href="#CookieContents" title="Go to CookieContents" aria-label="Go to CookieContents">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type CookieContents struct {
+<span id="CookieContents.Email" data-kind="field">	Email      <a href="/builtin#string">string</a>
+</span><span id="CookieContents.UserId" data-kind="field">	UserId     <a href="/builtin#string">string</a>
+</span><span id="CookieContents.SessionId" data-kind="field">	SessionId  <a href="/builtin#string">string</a>
+</span><span id="CookieContents.IsLoggedIn" data-kind="field">	IsLoggedIn <a href="/builtin#bool">bool</a>
+</span><span id="CookieContents.ExpiresOn" data-kind="field">	ExpiresOn  <a href="/time">time</a>.<a href="/time#Time">Time</a>
+</span>}</pre>
+    </div>
+  <p>Cookie Contents struct
+</p>
+<div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="CookieContents.DeserialiseCookie" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*CookieContents) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L940">DeserialiseCookie</a> <a class="Documentation-idLink" href="#CookieContents.DeserialiseCookie" title="Go to CookieContents.DeserialiseCookie" aria-label="Go to CookieContents.DeserialiseCookie">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (cc *<a href="#CookieContents">CookieContents</a>) DeserialiseCookie(cookieString <a href="/builtin#string">string</a>) (*<a href="#CookieContents">CookieContents</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="CookieHandler" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L907">CookieHandler</a> <a class="Documentation-idLink" href="#CookieHandler" title="Go to CookieHandler" aria-label="Go to CookieHandler">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type CookieHandler struct {
+<span id="CookieHandler.SecureCookie" data-kind="field">	SecureCookie *<a href="/github.com/gorilla/securecookie">securecookie</a>.<a href="/github.com/gorilla/securecookie#SecureCookie">SecureCookie</a>
+</span>}</pre>
+    </div>
+  
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="NewCookieHandler" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L912">NewCookieHandler</a> <a class="Documentation-idLink" href="#NewCookieHandler" title="Go to NewCookieHandler" aria-label="Go to NewCookieHandler">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func NewCookieHandler() *<a href="#CookieHandler">CookieHandler</a></pre>
+    </div>
+  <p>NewCookieHandler creates a new CookieHandler
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="CookieHandler.ReadCookieHandler" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*CookieHandler) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L969">ReadCookieHandler</a> <a class="Documentation-idLink" href="#CookieHandler.ReadCookieHandler" title="Go to CookieHandler.ReadCookieHandler" aria-label="Go to CookieHandler.ReadCookieHandler">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (ch *<a href="#CookieHandler">CookieHandler</a>) ReadCookieHandler(ctx *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, cookieName <a href="/builtin#string">string</a>) (*<a href="#CookieContents">CookieContents</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="CookieHandler.SetCookieHandler" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*CookieHandler) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L949">SetCookieHandler</a> <a class="Documentation-idLink" href="#CookieHandler.SetCookieHandler" title="Go to CookieHandler.SetCookieHandler" aria-label="Go to CookieHandler.SetCookieHandler">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (ch *<a href="#CookieHandler">CookieHandler</a>) SetCookieHandler(ctx *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, value *<a href="#CookieContents">CookieContents</a>, provider <a href="/builtin#string">string</a>, cookieName <a href="/builtin#string">string</a>, domain <a href="/builtin#string">string</a>, secure <a href="/builtin#bool">bool</a>) <a href="/builtin#error">error</a></pre>
+    </div>
+  
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L414">DefaultAuthHooks</a> <a class="Documentation-idLink" href="#DefaultAuthHooks" title="Go to DefaultAuthHooks" aria-label="Go to DefaultAuthHooks">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type DefaultAuthHooks struct {
+	<span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+    </div>
+  <p>Optional: Provide a base implementation with no-op methods
+</p>
+<div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.GetUserOrCreate" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L424">GetUserOrCreate</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.GetUserOrCreate" title="Go to DefaultAuthHooks.GetUserOrCreate" aria-label="Go to DefaultAuthHooks.GetUserOrCreate">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) GetUserOrCreate(user <a href="#Claims">Claims</a>) (*<a href="#CookieContents">CookieContents</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>OnUserCreate for when the session is validated and we need to check or create a user if its been created
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.OnAuthenticate" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L444">OnAuthenticate</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.OnAuthenticate" title="Go to DefaultAuthHooks.OnAuthenticate" aria-label="Go to DefaultAuthHooks.OnAuthenticate">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) OnAuthenticate(username, password <a href="/builtin#string">string</a>, state <a href="#OAuthState">OAuthState</a>) (<a href="/builtin#bool">bool</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>OnAuthenticate should only really be used with password authentication
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.OnOAuthCallbackSuccess" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L418">OnOAuthCallbackSuccess</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.OnOAuthCallbackSuccess" title="Go to DefaultAuthHooks.OnOAuthCallbackSuccess" aria-label="Go to DefaultAuthHooks.OnOAuthCallbackSuccess">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) OnOAuthCallbackSuccess(ctx *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, state <a href="#OAuthState">OAuthState</a>) <a href="/builtin#error">error</a></pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.OnSessionCreate" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L459">OnSessionCreate</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.OnSessionCreate" title="Go to DefaultAuthHooks.OnSessionCreate" aria-label="Go to DefaultAuthHooks.OnSessionCreate">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) OnSessionCreate(userID <a href="/builtin#string">string</a>) (<a href="/builtin#string">string</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>OnSessionCreate creates a new session for the user and returns the session token
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.OnSessionDestroy" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L464">OnSessionDestroy</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.OnSessionDestroy" title="Go to DefaultAuthHooks.OnSessionDestroy" aria-label="Go to DefaultAuthHooks.OnSessionDestroy">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) OnSessionDestroy(sessionToken <a href="/builtin#string">string</a>) <a href="/builtin#error">error</a></pre>
+    </div>
+  <p>OnSessionDestroy destroys the session token
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.OnSessionValidate" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L454">OnSessionValidate</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.OnSessionValidate" title="Go to DefaultAuthHooks.OnSessionValidate" aria-label="Go to DefaultAuthHooks.OnSessionValidate">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) OnSessionValidate(sessionToken *<a href="#CookieContents">CookieContents</a>) (interface{}, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>OnSessionValidate validates the session token and returns the userID
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.OnUserCreate" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L439">OnUserCreate</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.OnUserCreate" title="Go to DefaultAuthHooks.OnUserCreate" aria-label="Go to DefaultAuthHooks.OnUserCreate">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) OnUserCreate(user <a href="#Claims">Claims</a>) (<a href="/builtin#string">string</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>OnUserCreate for when the session is validated and we need to check or create a user if its been created
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultAuthHooks.OnUserGet" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*DefaultAuthHooks) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L449">OnUserGet</a> <a class="Documentation-idLink" href="#DefaultAuthHooks.OnUserGet" title="Go to DefaultAuthHooks.OnUserGet" aria-label="Go to DefaultAuthHooks.OnUserGet">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (d *<a href="#DefaultAuthHooks">DefaultAuthHooks</a>) OnUserGet(userID <a href="/builtin#string">string</a>) (<a href="/builtin#any">any</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>OnUserGet retrieves the user based on the userID
+</p>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="HandlerFunc" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L9">HandlerFunc</a> <a class="Documentation-idLink" href="#HandlerFunc" title="Go to HandlerFunc" aria-label="Go to HandlerFunc">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type HandlerFunc func(*<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, *<a href="#Server">Server</a>)</pre>
+    </div>
+  <p>HandlerFunc defines a function that handles HTTP requests with access to both
+the Gin context and the server instance.
+</p>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Hooks" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/hooks.go#L3">Hooks</a> <a class="Documentation-idLink" href="#Hooks" title="Go to Hooks" aria-label="Go to Hooks">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Hooks struct {
+<span id="Hooks.Auth" data-kind="field">	Auth <a href="#AuthenticationHooks">AuthenticationHooks</a>
+</span>}</pre>
+    </div>
+  
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="LogField" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L301">LogField</a> <a class="Documentation-idLink" href="#LogField" title="Go to LogField" aria-label="Go to LogField">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type LogField struct {
+<span id="LogField.Key" data-kind="field">	Key   <a href="/builtin#string">string</a>
+</span><span id="LogField.Value" data-kind="field">	Value interface{}
+</span>}</pre>
+    </div>
+  <p>LogField represents a key-value pair in a structured log.
+These fields provide context to log messages.
+</p><p>Example:
+</p><pre>EpicServer.F("user_id", "123")
+EpicServer.F("request_time", 235.42)
+</pre>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="F" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L315">F</a> <a class="Documentation-idLink" href="#F" title="Go to F" aria-label="Go to F">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func F(key <a href="/builtin#string">string</a>, value interface{}) <a href="#LogField">LogField</a></pre>
+    </div>
+  <p>F creates a new log field.
+This is a convenience function for creating structured log fields.
+</p><p>Example:
+</p><pre>logger.Info("User logged in",
+    EpicServer.F("user_id", "123"),
+    EpicServer.F("ip", "192.168.1.1"),
+)
+</pre>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="LogFormat" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L104">LogFormat</a> <a class="Documentation-idLink" href="#LogFormat" title="Go to LogFormat" aria-label="Go to LogFormat">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type LogFormat <a href="/builtin#int">int</a></pre>
+    </div>
+  <p>LogFormat defines how logs are formatted.
+Different formats are suitable for different environments.
+</p>
+<div class="Documentation-typeConstant">
+    <div class="Documentation-declaration">
+      <pre>const (
+<span id="LogFormatText" data-kind="constant">	<span class="comment">// LogFormatText outputs logs in a human-readable text format.</span>
+</span>	<span class="comment">// This is best for development and debugging.</span>
+	LogFormatText <a href="#LogFormat">LogFormat</a> = <a href="/builtin#iota">iota</a>
+<span id="LogFormatJSON" data-kind="constant">	<span class="comment">// LogFormatJSON outputs logs in JSON format for machine processing.</span>
+</span>	<span class="comment">// This is best for production environments with log aggregation systems.</span>
+	LogFormatJSON
+)</pre>
+    </div>
+  
+</div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="LogLevel" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L58">LogLevel</a> <a class="Documentation-idLink" href="#LogLevel" title="Go to LogLevel" aria-label="Go to LogLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type LogLevel <a href="/builtin#int">int</a></pre>
+    </div>
+  <p>LogLevel represents the severity of a log message.
+The levels are ordered from most verbose (Debug) to least verbose (Fatal).
+</p>
+<div class="Documentation-typeConstant">
+    <div class="Documentation-declaration">
+      <pre>const (
+<span id="LogLevelDebug" data-kind="constant">	<span class="comment">// LogLevelDebug is the most verbose logging level.</span>
+</span>	<span class="comment">// Use for detailed troubleshooting information.</span>
+	LogLevelDebug <a href="#LogLevel">LogLevel</a> = <a href="/builtin#iota">iota</a>
+<span id="LogLevelInfo" data-kind="constant">	<span class="comment">// LogLevelInfo is for general operational information.</span>
+</span>	<span class="comment">// Use for normal application behavior reporting.</span>
+	LogLevelInfo
+<span id="LogLevelWarn" data-kind="constant">	<span class="comment">// LogLevelWarn is for warning conditions.</span>
+</span>	<span class="comment">// Use for potentially harmful situations that don't affect normal operation.</span>
+	LogLevelWarn
+<span id="LogLevelError" data-kind="constant">	<span class="comment">// LogLevelError is for error conditions.</span>
+</span>	<span class="comment">// Use for errors that affect operation but don't require immediate action.</span>
+	LogLevelError
+<span id="LogLevelFatal" data-kind="constant">	<span class="comment">// LogLevelFatal is for fatal conditions that should stop the application.</span>
+</span>	<span class="comment">// Use for severe errors that prevent the application from continuing.</span>
+	LogLevelFatal
+)</pre>
+    </div>
+  
+</div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="GetDefaultLevel" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L269">GetDefaultLevel</a> <a class="Documentation-idLink" href="#GetDefaultLevel" title="Go to GetDefaultLevel" aria-label="Go to GetDefaultLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func GetDefaultLevel() <a href="#LogLevel">LogLevel</a></pre>
+    </div>
+  <p>GetDefaultLevel gets the default log level from the global registry.
+This is a convenience function that uses the global registry.
+</p><p>Example:
+</p><pre>level := EpicServer.GetDefaultLevel()
+fmt.Println(level.String()) // Outputs the default level
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="GetModuleLevel" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L247">GetModuleLevel</a> <a class="Documentation-idLink" href="#GetModuleLevel" title="Go to GetModuleLevel" aria-label="Go to GetModuleLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func GetModuleLevel(module <a href="/builtin#string">string</a>) <a href="#LogLevel">LogLevel</a></pre>
+    </div>
+  <p>GetModuleLevel gets the log level for a specific module from the global registry.
+This is a convenience function that uses the global registry.
+</p><p>Example:
+</p><pre>level := EpicServer.GetModuleLevel("auth")
+fmt.Println(level.String()) // Outputs the level for the auth module
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="LogLevel.String" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (LogLevel) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L85">String</a> <a class="Documentation-idLink" href="#LogLevel.String" title="Go to LogLevel.String" aria-label="Go to LogLevel.String">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l <a href="#LogLevel">LogLevel</a>) String() <a href="/builtin#string">string</a></pre>
+    </div>
+  <p>String returns the string representation of a log level.
+This is used when formatting log messages.
+</p><p>Example:
+</p><pre>level := EpicServer.LogLevelWarn
+fmt.Println(level.String()) // Outputs: "WARN"
+</pre>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="LogRegistry" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L123">LogRegistry</a> <a class="Documentation-idLink" href="#LogRegistry" title="Go to LogRegistry" aria-label="Go to LogRegistry">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type LogRegistry struct {
+	<span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+    </div>
+  <p>LogRegistry maintains a registry of log levels by module.
+This allows for fine-grained control over which modules log at which levels.
+</p><p>Example:
+</p><pre>registry := EpicServer.NewLogRegistry(EpicServer.LogLevelInfo)
+registry.SetLevel("auth", EpicServer.LogLevelDebug)
+registry.SetLevel("db", EpicServer.LogLevelWarn)
+</pre>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="NewLogRegistry" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L142">NewLogRegistry</a> <a class="Documentation-idLink" href="#NewLogRegistry" title="Go to NewLogRegistry" aria-label="Go to NewLogRegistry">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func NewLogRegistry(defaultLevel <a href="#LogLevel">LogLevel</a>) *<a href="#LogRegistry">LogRegistry</a></pre>
+    </div>
+  <p>NewLogRegistry creates a new log registry with the specified default level.
+The registry allows for module-specific log level configuration.
+</p><p>Example:
+</p><pre>// Create a registry with Info as the default level
+registry := EpicServer.NewLogRegistry(EpicServer.LogLevelInfo)
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="LogRegistry.ClearLevels" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*LogRegistry) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L223">ClearLevels</a> <a class="Documentation-idLink" href="#LogRegistry.ClearLevels" title="Go to LogRegistry.ClearLevels" aria-label="Go to LogRegistry.ClearLevels">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (r *<a href="#LogRegistry">LogRegistry</a>) ClearLevels()</pre>
+    </div>
+  <p>ClearLevels removes all module-specific log levels.
+After calling this, all modules will use the default level.
+</p><p>Example:
+</p><pre>// Reset all module levels to use the default
+registry.ClearLevels()
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="LogRegistry.GetDefaultLevel" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*LogRegistry) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L210">GetDefaultLevel</a> <a class="Documentation-idLink" href="#LogRegistry.GetDefaultLevel" title="Go to LogRegistry.GetDefaultLevel" aria-label="Go to LogRegistry.GetDefaultLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (r *<a href="#LogRegistry">LogRegistry</a>) GetDefaultLevel() <a href="#LogLevel">LogLevel</a></pre>
+    </div>
+  <p>GetDefaultLevel gets the default log level.
+This is used for modules that don't have a specific level set.
+</p><p>Example:
+</p><pre>level := registry.GetDefaultLevel()
+fmt.Println(level.String()) // Outputs the default level
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="LogRegistry.GetLevel" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*LogRegistry) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L170">GetLevel</a> <a class="Documentation-idLink" href="#LogRegistry.GetLevel" title="Go to LogRegistry.GetLevel" aria-label="Go to LogRegistry.GetLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (r *<a href="#LogRegistry">LogRegistry</a>) GetLevel(module <a href="/builtin#string">string</a>) <a href="#LogLevel">LogLevel</a></pre>
+    </div>
+  <p>GetLevel gets the log level for a specific module.
+If no level is set for the module, it checks parent modules
+and falls back to the default level.
+</p><p>Example:
+</p><pre>level := registry.GetLevel("auth.oauth")
+// If "auth.oauth" isn't set, it checks "auth", then falls back to default
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="LogRegistry.SetDefaultLevel" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*LogRegistry) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L197">SetDefaultLevel</a> <a class="Documentation-idLink" href="#LogRegistry.SetDefaultLevel" title="Go to LogRegistry.SetDefaultLevel" aria-label="Go to LogRegistry.SetDefaultLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (r *<a href="#LogRegistry">LogRegistry</a>) SetDefaultLevel(level <a href="#LogLevel">LogLevel</a>)</pre>
+    </div>
+  <p>SetDefaultLevel sets the default log level for modules without a specific level.
+This affects all modules that don't have an explicit level set.
+</p><p>Example:
+</p><pre>// Set default level to warn
+registry.SetDefaultLevel(EpicServer.LogLevelWarn)
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="LogRegistry.SetLevel" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*LogRegistry) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L156">SetLevel</a> <a class="Documentation-idLink" href="#LogRegistry.SetLevel" title="Go to LogRegistry.SetLevel" aria-label="Go to LogRegistry.SetLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (r *<a href="#LogRegistry">LogRegistry</a>) SetLevel(module <a href="/builtin#string">string</a>, level <a href="#LogLevel">LogLevel</a>)</pre>
+    </div>
+  <p>SetLevel sets the log level for a specific module.
+This allows for fine-grained control over logging verbosity.
+</p><p>Example:
+</p><pre>registry.SetLevel("auth", EpicServer.LogLevelDebug)
+registry.SetLevel("db", EpicServer.LogLevelWarn)
+</pre>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Logger" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L280">Logger</a> <a class="Documentation-idLink" href="#Logger" title="Go to Logger" aria-label="Go to Logger">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Logger interface {
+<span id="Logger.Debug" data-kind="method">	Debug(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)
+</span><span id="Logger.Info" data-kind="method">	Info(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)
+</span><span id="Logger.Warn" data-kind="method">	Warn(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)
+</span><span id="Logger.Error" data-kind="method">	Error(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)
+</span><span id="Logger.Fatal" data-kind="method">	Fatal(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)
+</span><span id="Logger.WithFields" data-kind="method">	WithFields(fields ...<a href="#LogField">LogField</a>) <a href="#Logger">Logger</a>
+</span><span id="Logger.WithModule" data-kind="method">	WithModule(module <a href="/builtin#string">string</a>) <a href="#Logger">Logger</a>
+</span><span id="Logger.SetOutput" data-kind="method">	SetOutput(w <a href="/io">io</a>.<a href="/io#Writer">Writer</a>)
+</span><span id="Logger.SetLevel" data-kind="method">	SetLevel(level <a href="#LogLevel">LogLevel</a>)
+</span><span id="Logger.SetFormat" data-kind="method">	SetFormat(format <a href="#LogFormat">LogFormat</a>)
+</span><span id="Logger.SetRegistry" data-kind="method">	SetRegistry(registry *<a href="#LogRegistry">LogRegistry</a>)
+</span>}</pre>
+    </div>
+  <p>Logger is an interface for logging messages.
+It provides methods for logging at different levels and with structured fields.
+</p><p>Example:
+</p><pre>logger.Info("Server started", EpicServer.F("port", 8080))
+logger.Error("Database connection failed", EpicServer.F("error", err.Error()))
+</pre>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="NewLogger" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L355">NewLogger</a> <a class="Documentation-idLink" href="#NewLogger" title="Go to NewLogger" aria-label="Go to NewLogger">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func NewLogger(w <a href="/io">io</a>.<a href="/io#Writer">Writer</a>, level <a href="#LogLevel">LogLevel</a>, format <a href="#LogFormat">LogFormat</a>) <a href="#Logger">Logger</a></pre>
+    </div>
+  <p>NewLogger creates a new structured logger.
+This is the main entry point for creating a logger.
+</p><p>Example:
+</p><pre>// Create a logger that writes to stdout, at info level, in text format
+logger := EpicServer.NewLogger(os.Stdout, EpicServer.LogLevelInfo, EpicServer.LogFormatText)
+
+// Log a message
+logger.Info("Application started")
+</pre>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="NewLoggerWithRegistry" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L380">NewLoggerWithRegistry</a> <a class="Documentation-idLink" href="#NewLoggerWithRegistry" title="Go to NewLoggerWithRegistry" aria-label="Go to NewLoggerWithRegistry">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func NewLoggerWithRegistry(w <a href="/io">io</a>.<a href="/io#Writer">Writer</a>, level <a href="#LogLevel">LogLevel</a>, format <a href="#LogFormat">LogFormat</a>, registry *<a href="#LogRegistry">LogRegistry</a>) <a href="#Logger">Logger</a></pre>
+    </div>
+  <p>NewLoggerWithRegistry creates a new structured logger with a custom registry.
+This allows for fine-grained control over module-specific log levels.
+</p><p>Example:
+</p><pre>registry := EpicServer.NewLogRegistry(EpicServer.LogLevelInfo)
+registry.SetLevel("auth", EpicServer.LogLevelDebug)
+
+logger := EpicServer.NewLoggerWithRegistry(
+    os.Stdout,
+    EpicServer.LogLevelInfo,
+    EpicServer.LogFormatText,
+    registry,
+)
+</pre>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="OAuthState" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L479">OAuthState</a> <a class="Documentation-idLink" href="#OAuthState" title="Go to OAuthState" aria-label="Go to OAuthState">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type OAuthState struct {
+<span id="OAuthState.CookieDomainOverride" data-kind="field">	CookieDomainOverride <a href="/builtin#string">string</a>                 `json:"cookie_domain_override"`
+</span><span id="OAuthState.ReturnTo" data-kind="field">	ReturnTo             <a href="/builtin#string">string</a>                 `json:"return_to"`
+</span><span id="OAuthState.Custom" data-kind="field">	Custom               map[<a href="/builtin#string">string</a>]interface{} `json:"custom"`
+</span>}</pre>
+    </div>
+  
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Option" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L28">Option</a> <a class="Documentation-idLink" href="#Option" title="Go to Option" aria-label="Go to Option">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Option func(*<a href="#Config">Config</a>)</pre>
+    </div>
+  <p>Option is a function that modifies the configuration
+</p>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetCORSOrigins" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L103">SetCORSOrigins</a> <a class="Documentation-idLink" href="#SetCORSOrigins" title="Go to SetCORSOrigins" aria-label="Go to SetCORSOrigins">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetCORSOrigins(origins []<a href="/builtin#string">string</a>) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetCORSOrigins sets the allowed CORS origins
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetCSPHeader" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L96">SetCSPHeader</a> <a class="Documentation-idLink" href="#SetCSPHeader" title="Go to SetCSPHeader" aria-label="Go to SetCSPHeader">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetCSPHeader(csp <a href="/builtin#string">string</a>) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetCSPHeader sets the Content-Security-Policy header
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetCookieDomain" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L89">SetCookieDomain</a> <a class="Documentation-idLink" href="#SetCookieDomain" title="Go to SetCookieDomain" aria-label="Go to SetCookieDomain">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetCookieDomain(domain <a href="/builtin#string">string</a>) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetCookieDomain sets the cookie domain
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetCustomConfig" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L110">SetCustomConfig</a> <a class="Documentation-idLink" href="#SetCustomConfig" title="Go to SetCustomConfig" aria-label="Go to SetCustomConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetCustomConfig(customConfig interface{}) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetCustomConfig sets a custom configuration
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetEnvironment" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L75">SetEnvironment</a> <a class="Documentation-idLink" href="#SetEnvironment" title="Go to SetEnvironment" aria-label="Go to SetEnvironment">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetEnvironment(env <a href="/builtin#string">string</a>) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetEnvironment sets the server environment (development, production, etc.)
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetHost" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L60">SetHost</a> <a class="Documentation-idLink" href="#SetHost" title="Go to SetHost" aria-label="Go to SetHost">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetHost(host <a href="/builtin#string">string</a>, port <a href="/builtin#int">int</a>) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetHost sets the host and port
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetSecretKey" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L68">SetSecretKey</a> <a class="Documentation-idLink" href="#SetSecretKey" title="Go to SetSecretKey" aria-label="Go to SetSecretKey">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetSecretKey(secretKey []<a href="/builtin#byte">byte</a>) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetSecretKey sets the secret key
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="SetSecureCookie" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L82">SetSecureCookie</a> <a class="Documentation-idLink" href="#SetSecureCookie" title="Go to SetSecureCookie" aria-label="Go to SetSecureCookie">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func SetSecureCookie(secure <a href="/builtin#bool">bool</a>) <a href="#Option">Option</a></pre>
+    </div>
+  <p>SetSecureCookie sets whether cookies should be secure
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="WithEnvVars" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/config.go#L124">WithEnvVars</a> <a class="Documentation-idLink" href="#WithEnvVars" title="Go to WithEnvVars" aria-label="Go to WithEnvVars">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func WithEnvVars() <a href="#Option">Option</a></pre>
+    </div>
+  <p>WithEnvVars loads configuration from environment variables
+Environment variables are expected to be in the format EPICSERVER_SECTION_KEY
+For example, EPICSERVER_SERVER_PORT would set Config.Server.Port
+</p>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Provider" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L175">Provider</a> <a class="Documentation-idLink" href="#Provider" title="Go to Provider" aria-label="Go to Provider">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Provider struct {
+<span id="Provider.Name" data-kind="field">	Name         <a href="/builtin#string">string</a>
+</span><span id="Provider.ClientId" data-kind="field">	ClientId     <a href="/builtin#string">string</a>
+</span><span id="Provider.ClientSecret" data-kind="field">	ClientSecret <a href="/builtin#string">string</a>
+</span><span id="Provider.Callback" data-kind="field">	Callback     <a href="/builtin#string">string</a>
+</span>}</pre>
+    </div>
+  <p>Provider represents an OAuth2/OIDC authentication provider configuration.
+Common providers include Google, GitHub, Auth0, and others.
+</p><p>You can configure multiple providers for the same application to give
+users a choice of login methods.
+</p><p>Example:
+</p><pre>providers := []EpicServer.Provider{
+    {
+        Name:         "google",
+        ClientId:     os.Getenv("GOOGLE_CLIENT_ID"),
+        ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+        Callback:     "http://localhost:8080/auth/callback/google",
+    },
+    {
+        Name:         "github",
+        ClientId:     os.Getenv("GITHUB_CLIENT_ID"),
+        ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+        Callback:     "http://localhost:8080/auth/callback/github",
+    },
+}
+</pre>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="PublicPathConfig" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L197">PublicPathConfig</a> <a class="Documentation-idLink" href="#PublicPathConfig" title="Go to PublicPathConfig" aria-label="Go to PublicPathConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type PublicPathConfig struct {
+<span id="PublicPathConfig.Exact" data-kind="field">	Exact  []<a href="/builtin#string">string</a> <span class="comment">// Exact match paths</span>
+</span><span id="PublicPathConfig.Prefix" data-kind="field">	Prefix []<a href="/builtin#string">string</a> <span class="comment">// Prefix match paths</span>
+</span>}</pre>
+    </div>
+  <p>PublicPathConfig defines paths that don't require authentication.
+This allows you to exempt specific routes from the authentication middleware.
+</p><p>There are two types of path matching:
+</p><ul class="Documentation-bulletList">
+  <li>Exact: The path must match exactly (e.g., "/health", "/login")</li>
+  <li>Prefix: Any path starting with the prefix matches (e.g., "/public/", "/api/docs/")</li>
+</ul><p>Example:
+</p><pre>server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithPublicPaths(EpicServer.PublicPathConfig{
+        Exact:  []string{"/health", "/login", "/register"},
+        Prefix: []string{"/public/", "/api/docs/", "/static/"},
+    }),
+})
+</pre>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="RateLimiter" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L338">RateLimiter</a> <a class="Documentation-idLink" href="#RateLimiter" title="Go to RateLimiter" aria-label="Go to RateLimiter">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type RateLimiter struct {
+	<span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+    </div>
+  <p>RateLimiter implements IP-based request rate limiting
+</p>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="NewRateLimiter" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L345">NewRateLimiter</a> <a class="Documentation-idLink" href="#NewRateLimiter" title="Go to NewRateLimiter" aria-label="Go to NewRateLimiter">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func NewRateLimiter(config <a href="#RateLimiterConfig">RateLimiterConfig</a>) *<a href="#RateLimiter">RateLimiter</a></pre>
+    </div>
+  <p>NewRateLimiter creates a new rate limiter
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="RateLimiter.Middleware" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*RateLimiter) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L406">Middleware</a> <a class="Documentation-idLink" href="#RateLimiter.Middleware" title="Go to RateLimiter.Middleware" aria-label="Go to RateLimiter.Middleware">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (r *<a href="#RateLimiter">RateLimiter</a>) Middleware() <a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#HandlerFunc">HandlerFunc</a></pre>
+    </div>
+  <p>Middleware returns a Gin middleware function for rate limiting
+</p>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="RateLimiterConfig" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L319">RateLimiterConfig</a> <a class="Documentation-idLink" href="#RateLimiterConfig" title="Go to RateLimiterConfig" aria-label="Go to RateLimiterConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type RateLimiterConfig struct {
+<span id="RateLimiterConfig.MaxRequests" data-kind="field">	<span class="comment">// MaxRequests is the maximum number of requests allowed per IP per interval</span>
+</span>	MaxRequests <a href="/builtin#int">int</a>
+<span id="RateLimiterConfig.Interval" data-kind="field">	<span class="comment">// Interval is the time window to track requests</span>
+</span>	Interval <a href="/time">time</a>.<a href="/time#Duration">Duration</a>
+<span id="RateLimiterConfig.BlockDuration" data-kind="field">	<span class="comment">// BlockDuration is how long to block requests after the limit is reached</span>
+</span>	BlockDuration <a href="/time">time</a>.<a href="/time#Duration">Duration</a>
+<span id="RateLimiterConfig.ExcludedPaths" data-kind="field">	<span class="comment">// ExcludedPaths are paths that won't be rate limited</span>
+</span>	ExcludedPaths []<a href="/builtin#string">string</a>
+}</pre>
+    </div>
+  <p>RateLimiterConfig configures the rate limiter
+</p>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="RedirectError" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L238">RedirectError</a> <a class="Documentation-idLink" href="#RedirectError" title="Go to RedirectError" aria-label="Go to RedirectError">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type RedirectError struct {
+<span id="RedirectError.RedirectURL" data-kind="field">	RedirectURL <a href="/builtin#string">string</a>
+</span><span id="RedirectError.StatusCode" data-kind="field">	StatusCode  <a href="/builtin#int">int</a>
+</span>}</pre>
+    </div>
+  
+<div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="RedirectError.Error" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*RedirectError) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L243">Error</a> <a class="Documentation-idLink" href="#RedirectError.Error" title="Go to RedirectError.Error" aria-label="Go to RedirectError.Error">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (e *<a href="#RedirectError">RedirectError</a>) Error() <a href="/builtin#string">string</a></pre>
+    </div>
+  
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Route" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L12">Route</a> <a class="Documentation-idLink" href="#Route" title="Go to Route" aria-label="Go to Route">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Route struct {
+<span id="Route.Method" data-kind="field">	<span class="comment">// Method is the HTTP method (GET, POST, etc.)</span>
+</span>	Method <a href="/builtin#string">string</a>
+<span id="Route.Path" data-kind="field">	<span class="comment">// Path is the URL path for the route</span>
+</span>	Path <a href="/builtin#string">string</a>
+<span id="Route.Handler" data-kind="field">	<span class="comment">// Handler is the function that processes the request</span>
+</span>	Handler <a href="#HandlerFunc">HandlerFunc</a>
+}</pre>
+    </div>
+  <p>Route defines an HTTP route with its method, path and handler.
+</p>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="Delete" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L91">Delete</a> <a class="Documentation-idLink" href="#Delete" title="Go to Delete" aria-label="Go to Delete">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func Delete(path <a href="/builtin#string">string</a>, handler <a href="#HandlerFunc">HandlerFunc</a>) <a href="#Route">Route</a></pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="Get" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L67">Get</a> <a class="Documentation-idLink" href="#Get" title="Go to Get" aria-label="Go to Get">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func Get(path <a href="/builtin#string">string</a>, handler <a href="#HandlerFunc">HandlerFunc</a>) <a href="#Route">Route</a></pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="Patch" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L83">Patch</a> <a class="Documentation-idLink" href="#Patch" title="Go to Patch" aria-label="Go to Patch">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func Patch(path <a href="/builtin#string">string</a>, handler <a href="#HandlerFunc">HandlerFunc</a>) <a href="#Route">Route</a></pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="Post" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L59">Post</a> <a class="Documentation-idLink" href="#Post" title="Go to Post" aria-label="Go to Post">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func Post(path <a href="/builtin#string">string</a>, handler <a href="#HandlerFunc">HandlerFunc</a>) <a href="#Route">Route</a></pre>
+    </div>
+  <p>Helper functions
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="Put" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L75">Put</a> <a class="Documentation-idLink" href="#Put" title="Go to Put" aria-label="Go to Put">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func Put(path <a href="/builtin#string">string</a>, handler <a href="#HandlerFunc">HandlerFunc</a>) <a href="#Route">Route</a></pre>
+    </div>
+  
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="RouteGroup" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/route.go#L22">RouteGroup</a> <a class="Documentation-idLink" href="#RouteGroup" title="Go to RouteGroup" aria-label="Go to RouteGroup">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type RouteGroup struct {
+<span id="RouteGroup.Prefix" data-kind="field">	<span class="comment">// Prefix is prepended to all routes in the group</span>
+</span>	Prefix <a href="/builtin#string">string</a>
+<span id="RouteGroup.Routes" data-kind="field">	<span class="comment">// Routes contains the individual route definitions</span>
+</span>	Routes []<a href="#Route">Route</a>
+}</pre>
+    </div>
+  <p>RouteGroup represents a group of routes with a common prefix.
+</p>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="SecurityHeadersConfig" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L577">SecurityHeadersConfig</a> <a class="Documentation-idLink" href="#SecurityHeadersConfig" title="Go to SecurityHeadersConfig" aria-label="Go to SecurityHeadersConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type SecurityHeadersConfig struct {
+<span id="SecurityHeadersConfig.EnableHSTS" data-kind="field">	<span class="comment">// EnableHSTS enables HTTP Strict Transport Security</span>
+</span>	EnableHSTS <a href="/builtin#bool">bool</a>
+<span id="SecurityHeadersConfig.HSTSMaxAge" data-kind="field">	<span class="comment">// HSTSMaxAge is the max age in seconds for HSTS</span>
+</span>	HSTSMaxAge <a href="/builtin#int">int</a>
+<span id="SecurityHeadersConfig.HSTSIncludeSubdomains" data-kind="field">	<span class="comment">// HSTSIncludeSubdomains includes subdomains in HSTS</span>
+</span>	HSTSIncludeSubdomains <a href="/builtin#bool">bool</a>
+<span id="SecurityHeadersConfig.HSTSPreload" data-kind="field">	<span class="comment">// HSTSPreload adds preload directive to HSTS</span>
+</span>	HSTSPreload <a href="/builtin#bool">bool</a>
+<span id="SecurityHeadersConfig.ContentSecurityPolicy" data-kind="field">	<span class="comment">// ContentSecurityPolicy sets the Content-Security-Policy header</span>
+</span>	ContentSecurityPolicy <a href="/builtin#string">string</a>
+<span id="SecurityHeadersConfig.ReferrerPolicy" data-kind="field">	<span class="comment">// ReferrerPolicy sets the Referrer-Policy header</span>
+</span>	ReferrerPolicy <a href="/builtin#string">string</a>
+<span id="SecurityHeadersConfig.PermissionsPolicy" data-kind="field">	<span class="comment">// PermissionsPolicy sets the Permissions-Policy header</span>
+</span>	PermissionsPolicy <a href="/builtin#string">string</a>
+<span id="SecurityHeadersConfig.EnableXSSProtection" data-kind="field">	<span class="comment">// EnableXSSProtection enables X-XSS-Protection header</span>
+</span>	EnableXSSProtection <a href="/builtin#bool">bool</a>
+<span id="SecurityHeadersConfig.EnableFrameOptions" data-kind="field">	<span class="comment">// EnableFrameOptions enables X-Frame-Options header</span>
+</span>	EnableFrameOptions <a href="/builtin#bool">bool</a>
+<span id="SecurityHeadersConfig.FrameOption" data-kind="field">	<span class="comment">// FrameOption sets the X-Frame-Options value</span>
+</span>	FrameOption <a href="/builtin#string">string</a>
+<span id="SecurityHeadersConfig.EnableContentTypeOptions" data-kind="field">	<span class="comment">// EnableContentTypeOptions enables X-Content-Type-Options header</span>
+</span>	EnableContentTypeOptions <a href="/builtin#bool">bool</a>
+}</pre>
+    </div>
+  <p>SecurityHeadersConfig configures security headers
+</p>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="DefaultSecurityHeadersConfig" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/middleware.go#L603">DefaultSecurityHeadersConfig</a> <a class="Documentation-idLink" href="#DefaultSecurityHeadersConfig" title="Go to DefaultSecurityHeadersConfig" aria-label="Go to DefaultSecurityHeadersConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func DefaultSecurityHeadersConfig() *<a href="#SecurityHeadersConfig">SecurityHeadersConfig</a></pre>
+    </div>
+  <p>DefaultSecurityHeadersConfig returns a config with recommended security settings
+</p>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Server" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L123">Server</a> <a class="Documentation-idLink" href="#Server" title="Go to Server" aria-label="Go to Server">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Server struct {
+<span id="Server.Config" data-kind="field">	Config      *<a href="#Config">Config</a>
+</span><span id="Server.Engine" data-kind="field">	Engine      *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Engine">Engine</a>
+</span><span id="Server.Logger" data-kind="field">	Logger      <a href="#Logger">Logger</a>
+</span><span id="Server.Hooks" data-kind="field">	Hooks       <a href="#Hooks">Hooks</a>
+</span><span id="Server.PublicPaths" data-kind="field">	PublicPaths map[<a href="/builtin#string">string</a>]<a href="/builtin#bool">bool</a>
+</span><span id="Server.AuthConfigs" data-kind="field">	AuthConfigs map[<a href="/builtin#string">string</a>]*<a href="#Auth">Auth</a>
+</span><span id="Server.Db" data-kind="field">	Db          map[<a href="/builtin#string">string</a>]interface{}
+</span><span id="Server.Cache" data-kind="field">	Cache       map[<a href="/builtin#string">string</a>]interface{}
+</span>	<span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+    </div>
+  <p>Server represents the main server instance containing all necessary dependencies and configuration.
+It serves as the central object for your application, providing access to all EpicServer features.
+</p><p>The Server struct contains several exported fields that can be accessed directly:
+</p><ul class="Documentation-bulletList">
+  <li>Config: Access to all configuration settings</li>
+  <li>Engine: The underlying Gin engine for adding routes and middleware</li>
+  <li>Logger: Structured logger for application logging</li>
+  <li>Hooks: Extension points for custom behavior</li>
+  <li>PublicPaths: Paths that don't require authentication</li>
+  <li>AuthConfigs: Authentication providers configuration</li>
+  <li>Db: Map of database connections (use type assertions to access specific implementations)</li>
+  <li>Cache: Map of cache instances (use type assertions to access specific implementations)</li>
+</ul><p>Example accessing the Gin engine to add routes:
+</p><pre>apiGroup := server.Engine.Group("/api/v1")
+apiGroup.GET("/users", GetUsersHandler)
+apiGroup.POST("/users", CreateUserHandler)
+</pre><p>Example accessing a database connection:
+</p><pre>if db, ok := server.Db["mongo"].(*mongo.Database); ok {
+    collection := db.Collection("users")
+    // Use the collection...
+}
+</pre><p>Example accessing a cache instance:
+</p><pre>if cache, ok := server.Cache["default"].(*MemoryCache); ok {
+    value, found := cache.Get("user:123")
+    // Use the cached value...
+}
+</pre>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="NewServer" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L164">NewServer</a> <a class="Documentation-idLink" href="#NewServer" title="Go to NewServer" aria-label="Go to NewServer">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func NewServer(options []<a href="#Option">Option</a>) *<a href="#Server">Server</a></pre>
+    </div>
+  <p>NewServer creates and initializes a new server instance with the provided configuration options.
+It applies all configurations and default app layers in the order they are provided.
+</p><p>The function expects a slice of Option functions that modify the server configuration.
+At minimum, you should provide a secret key for security-related features.
+</p><p>If any configuration validation fails, the server will be created with initialization errors
+that can be checked with HasErrors() and GetErrors().
+</p><p>Example:
+</p><pre>server := EpicServer.NewServer([]EpicServer.Option{
+    EpicServer.SetSecretKey([]byte("your-secret-key")),
+    EpicServer.SetPort(8080),
+    EpicServer.SetHost("0.0.0.0"),
+    EpicServer.SetLogLevel("info"),
+})
+
+if server.HasErrors() {
+    // Handle initialization errors
+    fmt.Println("Server errors:", server.GetErrors())
+    return
+}
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="Server.AddError" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*Server) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L240">AddError</a> <a class="Documentation-idLink" href="#Server.AddError" title="Go to Server.AddError" aria-label="Go to Server.AddError">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (s *<a href="#Server">Server</a>) AddError(err <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>AddError adds an error to the server's error list
+This is primarily used internally, but can also be used by application code
+to track errors that should prevent the server from starting.
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="Server.GetErrors" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*Server) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L233">GetErrors</a> <a class="Documentation-idLink" href="#Server.GetErrors" title="Go to Server.GetErrors" aria-label="Go to Server.GetErrors">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (s *<a href="#Server">Server</a>) GetErrors() []<a href="/builtin#error">error</a></pre>
+    </div>
+  <p>GetErrors returns all initialization errors
+Use this to get detailed information about what went wrong during server initialization.
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="Server.HasErrors" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*Server) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L227">HasErrors</a> <a class="Documentation-idLink" href="#Server.HasErrors" title="Go to Server.HasErrors" aria-label="Go to Server.HasErrors">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (s *<a href="#Server">Server</a>) HasErrors() <a href="/builtin#bool">bool</a></pre>
+    </div>
+  <p>HasErrors returns true if the server has initialization errors
+Use this method to check if the server was properly initialized before starting it.
+</p><p>Example:
+</p><pre>if server.HasErrors() {
+    log.Fatalf("Server initialization failed: %v", server.GetErrors())
+}
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="Server.Start" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*Server) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L283">Start</a> <a class="Documentation-idLink" href="#Server.Start" title="Go to Server.Start" aria-label="Go to Server.Start">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (s *<a href="#Server">Server</a>) Start() <a href="/builtin#error">error</a></pre>
+    </div>
+  <p>Start initiates the HTTP server on the configured host and port.
+This is a blocking call that will run until the server is stopped or an error occurs.
+</p><p>The method checks for initialization errors before starting. If any errors are found,
+it will return an error without starting the server.
+</p><p>The server supports graceful shutdown when Stop() is called or when the process
+receives an interrupt signal.
+</p><p>Example:
+</p><pre>if err := server.Start(); err != nil {
+    log.Fatalf("Server failed to start: %v", err)
+}
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="Server.Stop" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*Server) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L360">Stop</a> <a class="Documentation-idLink" href="#Server.Stop" title="Go to Server.Stop" aria-label="Go to Server.Stop">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (s *<a href="#Server">Server</a>) Stop() <a href="/builtin#error">error</a></pre>
+    </div>
+  <p>Stop gracefully shuts down the server, allowing pending requests to complete.
+The server will wait up to 5 seconds for active connections to finish before
+forcefully closing them.
+</p><p>This method is automatically called when the process receives an interrupt signal,
+but can also be called manually when needed.
+</p><p>Example:
+</p><pre>// Start the server in a goroutine
+go func() {
+    if err := server.Start(); err != http.ErrServerClosed {
+        log.Printf("Server error: %v", err)
+    }
+}()
+
+// Wait for some condition
+time.Sleep(10 * time.Second)
+
+// Gracefully shut down the server
+if err := server.Stop(); err != nil {
+    log.Printf("Shutdown error: %v", err)
+}
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="Server.UpdateAppLayer" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*Server) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L257">UpdateAppLayer</a> <a class="Documentation-idLink" href="#Server.UpdateAppLayer" title="Go to Server.UpdateAppLayer" aria-label="Go to Server.UpdateAppLayer">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (s *<a href="#Server">Server</a>) UpdateAppLayer(layers []<a href="#AppLayer">AppLayer</a>)</pre>
+    </div>
+  <p>UpdateAppLayer applies additional application layers to an existing server instance.
+App layers can add middleware, routes, authentication, database connections, and other features.
+</p><p>If the server has initialization errors, the layers will not be applied.
+</p><p>Example:
+</p><pre>// Add authentication and database support
+server.UpdateAppLayer([]EpicServer.AppLayer{
+    EpicServer.WithAuth(providers, sessionConfig),
+    EpicServer.WithMongoDB("mongodb://localhost:27017", "mydatabase", "main"),
+    EpicServer.WithLoggerMiddleware(),
+})
+</pre>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="ServerOption" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/server.go#L139">ServerOption</a> <a class="Documentation-idLink" href="#ServerOption" title="Go to ServerOption" aria-label="Go to ServerOption">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type ServerOption func(*<a href="#Server">Server</a>) <a href="/builtin#error">error</a></pre>
+    </div>
+  <p>ServerOption represents a configuration option for the server
+</p>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="Session" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L1076">Session</a> <a class="Documentation-idLink" href="#Session" title="Go to Session" aria-label="Go to Session">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type Session struct {
+<span id="Session.User" data-kind="field">	User      interface{}
+</span><span id="Session.Token" data-kind="field">	Token     <a href="/builtin#string">string</a>
+</span><span id="Session.Email" data-kind="field">	Email     <a href="/builtin#string">string</a>
+</span><span id="Session.ExpiresOn" data-kind="field">	ExpiresOn <a href="/time">time</a>.<a href="/time#Time">Time</a>
+</span>}</pre>
+    </div>
+  <p>Session represents the user's session data
+</p>
+<div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="GetSession" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L1092">GetSession</a> <a class="Documentation-idLink" href="#GetSession" title="Go to GetSession" aria-label="Go to GetSession">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func GetSession(c *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>) (*<a href="#Session">Session</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>Helper function to get session from context
+</p>
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="GetSessionFromCookie" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L306">GetSessionFromCookie</a> <a class="Documentation-idLink" href="#GetSessionFromCookie" title="Go to GetSessionFromCookie" aria-label="Go to GetSessionFromCookie">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func GetSessionFromCookie(s *<a href="#Server">Server</a>, c *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>, cookieName <a href="/builtin#string">string</a>) (*<a href="#Session">Session</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  
+
+  
+
+  </div><div class="Documentation-typeFunc">
+    
+  
+  
+    <h4 tabindex="-1" id="MustGetSession" data-kind="function" class="Documentation-typeFuncHeader">
+      <span>func <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L1107">MustGetSession</a> <a class="Documentation-idLink" href="#MustGetSession" title="Go to MustGetSession" aria-label="Go to MustGetSession">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func MustGetSession(c *<a href="/github.com/gin-gonic/gin">gin</a>.<a href="/github.com/gin-gonic/gin#Context">Context</a>) (*<a href="#Session">Session</a>, <a href="/builtin#error">error</a>)</pre>
+    </div>
+  <p>Optional: Helper for required session (panics if no session)
+</p>
+
+  
+
+  </div>
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="SessionConfig" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/auth.go#L114">SessionConfig</a> <a class="Documentation-idLink" href="#SessionConfig" title="Go to SessionConfig" aria-label="Go to SessionConfig">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type SessionConfig struct {
+<span id="SessionConfig.CookieName" data-kind="field">	CookieName      <a href="/builtin#string">string</a>
+</span><span id="SessionConfig.CookieDomain" data-kind="field">	CookieDomain    <a href="/builtin#string">string</a>
+</span><span id="SessionConfig.CookieMaxAge" data-kind="field">	CookieMaxAge    <a href="/builtin#int">int</a>
+</span><span id="SessionConfig.CookieSecure" data-kind="field">	CookieSecure    <a href="/builtin#bool">bool</a>
+</span><span id="SessionConfig.CookieHTTPOnly" data-kind="field">	CookieHTTPOnly  <a href="/builtin#bool">bool</a>
+</span><span id="SessionConfig.SessionDuration" data-kind="field">	SessionDuration <a href="/time">time</a>.<a href="/time#Duration">Duration</a>
+</span><span id="SessionConfig.ErrorHandler" data-kind="field">	ErrorHandler    <a href="#AuthErrorHandler">AuthErrorHandler</a>
+</span>}</pre>
+    </div>
+  <p>SessionConfig contains settings for the authentication session and cookies.
+Use this to configure cookie behavior, session duration, and error handling.
+</p><p>Example:
+</p><pre>sessionConfig := &amp;EpicServer.SessionConfig{
+    CookieName:      "auth_session",
+    CookieDomain:    "mydomain.com",
+    CookieMaxAge:    86400,        // 1 day in seconds
+    CookieSecure:    true,         // Only send cookie over HTTPS
+    CookieHTTPOnly:  true,         // Prevent JavaScript access
+    SessionDuration: 24 * time.Hour,
+    ErrorHandler:    customErrorHandler,
+}
+</pre>
+
+  
+
+    </div><div class="Documentation-type">
+      
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger" data-kind="type" class="Documentation-typeHeader">
+      <span>type <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L322">StructuredLogger</a> <a class="Documentation-idLink" href="#StructuredLogger" title="Go to StructuredLogger" aria-label="Go to StructuredLogger">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>type StructuredLogger struct {
+	<span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+    </div>
+  <p>StructuredLogger implements the Logger interface.
+It provides structured logging with support for different levels,
+formats, and module-based filtering.
+</p>
+<div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.Debug" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L494">Debug</a> <a class="Documentation-idLink" href="#StructuredLogger.Debug" title="Go to StructuredLogger.Debug" aria-label="Go to StructuredLogger.Debug">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) Debug(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)</pre>
+    </div>
+  <p>Debug logs a debug message
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.Error" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L515">Error</a> <a class="Documentation-idLink" href="#StructuredLogger.Error" title="Go to StructuredLogger.Error" aria-label="Go to StructuredLogger.Error">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) Error(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)</pre>
+    </div>
+  <p>Error logs an error message
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.Fatal" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L522">Fatal</a> <a class="Documentation-idLink" href="#StructuredLogger.Fatal" title="Go to StructuredLogger.Fatal" aria-label="Go to StructuredLogger.Fatal">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) Fatal(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)</pre>
+    </div>
+  <p>Fatal logs a message at Fatal level and then exits the application
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.Info" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L501">Info</a> <a class="Documentation-idLink" href="#StructuredLogger.Info" title="Go to StructuredLogger.Info" aria-label="Go to StructuredLogger.Info">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) Info(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)</pre>
+    </div>
+  <p>Info logs an info message
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.SetFormat" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L425">SetFormat</a> <a class="Documentation-idLink" href="#StructuredLogger.SetFormat" title="Go to StructuredLogger.SetFormat" aria-label="Go to StructuredLogger.SetFormat">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) SetFormat(format <a href="#LogFormat">LogFormat</a>)</pre>
+    </div>
+  <p>SetFormat sets the log format.
+This determines how log messages are formatted.
+</p><p>Example:
+</p><pre>// Use JSON format for machine processing
+logger.SetFormat(EpicServer.LogFormatJSON)
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.SetLevel" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L412">SetLevel</a> <a class="Documentation-idLink" href="#StructuredLogger.SetLevel" title="Go to StructuredLogger.SetLevel" aria-label="Go to StructuredLogger.SetLevel">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) SetLevel(level <a href="#LogLevel">LogLevel</a>)</pre>
+    </div>
+  <p>SetLevel sets the minimum log level.
+Messages below this level will not be logged.
+</p><p>Example:
+</p><pre>// Only log warnings and above
+logger.SetLevel(EpicServer.LogLevelWarn)
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.SetOutput" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L399">SetOutput</a> <a class="Documentation-idLink" href="#StructuredLogger.SetOutput" title="Go to StructuredLogger.SetOutput" aria-label="Go to StructuredLogger.SetOutput">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) SetOutput(w <a href="/io">io</a>.<a href="/io#Writer">Writer</a>)</pre>
+    </div>
+  <p>SetOutput sets the output writer.
+This allows changing where logs are written to.
+</p><p>Example:
+</p><pre>// Write logs to a file
+file, _ := os.OpenFile("app.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+logger.SetOutput(file)
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.SetRegistry" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L439">SetRegistry</a> <a class="Documentation-idLink" href="#StructuredLogger.SetRegistry" title="Go to StructuredLogger.SetRegistry" aria-label="Go to StructuredLogger.SetRegistry">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) SetRegistry(registry *<a href="#LogRegistry">LogRegistry</a>)</pre>
+    </div>
+  <p>SetRegistry sets the log registry.
+This allows changing the module-specific log level configuration.
+</p><p>Example:
+</p><pre>registry := EpicServer.NewLogRegistry(EpicServer.LogLevelInfo)
+registry.SetLevel("auth", EpicServer.LogLevelDebug)
+logger.SetRegistry(registry)
+</pre>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.Warn" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L508">Warn</a> <a class="Documentation-idLink" href="#StructuredLogger.Warn" title="Go to StructuredLogger.Warn" aria-label="Go to StructuredLogger.Warn">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) Warn(msg <a href="/builtin#string">string</a>, fields ...<a href="#LogField">LogField</a>)</pre>
+    </div>
+  <p>Warn logs a warning message
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.WithFields" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L446">WithFields</a> <a class="Documentation-idLink" href="#StructuredLogger.WithFields" title="Go to StructuredLogger.WithFields" aria-label="Go to StructuredLogger.WithFields">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) WithFields(fields ...<a href="#LogField">LogField</a>) <a href="#Logger">Logger</a></pre>
+    </div>
+  <p>WithFields returns a new logger with the given fields
+</p>
+
+  
+
+  </div><div class="Documentation-typeMethod">
+    
+  
+  
+    <h4 tabindex="-1" id="StructuredLogger.WithModule" data-kind="method" class="Documentation-typeMethodHeader">
+      <span>func (*StructuredLogger) <a class="Documentation-source" href="/files/home/runner/work/EpicServer/EpicServer/github.com/tomskip123/EpicServer/v2/logger.go#L463">WithModule</a> <a class="Documentation-idLink" href="#StructuredLogger.WithModule" title="Go to StructuredLogger.WithModule" aria-label="Go to StructuredLogger.WithModule">¶</a></span>
+  <span class="Documentation-sinceVersion">
+    
+  </span>
+</h4>
+
+    
+    <div class="Documentation-declaration">
+      <pre>func (l *<a href="#StructuredLogger">StructuredLogger</a>) WithModule(module <a href="/builtin#string">string</a>) <a href="#Logger">Logger</a></pre>
+    </div>
+  <p>WithModule returns a new logger with the specified module
+</p>
+
+  
+
+  </div>
+  
+
+    </div></section>
+    </div>
+</body>
+</html>
+  
