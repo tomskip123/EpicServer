@@ -25,6 +25,69 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// Authentication module for EpicServer.
+//
+// This module provides a complete authentication system with:
+//   - OAuth2/OIDC authentication (Google, GitHub, etc.)
+//   - Cookie-based session management
+//   - Session validation and security
+//   - Extensible hooks for custom authentication logic
+//   - Public path configuration
+//
+// # Basic Usage
+//
+//	// Configure OAuth providers
+//	providers := []EpicServer.Provider{
+//	    {
+//	        Name:         "google",
+//	        ClientId:     os.Getenv("GOOGLE_CLIENT_ID"),
+//	        ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+//	        Callback:     "http://localhost:8080/auth/callback/google",
+//	    },
+//	}
+//
+//	// Apply authentication middleware
+//	server.UpdateAppLayer([]EpicServer.AppLayer{
+//	    EpicServer.WithAuth(providers, &EpicServer.SessionConfig{
+//	        CookieName:      "auth_session",
+//	        CookieDomain:    "localhost",
+//	        CookieSecure:    true,
+//	        CookieHTTPOnly:  true,
+//	        SessionDuration: 24 * time.Hour,
+//	    }),
+//	    EpicServer.WithAuthMiddleware(EpicServer.SessionConfig{
+//	        CookieName: "auth_session",
+//	    }),
+//	    EpicServer.WithPublicPaths(EpicServer.PublicPathConfig{
+//	        Exact:  []string{"/health", "/auth/login"},
+//	        Prefix: []string{"/public/", "/api/docs/"},
+//	    }),
+//	})
+//
+// # Custom Authentication Hooks
+//
+// You can customize the authentication behavior by implementing the AuthenticationHooks interface:
+//
+//	type MyAuthHooks struct {}
+//
+//	func (h *MyAuthHooks) OnUserCreate(user EpicServer.Claims) (string, error) {
+//	    // Create user in your database and return user ID
+//	    return createUserInDatabase(user)
+//	}
+//
+//	// Implement other required methods...
+//
+//	// Then apply your custom hooks:
+//	server.UpdateAppLayer([]EpicServer.AppLayer{
+//	    EpicServer.WithAuthHooks(&MyAuthHooks{}),
+//	})
+
+// Auth represents the configuration for an authentication provider.
+// It holds references to the OIDC provider, OAuth2 config, cookie handling,
+// and other authentication-related settings.
+//
+// Auth instances are created automatically when using WithAuth() and
+// are accessible via the Server.AuthConfigs map.
 type Auth struct {
 	Provider       *oidc.Provider
 	Config         *oauth2.Config
@@ -34,6 +97,20 @@ type Auth struct {
 	RedirectOnFail string
 }
 
+// SessionConfig contains settings for the authentication session and cookies.
+// Use this to configure cookie behavior, session duration, and error handling.
+//
+// Example:
+//
+//	sessionConfig := &EpicServer.SessionConfig{
+//	    CookieName:      "auth_session",
+//	    CookieDomain:    "mydomain.com",
+//	    CookieMaxAge:    86400,        // 1 day in seconds
+//	    CookieSecure:    true,         // Only send cookie over HTTPS
+//	    CookieHTTPOnly:  true,         // Prevent JavaScript access
+//	    SessionDuration: 24 * time.Hour,
+//	    ErrorHandler:    customErrorHandler,
+//	}
 type SessionConfig struct {
 	CookieName      string
 	CookieDomain    string
@@ -44,6 +121,25 @@ type SessionConfig struct {
 	ErrorHandler    AuthErrorHandler
 }
 
+// Claims represents the standard claims extracted from an OAuth provider's token.
+// This is used to create or fetch user information in your application.
+//
+// The Claims struct can be extended with custom fields by implementing
+// custom authentication hooks.
+//
+// Example accessing claims in a handler:
+//
+//	func MyProtectedHandler(c *gin.Context) {
+//	    session, err := EpicServer.GetSession(c)
+//	    if err != nil {
+//	        // Handle error
+//	        return
+//	    }
+//
+//	    // Access user information
+//	    fmt.Printf("User email: %s\n", session.Email)
+//	    fmt.Printf("User name: %s\n", session.User.(YourUserType).Name)
+//	}
 type Claims struct {
 	Email       string   `json:"email"`
 	Name        string   `json:"name"`
@@ -54,6 +150,28 @@ type Claims struct {
 	Picture     string   `json:"picture"`
 }
 
+// Provider represents an OAuth2/OIDC authentication provider configuration.
+// Common providers include Google, GitHub, Auth0, and others.
+//
+// You can configure multiple providers for the same application to give
+// users a choice of login methods.
+//
+// Example:
+//
+//	providers := []EpicServer.Provider{
+//	    {
+//	        Name:         "google",
+//	        ClientId:     os.Getenv("GOOGLE_CLIENT_ID"),
+//	        ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+//	        Callback:     "http://localhost:8080/auth/callback/google",
+//	    },
+//	    {
+//	        Name:         "github",
+//	        ClientId:     os.Getenv("GITHUB_CLIENT_ID"),
+//	        ClientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
+//	        Callback:     "http://localhost:8080/auth/callback/github",
+//	    },
+//	}
 type Provider struct {
 	Name         string
 	ClientId     string
@@ -61,7 +179,21 @@ type Provider struct {
 	Callback     string
 }
 
-// Add configuration type for public paths
+// PublicPathConfig defines paths that don't require authentication.
+// This allows you to exempt specific routes from the authentication middleware.
+//
+// There are two types of path matching:
+//   - Exact: The path must match exactly (e.g., "/health", "/login")
+//   - Prefix: Any path starting with the prefix matches (e.g., "/public/", "/api/docs/")
+//
+// Example:
+//
+//	server.UpdateAppLayer([]EpicServer.AppLayer{
+//	    EpicServer.WithPublicPaths(EpicServer.PublicPathConfig{
+//	        Exact:  []string{"/health", "/login", "/register"},
+//	        Prefix: []string{"/public/", "/api/docs/", "/static/"},
+//	    }),
+//	})
 type PublicPathConfig struct {
 	Exact  []string // Exact match paths
 	Prefix []string // Prefix match paths
@@ -213,15 +345,68 @@ func GetSessionFromCookie(s *Server, c *gin.Context, cookieName string) (*Sessio
 	return session, nil
 }
 
+// AuthenticationHooks defines the interface for customizing the authentication behavior.
+// Implement this interface to integrate EpicServer authentication with your user management system.
+//
+// The default implementation (DefaultAuthHooks) provides basic functionality,
+// but for production use, you should implement this interface to:
+//   - Create and manage users in your database
+//   - Validate user credentials
+//   - Control session creation and validation
+//   - Handle post-authentication logic
+//
+// Example implementation:
+//
+//	type MyAuthHooks struct {
+//	    DB *sql.DB  // Your database connection
+//	}
+//
+//	func (h *MyAuthHooks) OnUserCreate(user EpicServer.Claims) (string, error) {
+//	    // Create user in database if they don't exist
+//	    var userID string
+//	    err := h.DB.QueryRow("INSERT INTO users (email, name) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET name = $2 RETURNING id",
+//	        user.Email, user.Name).Scan(&userID)
+//	    return userID, err
+//	}
+//
+//	// Implement other required methods...
+//
+//	// Register your hooks:
+//	server.UpdateAppLayer([]EpicServer.AppLayer{
+//	    EpicServer.WithAuthHooks(&MyAuthHooks{DB: myDatabase}),
+//	})
 type AuthenticationHooks interface {
-	// OnUserCreate is a hook for the consumer to create their user and return the userID to be saved to the cookie
+	// OnUserCreate is called when a new user authenticates via OAuth.
+	// It should create the user in your system if they don't exist
+	// and return a unique user ID.
 	OnUserCreate(user Claims) (string, error)
+
+	// GetUserOrCreate fetches or creates a user based on OAuth claims.
+	// It should return the user details for session creation.
 	GetUserOrCreate(user Claims) (*CookieContents, error)
+
+	// OnAuthenticate validates username/password credentials.
+	// Used for custom (non-OAuth) authentication flows.
 	OnAuthenticate(username, password string, state OAuthState) (bool, error)
+
+	// OnUserGet retrieves a user by their ID.
+	// This is used to populate session data after validating a token.
 	OnUserGet(userID string) (any, error)
+
+	// OnSessionValidate validates a session token and returns the user.
+	// This is called on each authenticated request.
 	OnSessionValidate(sessionToken *CookieContents) (interface{}, error)
+
+	// OnSessionCreate generates a new session token for a user.
+	// Called after successful authentication.
 	OnSessionCreate(userID string) (string, error)
+
+	// OnSessionDestroy invalidates a session token.
+	// Called during logout.
 	OnSessionDestroy(sessionToken string) error
+
+	// OnOAuthCallbackSuccess is called after successful OAuth authentication.
+	// Use this for any post-authentication actions.
 	OnOAuthCallbackSuccess(ctx *gin.Context, state OAuthState) error
 }
 
