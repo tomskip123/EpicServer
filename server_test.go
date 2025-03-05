@@ -782,6 +782,12 @@ func TestHandleAuthCallbackNonExistentProvider(t *testing.T) {
 		t: t,
 	}
 
+	sessionConfig := &SessionConfig{
+		CookieName:      "auth_cookie",
+		CookieDomain:    "example.com",
+		CookieSecure:    true,
+		SessionDuration: time.Hour,
+	}
 	// Register the auth callback handler
 	router.GET("/auth/:provider/callback", HandleAuthCallback(s, []Provider{
 		{
@@ -789,7 +795,7 @@ func TestHandleAuthCallbackNonExistentProvider(t *testing.T) {
 			ClientId:     "test-client-id",
 			ClientSecret: "test-client-secret",
 		},
-	}, "auth_cookie", "example.com", true, mockHooks))
+	}, sessionConfig, mockHooks))
 
 	// Test case: Provider doesn't exist
 	req := httptest.NewRequest("GET", "/auth/nonexistent/callback?code=test-code", nil)
@@ -873,6 +879,13 @@ func TestHandleAuthLoginBasicCase(t *testing.T) {
 		AuthCookieName: "auth_cookie",
 	}
 
+	sessionConfig := &SessionConfig{
+		CookieName:      "auth_cookie",
+		CookieDomain:    "example.com",
+		CookieSecure:    true,
+		SessionDuration: time.Hour,
+	}
+
 	// Register the auth login handler
 	router.GET("/auth/:provider", HandleAuthLogin(s, []Provider{
 		{
@@ -881,7 +894,7 @@ func TestHandleAuthLoginBasicCase(t *testing.T) {
 			ClientSecret: "test-client-secret",
 			Callback:     "https://example.com/callback",
 		},
-	}, "auth_cookie", "example.com", true))
+	}, sessionConfig))
 
 	// Test case: Basic login request
 	req := httptest.NewRequest("GET", "/auth/mock", nil)
@@ -936,6 +949,13 @@ func TestHandleAuthLoginWithCustomState(t *testing.T) {
 		AuthCookieName: "auth_cookie",
 	}
 
+	sessionConfig := &SessionConfig{
+		CookieName:      "auth_cookie",
+		CookieDomain:    "example.com",
+		CookieSecure:    true,
+		SessionDuration: time.Hour,
+	}
+
 	// Register the auth login handler
 	router.GET("/auth/:provider", HandleAuthLogin(s, []Provider{
 		{
@@ -944,7 +964,7 @@ func TestHandleAuthLoginWithCustomState(t *testing.T) {
 			ClientSecret: "test-client-secret",
 			Callback:     "https://example.com/callback",
 		},
-	}, "auth_cookie", "example.com", true))
+	}, sessionConfig))
 
 	// Create a valid custom state JSON
 	customState := `{"return_to":"/dashboard","custom":{"test":"value"}}`

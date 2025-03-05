@@ -114,6 +114,7 @@ type Auth struct {
 type SessionConfig struct {
 	CookieName      string
 	CookieDomain    string
+	CookiePath      string
 	CookieMaxAge    int
 	CookieSecure    bool
 	CookieHTTPOnly  bool
@@ -224,7 +225,7 @@ func WithAuth(
 			s.AuthConfigs[provider.Name] = authConfig
 		}
 
-		RegisterAuthRoutes(s, providers, sessionConfig.CookieName, sessionConfig.CookieDomain, sessionConfig.CookieSecure)
+		RegisterAuthRoutes(s, providers, sessionConfig)
 
 		// Add module-based logging
 		authLogger := s.Logger.WithModule("auth")
@@ -255,10 +256,10 @@ func DefaultAuthErrorHandler(c *gin.Context, err error) {
 	c.AbortWithStatus(http.StatusUnauthorized)
 }
 
-func RegisterAuthRoutes(s *Server, providers []Provider, cookieName string, domain string, secure bool) {
-	s.Engine.GET("/auth/:provider", HandleAuthLogin(s, providers, cookieName, domain, secure))
-	s.Engine.GET("/auth/:provider/callback", HandleAuthCallback(s, providers, cookieName, domain, secure, s.Hooks.Auth))
-	s.Engine.GET("/auth/logout", HandleAuthLogout(cookieName, domain, secure))
+func RegisterAuthRoutes(s *Server, providers []Provider, sessionConfig *SessionConfig) {
+	s.Engine.GET("/auth/:provider", HandleAuthLogin(s, providers, sessionConfig))
+	s.Engine.GET("/auth/:provider/callback", HandleAuthCallback(s, providers, sessionConfig, s.Hooks.Auth))
+	s.Engine.GET("/auth/logout", HandleAuthLogout(sessionConfig))
 }
 
 func WithAuthMiddleware(config SessionConfig) AppLayer {
@@ -482,7 +483,7 @@ type OAuthState struct {
 	Custom               map[string]interface{} `json:"custom"`
 }
 
-func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain string, secure bool) gin.HandlerFunc {
+func HandleAuthLogin(s *Server, providers []Provider, sessionConfig *SessionConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Create module-based logger
 		loginLogger := s.Logger.WithModule("auth.login")
@@ -521,7 +522,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 		// In the hook when authenticating you will want to check the domain is valid
 		// ! RESEARCH POTENTIAL SECURITY RISK AROUND MANIPULATING
 		if cState.CookieDomainOverride != "" {
-			domain = cState.CookieDomainOverride
+			sessionConfig.CookieDomain = cState.CookieDomainOverride
 		}
 
 		if authConfig, exists := s.AuthConfigs[providerParam]; exists {
@@ -562,10 +563,7 @@ func HandleAuthLogin(s *Server, providers []Provider, cookieName string, domain 
 				err = authConfig.CookieHandler.SetCookieHandler(
 					ctx,
 					contents,
-					"basic",
-					cookieName,
-					domain,
-					secure,
+					sessionConfig,
 				)
 
 				if err != nil {
@@ -661,7 +659,7 @@ func DecodeStateString(stateString string) ([]byte, error) {
 	return encryptedData, nil
 }
 
-func HandleAuthCallback(s *Server, providers []Provider, cookiename string, domain string, secure bool, hooks AuthenticationHooks) gin.HandlerFunc {
+func HandleAuthCallback(s *Server, providers []Provider, sessionConfig *SessionConfig, hooks AuthenticationHooks) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Create module-based logger
 		callbackLogger := s.Logger.WithModule("auth.callback")
@@ -725,20 +723,27 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 		err = authConfig.CookieHandler.SetCookieHandler(
 			ctx,
 			contents,
-			prov,
-			cookiename,
-			domain,
-			secure,
+			sessionConfig,
 		)
 
-		ctx.SetCookie(
-			"provider",
+		if err != nil {
+			callbackLogger.Error("Error setting cookie", F("error", err.Error()))
+			return
+		}
+
+		// setup the provider cookie
+		cookieConfig := SessionConfig{
+			CookieName:     "provider",
+			CookieDomain:   sessionConfig.CookieDomain,
+			CookieSecure:   sessionConfig.CookieSecure,
+			CookieHTTPOnly: sessionConfig.CookieHTTPOnly,
+			CookiePath:     sessionConfig.CookiePath,
+		}
+
+		err = authConfig.CookieHandler.SetCookieHandlerPlainText(
+			ctx,
 			prov,
-			int((time.Hour * 24 * 7).Seconds()),
-			"/",
-			domain,
-			secure,
-			true,
+			&cookieConfig,
 		)
 
 		if err != nil {
@@ -778,7 +783,7 @@ func HandleAuthCallback(s *Server, providers []Provider, cookiename string, doma
 }
 
 // HandleAuthLogout registers handler for the route that provides functionality to frontend for logging out.
-func HandleAuthLogout(cookiename string, cookieDomain string, cookieSecure bool) gin.HandlerFunc {
+func HandleAuthLogout(sessionConfig *SessionConfig) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Create module-based logger - we need to get the server from context
 		var logoutLogger Logger
@@ -789,13 +794,13 @@ func HandleAuthLogout(cookiename string, cookieDomain string, cookieSecure bool)
 		}
 
 		ctx.SetCookie(
-			cookiename,
+			sessionConfig.CookieName,
 			"",
 			-1,
-			"/",
-			cookieDomain,
-			cookieSecure,
-			true,
+			sessionConfig.CookiePath,
+			sessionConfig.CookieDomain,
+			sessionConfig.CookieSecure,
+			sessionConfig.CookieHTTPOnly,
 		)
 
 		if logoutLogger != nil {
@@ -946,22 +951,36 @@ func (cc *CookieContents) DeserialiseCookie(cookieString string) (*CookieContent
 	return cc, nil
 }
 
-func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContents, provider string, cookieName string, domain string, secure bool) error {
+func (ch *CookieHandler) SetCookieHandler(ctx *gin.Context, value *CookieContents, sessionConfig *SessionConfig) error {
 	// Encode the cookie using securecookie
-	encoded, err := ch.SecureCookie.Encode(cookieName, value)
+	encoded, err := ch.SecureCookie.Encode(sessionConfig.CookieName, value)
 	if err != nil {
 		return err
 	}
 
 	// Set cookie with the encoded value
 	http.SetCookie(ctx.Writer, &http.Cookie{
-		Name:     cookieName,
+		Name:     sessionConfig.CookieName,
 		Value:    encoded,
-		Path:     "/",
-		Domain:   domain,
-		Expires:  value.ExpiresOn,
-		Secure:   secure,
-		HttpOnly: true,
+		Path:     sessionConfig.CookiePath,
+		Domain:   sessionConfig.CookieDomain,
+		Expires:  time.Now().Add(time.Duration(sessionConfig.CookieMaxAge) * time.Second),
+		Secure:   sessionConfig.CookieSecure,
+		HttpOnly: sessionConfig.CookieHTTPOnly,
+	})
+	return nil
+}
+
+func (ch *CookieHandler) SetCookieHandlerPlainText(ctx *gin.Context, value string, sessionConfig *SessionConfig) error {
+	// Set cookie with the encoded value
+	http.SetCookie(ctx.Writer, &http.Cookie{
+		Name:     sessionConfig.CookieName,
+		Value:    value,
+		Path:     sessionConfig.CookiePath,
+		Domain:   sessionConfig.CookieDomain,
+		Expires:  time.Now().Add(time.Duration(sessionConfig.CookieMaxAge) * time.Second),
+		Secure:   sessionConfig.CookieSecure,
+		HttpOnly: sessionConfig.CookieHTTPOnly,
 	})
 	return nil
 }

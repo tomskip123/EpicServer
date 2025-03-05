@@ -110,8 +110,15 @@ func TestRegisterAuthRoutes(t *testing.T) {
 	domain := "localhost"
 	secure := false
 
+	sessionConfig := &SessionConfig{
+		CookieName:      cookieName,
+		CookieDomain:    domain,
+		CookieSecure:    secure,
+		SessionDuration: time.Hour,
+	}
+
 	// Register auth routes
-	RegisterAuthRoutes(s, providers, cookieName, domain, secure)
+	RegisterAuthRoutes(s, providers, sessionConfig)
 
 	// Check if routes are registered (indirectly by checking handler existence)
 	routes := s.Engine.Routes()
@@ -319,7 +326,7 @@ func TestHandleAuthLogin_BasicAuth(t *testing.T) {
 	s.Hooks.Auth = &DefaultAuthHooks{s: s}
 
 	// Call handler
-	HandleAuthLogin(s, providers, sessionConfig.CookieName, sessionConfig.CookieDomain, sessionConfig.CookieSecure)(c)
+	HandleAuthLogin(s, providers, sessionConfig)(c)
 
 	// Assertions
 	assert.Equal(t, http.StatusUnauthorized, w.Code, "Should return unauthorized when using DefaultAuthHooks")
@@ -355,7 +362,7 @@ func TestHandleAuthLogin_OAuth(t *testing.T) {
 	c.Params = []gin.Param{{Key: "provider", Value: "google"}}
 
 	// Call handler
-	HandleAuthLogin(s, providers, sessionConfig.CookieName, sessionConfig.CookieDomain, sessionConfig.CookieSecure)(c)
+	HandleAuthLogin(s, providers, sessionConfig)(c)
 
 	// Assertions
 	assert.Equal(t, http.StatusSeeOther, w.Code)
@@ -383,7 +390,7 @@ func TestHandleAuthLogin_ProviderNotFound(t *testing.T) {
 	c.Request = req
 
 	// Call handler
-	HandleAuthLogin(s, providers, sessionConfig.CookieName, sessionConfig.CookieDomain, sessionConfig.CookieSecure)(c)
+	HandleAuthLogin(s, providers, sessionConfig)(c)
 
 	// Assertions
 	assert.Equal(t, http.StatusNotFound, w.Code)
@@ -416,9 +423,12 @@ func TestEncodeDecodeStateString(t *testing.T) {
 
 func TestHandleAuthLogout(t *testing.T) {
 	// Setup
-	cookieName := "test-cookie"
-	cookieDomain := "localhost"
-	cookieSecure := false
+	sessionConfig := &SessionConfig{
+		CookieName:      "test-cookie",
+		CookieDomain:    "localhost",
+		CookieSecure:    false,
+		SessionDuration: time.Hour,
+	}
 
 	// Mock gin context and request
 	w := httptest.NewRecorder()
@@ -427,7 +437,7 @@ func TestHandleAuthLogout(t *testing.T) {
 	c.Request = req
 
 	// Call handler
-	HandleAuthLogout(cookieName, cookieDomain, cookieSecure)(c)
+	HandleAuthLogout(sessionConfig)(c)
 
 	// Assertions
 	assert.Equal(t, http.StatusSeeOther, w.Code)
@@ -444,7 +454,7 @@ func TestHandleAuthLogout(t *testing.T) {
 	req = httptest.NewRequest("GET", "/auth/logout?redirect=/login", nil)
 	c.Request = req
 
-	HandleAuthLogout(cookieName, cookieDomain, cookieSecure)(c)
+	HandleAuthLogout(sessionConfig)(c)
 
 	assert.Equal(t, http.StatusSeeOther, w.Code)
 	assert.Equal(t, "/login", w.Header().Get("Location"))
@@ -528,9 +538,14 @@ func TestCookieHandler_SetCookieHandler(t *testing.T) {
 	}()
 
 	ch := NewCookieHandler()
-	cookieName := "test-cookie"
-	domain := "localhost"
-	secure := false
+
+	sessionConfig := &SessionConfig{
+		CookieName:      "test-cookie",
+		CookieDomain:    "localhost",
+		CookieSecure:    false,
+		SessionDuration: time.Hour,
+	}
+
 	value := &CookieContents{
 		Email:      "test@example.com",
 		UserId:     "123",
@@ -546,7 +561,7 @@ func TestCookieHandler_SetCookieHandler(t *testing.T) {
 	c.Request = req
 
 	// Set cookie
-	err := ch.SetCookieHandler(c, value, "test", cookieName, domain, secure)
+	err := ch.SetCookieHandler(c, value, sessionConfig)
 
 	// Assertions
 	assert.NoError(t, err)
@@ -561,12 +576,19 @@ func TestCookieHandler_SetCookieHandler(t *testing.T) {
 	req = httptest.NewRequest("GET", "/test", nil)
 	c.Request = req
 
-	err = ch.SetCookieHandler(c, value, "test", cookieName, domain, secure)
+	err = ch.SetCookieHandler(c, value, sessionConfig)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, w.Header().Get("Set-Cookie"))
 }
 
 func TestCookieHandler_ReadCookieHandler(t *testing.T) {
+	sessionConfig := &SessionConfig{
+		CookieName:      "test-cookie",
+		CookieDomain:    "localhost",
+		CookieSecure:    false,
+		SessionDuration: time.Hour,
+	}
+
 	// Ensure secure cookie keys are set
 	setSecureCookieKeys()
 	defer func() {
@@ -607,7 +629,7 @@ func TestCookieHandler_ReadCookieHandler(t *testing.T) {
 	req = httptest.NewRequest("GET", "/test", nil)
 	c.Request = req
 
-	err = ch.SetCookieHandler(c, value, "test", cookieName, "localhost", false)
+	err = ch.SetCookieHandler(c, value, sessionConfig)
 	assert.NoError(t, err)
 
 	cookies := w.Result().Header.Values("Set-Cookie")
@@ -629,7 +651,7 @@ func TestCookieHandler_ReadCookieHandler(t *testing.T) {
 	req = httptest.NewRequest("GET", "/test", nil)
 	c.Request = req
 
-	err = ch.SetCookieHandler(c, value, "test", cookieName, "localhost", false)
+	err = ch.SetCookieHandler(c, value, sessionConfig)
 	assert.NoError(t, err)
 
 	cookies = w.Result().Header.Values("Set-Cookie")
@@ -848,8 +870,15 @@ func TestHandleAuthCallback(t *testing.T) {
 			c.Request = req
 			c.Params = []gin.Param{{Key: "provider", Value: tt.provider}}
 
+			sessionConfig := &SessionConfig{
+				CookieName:      "test-cookie",
+				CookieDomain:    "localhost",
+				CookieSecure:    false,
+				SessionDuration: time.Hour,
+			}
+
 			// Call the handler
-			handler := HandleAuthCallback(server, []Provider{}, "auth_cookie", "example.com", false, hooks)
+			handler := HandleAuthCallback(server, []Provider{}, sessionConfig, hooks)
 			handler(c)
 
 			// Assertions
