@@ -738,6 +738,7 @@ func HandleAuthCallback(s *Server, providers []Provider, sessionConfig *SessionC
 			CookieSecure:   sessionConfig.CookieSecure,
 			CookieHTTPOnly: sessionConfig.CookieHTTPOnly,
 			CookiePath:     sessionConfig.CookiePath,
+			CookieMaxAge:   sessionConfig.CookieMaxAge,
 		}
 
 		err = authConfig.CookieHandler.SetCookieHandlerPlainText(
