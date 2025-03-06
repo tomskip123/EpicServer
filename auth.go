@@ -560,6 +560,21 @@ func HandleAuthLogin(s *Server, providers []Provider, sessionConfig *SessionConf
 					return
 				}
 
+				cookieConfig := SessionConfig{
+					CookieName:     "provider",
+					CookieDomain:   sessionConfig.CookieDomain,
+					CookieSecure:   sessionConfig.CookieSecure,
+					CookieHTTPOnly: sessionConfig.CookieHTTPOnly,
+					CookiePath:     sessionConfig.CookiePath,
+					CookieMaxAge:   sessionConfig.CookieMaxAge,
+				}
+
+				err = authConfig.CookieHandler.SetCookieHandlerPlainText(
+					ctx,
+					"basic",
+					&cookieConfig,
+				)
+
 				err = authConfig.CookieHandler.SetCookieHandler(
 					ctx,
 					contents,
