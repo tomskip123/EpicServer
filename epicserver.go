@@ -1,0 +1,5 @@
+package epicserver
+
+func NewEpicServer() {
+
+}
