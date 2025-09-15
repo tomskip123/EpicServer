@@ -33,6 +33,15 @@ func New() *EpicServerBuilder {
 	}
 }
 
+func (b *EpicServerBuilder) Routes(fn func(r *RouteBuilder)) *EpicServerBuilder {
+	rb := newRouteBuilder(b.mux, b.middleware)
+	fn(rb)
+	if err := rb.apply(); err != nil {
+		b.errs = append(b.errs, err)
+	}
+	return b
+}
+
 // start server with system cancel listening for cancel.
 func (b *EpicServerBuilder) Start() error {
 	if len(b.errs) > 0 {

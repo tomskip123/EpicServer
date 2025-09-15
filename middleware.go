@@ -1,4 +1,5 @@
 package epicserver
 
-type Middleware struct {
-}
+import "net/http"
+
+type Middleware func(http.Handler) http.Handler
