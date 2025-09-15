@@ -63,6 +63,10 @@ type View struct {
 // ViewOption configures a View.
 type ViewOption func(*View)
 
+// ViewDataFunc prepares data for rendering. Return false to skip the default render
+// when you already wrote to the ResponseWriter.
+type ViewDataFunc func(http.ResponseWriter, *http.Request) (any, bool)
+
 // WithDev toggles dev mode (reload templates on each render).
 func WithDev(dev bool) ViewOption { return func(v *View) { v.Dev = dev } }
 
@@ -363,11 +367,17 @@ func (v *View) Render(w http.ResponseWriter, r *http.Request, page string, data 
 
 // Handler returns an http.Handler that renders the given page with an optional data function.
 // The handler automatically chooses partial vs full based on HTMX.
-func (v *View) Handler(page string, dataFn func(*http.Request) any) http.Handler {
+func (v *View) Handler(page string, dataFn ViewDataFunc) http.Handler {
 	return v.wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data any
+		var (
+			data any
+			cont bool = true
+		)
 		if dataFn != nil {
-			data = dataFn(r)
+			data, cont = dataFn(w, r)
+		}
+		if !cont {
+			return
 		}
 		if err := v.Render(w, r, page, data, RenderAuto); err != nil {
 			_ = HTML(w, http.StatusInternalServerError, "template render error: "+template.HTMLEscapeString(err.Error()))
@@ -376,12 +386,42 @@ func (v *View) Handler(page string, dataFn func(*http.Request) any) http.Handler
 }
 
 // MountGet is a convenience to register a GET route on the View's mux.
-func (v *View) MountGet(path string, page string, dataFn func(*http.Request) any) *View {
+func (v *View) MountGet(route string, page string, dataFn ViewDataFunc) *View {
 	if v.mux == nil {
 		return v
 	}
-	h := v.Handler(page, dataFn)
-	v.mux.Handle(path, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// normalize so "" and "/" share the same guard
+	normalized := route
+	if normalized == "" {
+		normalized = "/"
+	}
+	if !strings.HasPrefix(normalized, "/") {
+		normalized = "/" + normalized
+	}
+	if strings.HasSuffix(normalized, "/") && normalized != "/" {
+		normalized = strings.TrimSuffix(normalized, "/")
+	}
+	wrappedFn := dataFn
+	if normalized == "/" {
+		wrappedFn = func(w http.ResponseWriter, r *http.Request) (any, bool) {
+			if r.URL.Path != "/" {
+				if dataFn != nil {
+					_, cont := dataFn(w, r)
+					if !cont {
+						return nil, false
+					}
+				}
+				http.NotFound(w, r)
+				return nil, false
+			}
+			if dataFn != nil {
+				return dataFn(w, r)
+			}
+			return nil, true
+		}
+	}
+	h := v.Handler(page, wrappedFn)
+	v.mux.Handle(route, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
@@ -403,11 +443,17 @@ func (v *View) RenderLazyHTML(w http.ResponseWriter, r *http.Request, name strin
 	return t.ExecuteTemplate(w, filepath.Base(name), data)
 }
 
-func (v *View) LazyHandler(name string, dataFn func(*http.Request) any) http.Handler {
+func (v *View) LazyHandler(name string, dataFn ViewDataFunc) http.Handler {
 	return v.wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data any
+		var (
+			data any
+			cont bool = true
+		)
 		if dataFn != nil {
-			data = dataFn(r)
+			data, cont = dataFn(w, r)
+		}
+		if !cont {
+			return
 		}
 		if err := v.RenderLazyHTML(w, r, name, data); err != nil {
 			_ = HTML(w, http.StatusInternalServerError,
@@ -416,14 +462,14 @@ func (v *View) LazyHandler(name string, dataFn func(*http.Request) any) http.Han
 	}))
 }
 
-func (v *View) LazyHandlerFunc(name string, dataFn func(*http.Request) any) http.HandlerFunc {
+func (v *View) LazyHandlerFunc(name string, dataFn ViewDataFunc) http.HandlerFunc {
 	h := v.LazyHandler(name, dataFn)
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r)
 	}
 }
 
-func (v *View) MountLazyHTML(route string, name string, dataFn func(*http.Request) any) *View {
+func (v *View) MountLazyHTML(route string, name string, dataFn ViewDataFunc) *View {
 	if v.mux == nil {
 		return v
 	}
@@ -596,7 +642,7 @@ func fmtAny(v any) string {
 }
 
 // helper method to wrap Handler as HandlerFunc for compatibility with routes.go
-func (v *View) HandlerFunc(page string, dataFn func(*http.Request) any) http.HandlerFunc {
+func (v *View) HandlerFunc(page string, dataFn ViewDataFunc) http.HandlerFunc {
 	h := v.Handler(page, dataFn)
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.ServeHTTP(w, r)
