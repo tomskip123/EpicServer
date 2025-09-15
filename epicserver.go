@@ -16,12 +16,12 @@ import (
 
 // EpicServer builder struct
 type EpicServerBuilder struct {
-	mux        *http.ServeMux
-	port       uint16
-	tls        *tls.Config
-	middleware []Middleware
-	logger     *log.Logger
-	errs       []error
+    mux        *http.ServeMux
+    port       uint16
+    tls        *tls.Config
+    middleware []Middleware
+    logger     *log.Logger
+    errs       []error
 }
 
 // return new instance of EpicServerBuilder
@@ -33,13 +33,33 @@ func New() *EpicServerBuilder {
 	}
 }
 
+// Use appends global middleware applied to all routes/views created after this call.
+func (b *EpicServerBuilder) Use(mw ...Middleware) *EpicServerBuilder {
+    b.middleware = append(b.middleware, mw...)
+    return b
+}
+
 func (b *EpicServerBuilder) Routes(fn func(r *RouteBuilder)) *EpicServerBuilder {
-	rb := newRouteBuilder(b.mux, b.middleware)
-	fn(rb)
-	if err := rb.apply(); err != nil {
-		b.errs = append(b.errs, err)
-	}
-	return b
+    rb := newRouteBuilder(b.mux, b.middleware)
+    fn(rb)
+    if err := rb.apply(); err != nil {
+        b.errs = append(b.errs, err)
+    }
+    return b
+}
+
+// View returns a new View bound to this builder's mux and middleware.
+// Use this when you want to hold onto the View and mount handlers yourself.
+func (b *EpicServerBuilder) View(opts ...ViewOption) *View {
+    return NewView(b.mux, b.middleware, opts...)
+}
+
+// Views creates a View bound to this builder and passes it to fn for setup
+// (e.g., mounting pages). Returns the builder for fluent chaining.
+func (b *EpicServerBuilder) Views(fn func(*View), opts ...ViewOption) *EpicServerBuilder {
+    v := NewView(b.mux, b.middleware, opts...)
+    fn(v)
+    return b
 }
 
 // start server with system cancel listening for cancel.
