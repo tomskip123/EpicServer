@@ -39,6 +39,13 @@ var wellKnownProviderEndpoints = map[string]oauth2.Endpoint{
 	},
 }
 
+var wellKnownProviderScopes = map[string][]string{
+	"github":    {"read:user", "user:email"},
+	"gitlab":    {"read_user"},
+	"google":    {"openid", "profile", "email"},
+	"microsoft": {"openid", "profile", "email"},
+}
+
 // AuthConfigFromEnv builds an oauth2.Config using environment variables.
 // Required variables (with prefix, default EPIC_AUTH):
 //   - <PREFIX>_CLIENT_ID
@@ -90,6 +97,7 @@ func AuthConfigFromEnv(prefix string) (*oauth2.Config, error) {
 	authURL := lookupOptional("AUTH_URL")
 	tokenURL := lookupOptional("TOKEN_URL")
 	provider := strings.ToLower(lookupOptional("PROVIDER"))
+	resolvedProvider := ""
 
 	var endpoint oauth2.Endpoint
 	switch {
@@ -103,6 +111,7 @@ func AuthConfigFromEnv(prefix string) (*oauth2.Config, error) {
 		if !ok {
 			return nil, fmt.Errorf("unknown auth provider %q", provider)
 		}
+		resolvedProvider = provider
 		endpoint = ep
 	default:
 		return nil, fmt.Errorf("set %s_PROVIDER or provide both %s_AUTH_URL and %s_TOKEN_URL", prefix, prefix, prefix)
@@ -114,6 +123,11 @@ func AuthConfigFromEnv(prefix string) (*oauth2.Config, error) {
 		scopesValue = strings.ReplaceAll(scopesValue, ",", " ")
 	}
 	scopes := strings.Fields(scopesValue)
+	if len(scopes) == 0 && resolvedProvider != "" {
+		if defaults, ok := wellKnownProviderScopes[resolvedProvider]; ok {
+			scopes = append([]string(nil), defaults...)
+		}
+	}
 
 	config := &oauth2.Config{
 		ClientID:     clientID,
@@ -256,7 +270,15 @@ func (a *AuthModule) handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to initiate oauth flow", http.StatusInternalServerError)
 		return
 	}
-	authURL := a.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
+	redirectURL := a.config.RedirectURL
+	if redirectURL == "" {
+		redirectURL = a.resolveRedirectURL(r)
+	}
+	options := []oauth2.AuthCodeOption{oauth2.AccessTypeOffline}
+	if redirectURL != "" {
+		options = append(options, oauth2.SetAuthURLParam("redirect_uri", redirectURL))
+	}
+	authURL := a.config.AuthCodeURL(state, options...)
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
 
@@ -275,7 +297,15 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, errors.New("missing oauth code"))
 		return
 	}
-	token, err := a.config.Exchange(r.Context(), code)
+	redirectURL := a.config.RedirectURL
+	if redirectURL == "" {
+		redirectURL = a.resolveRedirectURL(r)
+	}
+	var exchangeOpts []oauth2.AuthCodeOption
+	if redirectURL != "" {
+		exchangeOpts = append(exchangeOpts, oauth2.SetAuthURLParam("redirect_uri", redirectURL))
+	}
+	token, err := a.config.Exchange(r.Context(), code, exchangeOpts...)
 	if err != nil {
 		a.fail(w, r, err)
 		return
@@ -312,6 +342,32 @@ func (a *AuthModule) fail(w http.ResponseWriter, r *http.Request, err error) {
 		return
 	}
 	http.Error(w, err.Error(), http.StatusBadRequest)
+}
+
+func (a *AuthModule) resolveRedirectURL(r *http.Request) string {
+	scheme := requestScheme(r)
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		host = "localhost"
+	}
+	return fmt.Sprintf("%s://%s%s", scheme, host, a.callbackPath)
+}
+
+func requestScheme(r *http.Request) string {
+	proto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto"))
+	if proto != "" {
+		if idx := strings.IndexByte(proto, ','); idx >= 0 {
+			proto = proto[:idx]
+		}
+		proto = strings.TrimSpace(proto)
+		if proto != "" {
+			return strings.ToLower(proto)
+		}
+	}
+	if r.TLS != nil {
+		return "https"
+	}
+	return "http"
 }
 
 func (a *AuthModule) wrap(next http.Handler) http.Handler {
