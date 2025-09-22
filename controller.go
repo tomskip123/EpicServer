@@ -1,12 +1,12 @@
 package epicserver
 
 type Controller interface {
-	Index() Route // GET /resource
-	Show() Route  // GET /resource/:id
-	Edit() Route  // GET /resource/:id/edit
+	Index(app EZApp) Route // GET /resource
+	Show(app EZApp) Route  // GET /resource/:id
+	Edit(app EZApp) Route  // GET /resource/:id/edit
 
-	Post() Route   // POST /resource
-	Put() Route    // PUT /resource/:id
-	Delete() Route // DELETE /resource/:id
-	Patch() Route  // PATCH /resource/:id
+	Post(app EZApp) Route   // POST /resource
+	Put(app EZApp) Route    // PUT /resource/:id
+	Delete(app EZApp) Route // DELETE /resource/:id
+	Patch(app EZApp) Route  // PATCH /resource/:id
 }

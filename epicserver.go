@@ -19,6 +19,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type EZApp struct {
+	Server EpicServerBuilder
+	Render *Renderer
+	Logger *log.Logger
+}
+
 // EpicServer builder struct
 type EpicServerBuilder struct {
 	mux          *http.ServeMux
@@ -29,6 +35,7 @@ type EpicServerBuilder struct {
 	errs         []error
 	Controllers  ControllerBuilder
 	RouteBuilder *RouteBuilder
+	Renderer     *Renderer
 }
 
 var (
@@ -37,10 +44,12 @@ var (
 )
 
 // return new instance of EpicServerBuilder
-func New() *EpicServerBuilder {
+func New(viewOption ...ViewOption) *EpicServerBuilder {
 	logger = log.New(os.Stdout, "", log.LstdFlags)
 
 	rb := newRouteBuilder(http.NewServeMux(), nil)
+	// with default view for easy mounting
+	renderer := NewRenderer(rb.mux, rb.middleware, rb, viewOption...)
 
 	b := &EpicServerBuilder{
 		mux:          rb.mux,
@@ -49,6 +58,7 @@ func New() *EpicServerBuilder {
 		errs:         make([]error, 0),
 		Controllers:  newControllerBuilder(rb),
 		RouteBuilder: rb,
+		Renderer:     renderer,
 	}
 
 	if err := loadDotEnv(); err != nil {
@@ -68,21 +78,6 @@ func (b *EpicServerBuilder) Use(mw ...Middleware) *EpicServerBuilder {
 
 func (b *EpicServerBuilder) Routes(fn func(r *RouteBuilder)) *EpicServerBuilder {
 	fn(b.RouteBuilder)
-
-	return b
-}
-
-// View returns a new View bound to this builder's mux and middleware.
-// Use this when you want to hold onto the View and mount handlers yourself.
-func (b *EpicServerBuilder) View(opts ...ViewOption) *View {
-	return NewView(b.mux, b.middleware, opts...)
-}
-
-// Views creates a View bound to this builder and passes it to fn for setup
-// (e.g., mounting pages). Returns the builder for fluent chaining.
-func (b *EpicServerBuilder) Views(fn func(*View), opts ...ViewOption) *EpicServerBuilder {
-	v := NewView(b.mux, b.middleware, opts...)
-	fn(v)
 	return b
 }
 
@@ -101,7 +96,8 @@ func (b *EpicServerBuilder) Start() error {
 		return errors.Join(b.errs...)
 	}
 
-	b.Controllers.Build()
+	// need to pass injectables
+	b.Controllers.Build(EZApp{Server: *b, Render: b.Renderer, Logger: b.logger})
 
 	if err := b.RouteBuilder.apply(); err != nil {
 		b.errs = append(b.errs, err)

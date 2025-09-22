@@ -115,6 +115,11 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 // If duplicates were detected, it returns an error listing them.
 func (r *RouteBuilder) apply() error {
 	var errs []error
+
+	// hold root ("/") so we can wrap it specially
+	var rootSpec *RouteSpec
+	var rootAllowHeader string
+
 	for p, routeSpec := range routeRegistry {
 		// detect duplicates flagged above
 		for m, h := range routeSpec.Methods {
@@ -141,11 +146,42 @@ func (r *RouteBuilder) apply() error {
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		})
 
+		if p == "/" {
+			// Defer registering "/" so we can inject 404 for non-root paths.
+			rootSpec = routeSpec
+			rootAllowHeader = allowHeader
+			continue
+		}
+
 		r.mux.Handle(p, dispatcher)
+
 	}
+
+	// If "/" exists, wrap it so it only handles the exact "/" path.
+	// For any other path that fell through to "/", return 404 (running middleware).
+	if rootSpec != nil {
+		r.mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if path.Clean(req.URL.Path) != "/" {
+				// unmatched: run middleware chain and return 404
+				r.wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					http.NotFound(w, r)
+				})).ServeHTTP(w, req)
+				return
+			}
+			// exact "/" – do normal method dispatch
+			if h, ok := rootSpec.Methods[req.Method]; ok {
+				r.wrap(h).ServeHTTP(w, req)
+				return
+			}
+			w.Header().Set("Allow", rootAllowHeader)
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		}))
+	}
+
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
+
 	return nil
 }
 

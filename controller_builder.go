@@ -6,7 +6,7 @@ import (
 
 type ControllerBuilder interface {
 	Register(name string, c Controller)
-	Build() error
+	Build(app EZApp) error
 }
 
 type controllerBuilder struct {
@@ -29,7 +29,7 @@ func (b *controllerBuilder) Register(name string, c Controller) {
 	b.controllers[name] = c
 }
 
-func (b *controllerBuilder) Build() error {
+func (b *controllerBuilder) Build(app EZApp) error {
 	for name, c := range b.controllers {
 		if IsDebug {
 			logger.Println("Building controller:", name, c)
@@ -37,28 +37,27 @@ func (b *controllerBuilder) Build() error {
 
 		// bind controller methods to routes
 		// e.g. GET /resource -> c.Index()
-		if c.Index() != nil {
+		if result := c.Index(app); result != nil {
 			route := "/" + name
-			b.routeBuilder.Get(route, c.Index())
-
-		} else if c.Show() != nil {
+			b.routeBuilder.Get(route, result)
+		} else if result := c.Show(app); result != nil {
 			route := "/" + name + "/:id"
-			b.routeBuilder.Get(route, c.Show())
-		} else if c.Edit() != nil {
+			b.routeBuilder.Get(route, result)
+		} else if result := c.Edit(app); result != nil {
 			route := "/" + name + "/:id/edit"
-			b.routeBuilder.Get(route, c.Edit())
-		} else if c.Post() != nil {
+			b.routeBuilder.Get(route, result)
+		} else if result := c.Post(app); result != nil {
 			route := "/" + name
-			b.routeBuilder.Post(route, c.Post())
-		} else if c.Put() != nil {
+			b.routeBuilder.Post(route, result)
+		} else if result := c.Put(app); result != nil {
 			route := "/" + name + "/:id"
-			b.routeBuilder.Put(route, c.Put())
-		} else if c.Delete() != nil {
+			b.routeBuilder.Put(route, result)
+		} else if result := c.Delete(app); result != nil {
 			route := "/" + name + "/:id"
-			b.routeBuilder.Delete(route, c.Delete())
-		} else if c.Patch() != nil {
+			b.routeBuilder.Delete(route, result)
+		} else if result := c.Patch(app); result != nil {
 			route := "/" + name + "/:id"
-			b.routeBuilder.Patch(route, c.Patch())
+			b.routeBuilder.Patch(route, result)
 		} else {
 			if IsDebug {
 				logger.Println("Controller has no methods:", name)
