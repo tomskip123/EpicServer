@@ -21,20 +21,34 @@ import (
 
 // EpicServer builder struct
 type EpicServerBuilder struct {
-	mux        *http.ServeMux
-	port       uint16
-	tls        *tls.Config
-	middleware []Middleware
-	logger     *log.Logger
-	errs       []error
+	mux          *http.ServeMux
+	port         uint16
+	tls          *tls.Config
+	middleware   []Middleware
+	logger       *log.Logger
+	errs         []error
+	Controllers  ControllerBuilder
+	RouteBuilder *RouteBuilder
 }
+
+var (
+	logger  *log.Logger
+	IsDebug = false
+)
 
 // return new instance of EpicServerBuilder
 func New() *EpicServerBuilder {
+	logger = log.New(os.Stdout, "", log.LstdFlags)
+
+	rb := newRouteBuilder(http.NewServeMux(), nil)
+
 	b := &EpicServerBuilder{
-		mux:    http.NewServeMux(),
-		port:   8080,
-		logger: log.New(os.Stdout, "", log.LstdFlags),
+		mux:          rb.mux,
+		port:         8080,
+		logger:       logger,
+		errs:         make([]error, 0),
+		Controllers:  newControllerBuilder(rb),
+		RouteBuilder: rb,
 	}
 
 	if err := loadDotEnv(); err != nil {
@@ -53,11 +67,8 @@ func (b *EpicServerBuilder) Use(mw ...Middleware) *EpicServerBuilder {
 }
 
 func (b *EpicServerBuilder) Routes(fn func(r *RouteBuilder)) *EpicServerBuilder {
-	rb := newRouteBuilder(b.mux, b.middleware)
-	fn(rb)
-	if err := rb.apply(); err != nil {
-		b.errs = append(b.errs, err)
-	}
+	fn(b.RouteBuilder)
+
 	return b
 }
 
@@ -86,6 +97,16 @@ func (b *EpicServerBuilder) Auth(config *oauth2.Config, opts ...AuthOption) *Aut
 
 // start server with system cancel listening for cancel.
 func (b *EpicServerBuilder) Start() error {
+	if len(b.errs) > 0 {
+		return errors.Join(b.errs...)
+	}
+
+	b.Controllers.Build()
+
+	if err := b.RouteBuilder.apply(); err != nil {
+		b.errs = append(b.errs, err)
+	}
+
 	if len(b.errs) > 0 {
 		return errors.Join(b.errs...)
 	}
