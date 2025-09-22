@@ -13,7 +13,9 @@ type RouteBuilder struct {
 	mux        *http.ServeMux
 	base       string
 	middleware []Middleware
-	routes     map[string]map[string]http.Handler
+
+	// {"/path": { "GET": handler, "POST": handler }} --- setup in on(), applied in apply()
+	routes map[string]map[string]http.Handler
 }
 
 func newRouteBuilder(mux *http.ServeMux, mw []Middleware) *RouteBuilder {
@@ -72,6 +74,8 @@ func (r *RouteBuilder) Any(p string, h http.HandlerFunc) *RouteBuilder {
 		on(http.MethodHead, p, h)
 }
 
+// on method registers the handler for the given method and path.
+// It checks for duplicates and records them to be handled in apply().
 func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 	full := r.join(r.base, p)
 	if _, ok := r.routes[full]; !ok {
@@ -86,6 +90,9 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 	return r
 }
 
+// Apply loops through r.routes recorded in on() and registers them with the mux.
+// It also wraps them with the middleware stack and sets up method dispatching.
+// If duplicates were detected, it returns an error listing them.
 func (r *RouteBuilder) apply() error {
 	var errs []error
 	for p, methods := range r.routes {
@@ -121,6 +128,7 @@ func (r *RouteBuilder) apply() error {
 	return nil
 }
 
+// wrap applies the middleware stack to the given handler.
 func (r *RouteBuilder) wrap(next http.Handler) http.Handler {
 	// If Middleware is a function type: func(http.Handler) http.Handler
 	// fold from right to left
