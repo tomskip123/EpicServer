@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
 )
 
@@ -27,10 +28,9 @@ type EZApp struct {
 
 // EpicServer builder struct
 type EpicServerBuilder struct {
-	mux          *http.ServeMux
+	mux          chi.Router
 	port         uint16
 	tls          *tls.Config
-	middleware   []Middleware
 	logger       *log.Logger
 	errs         []error
 	Controllers  ControllerBuilder
@@ -47,7 +47,7 @@ var (
 func New(viewOption ...ViewOption) *EpicServerBuilder {
 	logger = log.New(os.Stdout, "", log.LstdFlags)
 
-	rb := newRouteBuilder(http.NewServeMux(), nil)
+	rb := newRouteBuilder(chi.NewRouter(), nil)
 	// with default view for easy mounting
 	renderer := NewRenderer(rb.mux, rb.middleware, rb, viewOption...)
 
@@ -72,7 +72,7 @@ func New(viewOption ...ViewOption) *EpicServerBuilder {
 
 // Use appends global middleware applied to all routes/views created after this call.
 func (b *EpicServerBuilder) Use(mw ...Middleware) *EpicServerBuilder {
-	b.middleware = append(b.middleware, mw...)
+	b.RouteBuilder.middleware = append(b.RouteBuilder.middleware, mw...)
 	return b
 }
 
@@ -87,7 +87,7 @@ func (b *EpicServerBuilder) Auth(config *oauth2.Config, opts ...AuthOption) *Aut
 		b.errs = append(b.errs, errors.New("oauth2 config is required"))
 		return nil
 	}
-	return newAuthModule(b.mux, b.middleware, config, opts...)
+	return newAuthModule(b.mux, b.RouteBuilder.middleware, config, opts...)
 }
 
 // start server with system cancel listening for cancel.

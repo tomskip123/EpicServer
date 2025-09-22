@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // Renderer renders Go html/templates with HTMX-aware behavior.
@@ -88,7 +90,7 @@ func WithFuncs(fn template.FuncMap) ViewOption {
 
 // NewRenderer creates a View bound to an optional mux and middleware chain.
 // If mux is nil, you can still use r.Render and r.Handler to get handlers for registration elsewhere.
-func NewRenderer(mux *http.ServeMux, mw []Middleware, rb *RouteBuilder, opts ...ViewOption) *Renderer {
+func NewRenderer(mux chi.Router, mw []Middleware, rb *RouteBuilder, opts ...ViewOption) *Renderer {
 	r := &Renderer{
 		BaseDir:       "templates",
 		PagesDir:      "pages",

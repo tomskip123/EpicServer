@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"golang.org/x/oauth2"
 )
 
@@ -144,7 +145,7 @@ func AuthConfigFromEnv(prefix string) (*oauth2.Config, error) {
 
 // AuthModule manages OAuth login flows and cookie-backed sessions.
 type AuthModule struct {
-	mux        *http.ServeMux
+	mux        chi.Router
 	middleware []Middleware
 
 	config *oauth2.Config
@@ -172,7 +173,7 @@ type AuthModule struct {
 	now      func() time.Time
 }
 
-func newAuthModule(mux *http.ServeMux, mw []Middleware, config *oauth2.Config, opts ...AuthOption) *AuthModule {
+func newAuthModule(mux chi.Router, mw []Middleware, config *oauth2.Config, opts ...AuthOption) *AuthModule {
 	module := &AuthModule{
 		mux:        mux,
 		middleware: append([]Middleware(nil), mw...),

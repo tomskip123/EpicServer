@@ -2,11 +2,12 @@ package epicserver
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type Route = http.Handler
@@ -21,12 +22,12 @@ var routeRegistry = make(map[string]*RouteSpec)
 
 // similar to view, follows a simpler approach.
 type RouteBuilder struct {
-	mux        *http.ServeMux
+	mux        chi.Router
 	base       string
 	middleware []Middleware
 }
 
-func newRouteBuilder(mux *http.ServeMux, mw []Middleware) *RouteBuilder {
+func newRouteBuilder(mux chi.Router, mw []Middleware) *RouteBuilder {
 	return &RouteBuilder{
 		mux:        mux,
 		middleware: append([]Middleware(nil), mw...),
@@ -85,7 +86,6 @@ func (r *RouteBuilder) Any(p string, h Route) *RouteBuilder {
 // It checks for duplicates and records them to be handled in apply().
 func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 	logger.Printf("Route registry: %v", routeRegistry)
-
 	logger.Printf("Route structurer.on: method=%s, path=%s", method, p)
 
 	full := r.join(r.base, p)
@@ -98,10 +98,7 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 	}
 
 	if _, ok := routeRegistry[full].Methods[method]; ok {
-		// duplicate route detected;
 		logger.Printf("exists = %v", ok)
-		// mark as duplicate
-		// record duplicates; handled in apply()
 		routeRegistry[full].Methods[method] = duplicateHandler()
 		return r
 	}
@@ -110,85 +107,79 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 	return r
 }
 
-// Apply loops through r.routes recorded in on() and registers them with the mux.
+// Apply loops through r.routes recorded in on() and registers them with chi.
 // It also wraps them with the middleware stack and sets up method dispatching.
 // If duplicates were detected, it returns an error listing them.
 func (r *RouteBuilder) apply() error {
 	var errs []error
 
-	// hold root ("/") so we can wrap it specially
-	var rootSpec *RouteSpec
-	var rootAllowHeader string
-
-	for p, routeSpec := range routeRegistry {
-		// detect duplicates flagged above
-		for m, h := range routeSpec.Methods {
+	// detect duplicates flagged above
+	for p, spec := range routeRegistry {
+		for m, h := range spec.Methods {
 			if h == duplicateHandler() {
 				errs = append(errs, errors.New("duplicate route "+m+" "+p))
 			}
 		}
-		// snapshot allowed methods for header
-		allow := make([]string, 0, len(routeSpec.Methods))
-		for m := range routeSpec.Methods {
+	}
+
+	// Precompute Allow header per chi pattern so we can set it in MethodNotAllowed
+	allowByPattern := make(map[string]string)
+
+	for p, spec := range routeRegistry {
+		chiPattern := toChiPattern(p)
+
+		// compute Allow
+		allow := make([]string, 0, len(spec.Methods))
+		for m := range spec.Methods {
 			allow = append(allow, m)
 		}
 		sort.Strings(allow)
 		allowHeader := strings.Join(allow, ", ")
+		allowByPattern[chiPattern] = allowHeader
 
-		// wrap final dispatcher with middleware
-		dispatcher := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			log.Println("Dispatching", req.Method, req.URL.Path)
-			if h, ok := routeSpec.Methods[req.Method]; ok {
-				r.wrap(h).ServeHTTP(w, req)
-				return
+		// register each method for this pattern
+		for m, h := range spec.Methods {
+			if h == duplicateHandler() {
+				continue
 			}
-			w.Header().Set("Allow", allowHeader)
-			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		})
-
-		if p == "/" {
-			// Defer registering "/" so we can inject 404 for non-root paths.
-			rootSpec = routeSpec
-			rootAllowHeader = allowHeader
-			continue
+			r.mux.Method(m, chiPattern, r.wrap(h))
 		}
-
-		r.mux.Handle(p, dispatcher)
-
 	}
 
-	// If "/" exists, wrap it so it only handles the exact "/" path.
-	// For any other path that fell through to "/", return 404 (running middleware).
-	if rootSpec != nil {
-		r.mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			if path.Clean(req.URL.Path) != "/" {
-				// unmatched: run middleware chain and return 404
-				r.wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					http.NotFound(w, r)
-				})).ServeHTTP(w, req)
-				return
+	// Global 404 and 405 (run through middleware)
+	{
+		wrapped := r.wrap(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			http.NotFound(w, req)
+		}))
+		r.mux.NotFound(func(w http.ResponseWriter, req *http.Request) {
+			wrapped.ServeHTTP(w, req)
+		})
+	}
+	{
+		wrapped := r.wrap(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			// Try to set per-route Allow header
+			if rctx := chi.RouteContext(req.Context()); rctx != nil {
+				if pat := rctx.RoutePattern(); pat != "" {
+					if allow := allowByPattern[pat]; allow != "" {
+						w.Header().Set("Allow", allow)
+					}
+				}
 			}
-			// exact "/" – do normal method dispatch
-			if h, ok := rootSpec.Methods[req.Method]; ok {
-				r.wrap(h).ServeHTTP(w, req)
-				return
-			}
-			w.Header().Set("Allow", rootAllowHeader)
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		}))
+		r.mux.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
+			wrapped.ServeHTTP(w, req)
+		})
 	}
 
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
-
 	return nil
 }
 
 // wrap applies the middleware stack to the given handler.
 func (r *RouteBuilder) wrap(next http.Handler) http.Handler {
-	// If Middleware is a function type: func(http.Handler) http.Handler
-	// fold from right to left
 	for i := len(r.middleware) - 1; i >= 0; i-- {
 		next = r.middleware[i](next)
 	}
@@ -206,6 +197,25 @@ func (r *RouteBuilder) join(base, p string) string {
 		return path.Clean(p)
 	}
 	return path.Clean(path.Join("/", base, p))
+}
+
+// Convert ":param" style to chi "{param}" style.
+func toChiPattern(p string) string {
+	clean := path.Clean(p)
+	if clean == "" {
+		return "/"
+	}
+	segs := strings.Split(clean, "/")
+	for i, s := range segs {
+		if strings.HasPrefix(s, ":") && len(s) > 1 {
+			segs[i] = "{" + s[1:] + "}"
+		}
+	}
+	res := strings.Join(segs, "/")
+	if !strings.HasPrefix(res, "/") {
+		res = "/" + res
+	}
+	return res
 }
 
 // sentinel for duplicate detection

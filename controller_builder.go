@@ -2,6 +2,7 @@ package epicserver
 
 import (
 	"fmt"
+	"net/http"
 )
 
 type ControllerBuilder interface {
@@ -35,34 +36,59 @@ func (b *controllerBuilder) Build(app EZApp) error {
 			logger.Println("Building controller:", name, c)
 		}
 
-		// bind controller methods to routes
-		// e.g. GET /resource -> c.Index()
-		if result := c.Index(app); result != nil {
-			route := "/" + name
-			b.routeBuilder.Get(route, result)
-		} else if result := c.Show(app); result != nil {
-			route := "/" + name + "/:id"
-			b.routeBuilder.Get(route, result)
-		} else if result := c.Edit(app); result != nil {
-			route := "/" + name + "/:id/edit"
-			b.routeBuilder.Get(route, result)
-		} else if result := c.Post(app); result != nil {
-			route := "/" + name
-			b.routeBuilder.Post(route, result)
-		} else if result := c.Put(app); result != nil {
-			route := "/" + name + "/:id"
-			b.routeBuilder.Put(route, result)
-		} else if result := c.Delete(app); result != nil {
-			route := "/" + name + "/:id"
-			b.routeBuilder.Delete(route, result)
-		} else if result := c.Patch(app); result != nil {
-			route := "/" + name + "/:id"
-			b.routeBuilder.Patch(route, result)
-		} else {
+		var hasAny bool
+
+		// Load optional middleware map
+		var m MiddlewareMap
+		if cm, ok := c.(ControllerWithMiddleware); ok {
+			logger.Println("Controller has middleware:", name)
+			m = cm.Middleware(app)
+		}
+
+		collect := func(action, method string) []Middleware {
+			if m == nil {
+				return nil
+			}
+			out := make([]Middleware, 0, len(m["*"])+len(m[method])+len(m[action]))
+			out = append(out, m["*"]...)
+			out = append(out, m[method]...)
+			out = append(out, m[action]...)
+			return out
+		}
+
+		if h := c.Index(app); h != nil {
+			hasAny = true
+			b.routeBuilder.Get("/"+name, Chain(h, collect("index", http.MethodGet)...))
+		}
+		if h := c.Show(app); h != nil {
+			hasAny = true
+			b.routeBuilder.Get("/"+name+"/:id", Chain(h, collect("show", http.MethodGet)...))
+		}
+		if h := c.Edit(app); h != nil {
+			hasAny = true
+			b.routeBuilder.Get("/"+name+"/:id/edit", Chain(h, collect("edit", http.MethodGet)...))
+		}
+		if h := c.Post(app); h != nil {
+			hasAny = true
+			b.routeBuilder.Post("/"+name, Chain(h, collect("post", http.MethodPost)...))
+		}
+		if h := c.Put(app); h != nil {
+			hasAny = true
+			b.routeBuilder.Put("/"+name+"/:id", Chain(h, collect("put", http.MethodPut)...))
+		}
+		if h := c.Delete(app); h != nil {
+			hasAny = true
+			b.routeBuilder.Delete("/"+name+"/:id", Chain(h, collect("delete", http.MethodDelete)...))
+		}
+		if h := c.Patch(app); h != nil {
+			hasAny = true
+			b.routeBuilder.Patch("/"+name+"/:id", Chain(h, collect("patch", http.MethodPatch)...))
+		}
+
+		if !hasAny {
 			if IsDebug {
 				logger.Println("Controller has no methods:", name)
 			}
-
 			return fmt.Errorf("controller %q has no methods", name)
 		}
 	}
