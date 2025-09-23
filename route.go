@@ -30,12 +30,11 @@ type RouteBuilder struct {
 	Config     *config.Config
 }
 
-func newRouteBuilder(mux chi.Router, mw []Middleware, logger *Logger, cfg *config.Config) *RouteBuilder {
+func newRouteBuilder(mux chi.Router, app *EZApp) *RouteBuilder {
 	return &RouteBuilder{
-		mux:        mux,
-		middleware: append([]Middleware(nil), mw...),
-		Logger:     logger,
-		Config:     cfg,
+		mux:    mux,
+		Logger: app.Logger,
+		Config: app.Config,
 	}
 }
 

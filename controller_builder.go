@@ -1,15 +1,17 @@
 package epicserver
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/tomskip123/EpicServer/config"
 )
 
 type ControllerBuilder interface {
 	Register(name string, c Controller)
-	Build(app EZApp) error
+	Build(app *EZApp) error
 }
 
 type controllerBuilder struct {
@@ -35,8 +37,17 @@ func (b *controllerBuilder) Register(name string, c Controller) {
 	b.controllers[name] = c
 }
 
-func (b *controllerBuilder) Build(app EZApp) error {
-	for name, c := range b.controllers {
+func (b *controllerBuilder) Build(app *EZApp) error {
+	names := make([]string, 0, len(b.controllers))
+	for name := range b.controllers {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	var errs []error
+
+	for _, name := range names {
+		c := b.controllers[name]
 		var hasAny bool
 
 		// Load optional middleware map
@@ -87,8 +98,12 @@ func (b *controllerBuilder) Build(app EZApp) error {
 
 		if !hasAny {
 			b.logger.Info.Println("Controller has no methods:", name)
-			return fmt.Errorf("controller %q has no methods", name)
+			errs = append(errs, fmt.Errorf("controller %q has no methods", name))
 		}
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
 	}
 
 	return nil

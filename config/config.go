@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -25,29 +24,28 @@ type Config struct {
 type ServerConfig struct {
 	Host            string        `json:"host" yaml:"host"`
 	Port            int           `json:"port" yaml:"port"`
-	ReadTimeout     time.Duration `json:"readTimeout" yaml:"readTimeout"`
-	WriteTimeout    time.Duration `json:"writeTimeout" yaml:"writeTimeout"`
-	ShutdownTimeout time.Duration `json:"shutdownTimeout" yaml:"shutdownTimeout"`
+	ReadTimeout     time.Duration `json:"readTimeout" yaml:"readTimeout"`         // not used yet
+	WriteTimeout    time.Duration `json:"writeTimeout" yaml:"writeTimeout"`       // not used yet
+	ShutdownTimeout time.Duration `json:"shutdownTimeout" yaml:"shutdownTimeout"` // not used yet
 }
 
 type LoggerConfig struct {
-	Level      string `json:"level" yaml:"level"` // "debug","info","warn","error"
-	JSON       bool   `json:"json" yaml:"json"`
-	WithCaller bool   `json:"withCaller" yaml:"withCaller"`
+	IsDebug          bool   `json:"isDebug" yaml:"isDebug"`
+	RequestLogFormat string `json:"requestLogFormat" yaml:"requestLogFormat"`
 }
 
 type DBConfig struct {
-	Driver          string `json:"driver" yaml:"driver"` // "postgres","mysql","sqlite"
-	DSN             string `json:"dsn" yaml:"dsn"`
-	MaxOpenConns    int    `json:"maxOpenConns" yaml:"maxOpenConns"`
-	MaxIdleConns    int    `json:"maxIdleConns" yaml:"maxIdleConns"`
-	ConnMaxLifetime string `json:"connMaxLifetime" yaml:"connMaxLifetime"` // e.g. "30m"
+	Driver          string `json:"driver" yaml:"driver"`                   // "postgres","mysql","sqlite" // not used
+	DSN             string `json:"dsn" yaml:"dsn"`                         // not used
+	MaxOpenConns    int    `json:"maxOpenConns" yaml:"maxOpenConns"`       // not used
+	MaxIdleConns    int    `json:"maxIdleConns" yaml:"maxIdleConns"`       // not used
+	ConnMaxLifetime string `json:"connMaxLifetime" yaml:"connMaxLifetime"` // e.g. "30m" // not used
 }
 
 type Features struct {
-	EnableMetrics bool `json:"enableMetrics" yaml:"enableMetrics"`
-	EnablePprof   bool `json:"enablePprof" yaml:"enablePprof"`
-	EnableAuth    bool `json:"enableAuth" yaml:"enableAuth"`
+	EnableMetrics bool `json:"enableMetrics" yaml:"enableMetrics"` // not used
+	EnablePprof   bool `json:"enablePprof" yaml:"enablePprof"`     // not used
+	EnableAuth    bool `json:"enableAuth" yaml:"enableAuth"`       // not used
 }
 
 type OAuth2Provider struct {
@@ -71,9 +69,8 @@ func Default() Config {
 			ShutdownTimeout: 10 * time.Second,
 		},
 		Logger: LoggerConfig{
-			Level:      "info",
-			JSON:       false,
-			WithCaller: true,
+			IsDebug:          false,
+			RequestLogFormat: "off",
 		},
 		Database: DBConfig{
 			Driver:          "sqlite",
@@ -93,11 +90,7 @@ func (c *Config) Validate() error {
 	if c.Server.Port <= 0 || c.Server.Port > 65535 {
 		return fmt.Errorf("server.port must be 1..65535")
 	}
-	switch strings.ToLower(c.Logger.Level) {
-	case "debug", "info", "warn", "error":
-	default:
-		return fmt.Errorf("logger.level must be one of debug|info|warn|error")
-	}
+
 	if c.Database.Driver == "" || c.Database.DSN == "" {
 		return errors.New("database.driver and database.dsn are required")
 	}
@@ -161,14 +154,15 @@ func applyEnvOverrides(c *Config) {
 			c.Server.Port = p
 		}
 	}
-	if v := os.Getenv("LOGGER_LEVEL"); v != "" {
-		c.Logger.Level = strings.ToLower(v)
+
+	// Logger overrides
+	if v := os.Getenv("LOGGER_IS_DEBUG"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.Logger.IsDebug = b
+		}
 	}
-	if v := os.Getenv("LOGGER_JSON"); v != "" {
-		c.Logger.JSON = v == "1" || strings.EqualFold(v, "true")
-	}
-	if v := os.Getenv("LOGGER_WITH_CALLER"); v != "" {
-		c.Logger.WithCaller = v == "1" || strings.EqualFold(v, "true")
+	if v := os.Getenv("LOGGER_REQUEST_LOG_FORMAT"); v != "" {
+		c.Logger.RequestLogFormat = v
 	}
 
 	// DB overrides

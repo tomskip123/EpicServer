@@ -3,6 +3,8 @@ package epicserver
 import (
 	"log"
 	"os"
+
+	"github.com/tomskip123/EpicServer/config"
 )
 
 type Logger struct {
@@ -12,10 +14,10 @@ type Logger struct {
 	Debug *log.Logger
 }
 
-func NewLogger(isDebug bool) *Logger {
-	flags := log.LstdFlags | log.Lshortfile | log.Lmsgprefix
+func NewLogger(cfg *config.LoggerConfig) *Logger {
+	flags := log.LstdFlags | log.Lmsgprefix
 
-	if !isDebug {
+	if !cfg.IsDebug {
 		flags &^= log.Lshortfile
 	}
 

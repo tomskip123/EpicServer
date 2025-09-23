@@ -22,55 +22,61 @@ import (
 )
 
 type EZApp struct {
-	Server EpicServerBuilder
-	Render *Renderer
-	Logger *Logger
+	Render  *Renderer
+	Logger  *Logger
+	IsDebug bool
+	Config  *config.Config
+	Errors  []error
 }
 
 // EpicServer builder struct
 type EpicServerBuilder struct {
-	Config       *config.Config
+	App          *EZApp
 	mux          chi.Router
-	port         uint16
 	tls          *tls.Config
-	logger       *Logger
-	errs         []error
 	Controllers  ControllerBuilder
 	RouteBuilder *RouteBuilder
-	Renderer     *Renderer
-	IsDebug      bool
 }
 
 // return new instance of EpicServerBuilder
-func New(isDebug bool, viewOption ...ViewOption) *EpicServerBuilder {
-	logger := NewLogger(isDebug)
-
+func New(configPath string, viewOption ...ViewOption) *EpicServerBuilder {
 	// first we try loading from config files.
-	cfg, err := config.Load("config.yaml")
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		log.Printf("warning: load config: %v", err)
 	}
 
-	rb := newRouteBuilder(chi.NewRouter(), nil, logger, &cfg)
-	// with default view for easy mounting
+	// create logger instance
+	logger := NewLogger(&cfg.Logger)
+
+	// create builder
+	b := &EpicServerBuilder{}
+	// create app context
+	b.App = &EZApp{Logger: logger, IsDebug: cfg.Logger.IsDebug, Config: &cfg}
+
+	// create route builder
+	rb := newRouteBuilder(chi.NewRouter(), b.App)
+	if f := strings.ToLower(strings.TrimSpace(cfg.Logger.RequestLogFormat)); f != "" && f != "off" {
+		rb.Use(RequestLogger(logger, cfg.Logger.IsDebug, f))
+	}
+	// create renderer - depends on route builder
 	renderer := NewRenderer(rb.mux, rb.middleware, rb, logger, viewOption...)
 
-	b := &EpicServerBuilder{
-		Config:       &cfg,
-		mux:          rb.mux,
-		port:         8080,
-		logger:       logger,
-		errs:         make([]error, 0),
-		Controllers:  newControllerBuilder(rb),
-		RouteBuilder: rb,
-		Renderer:     renderer,
-		IsDebug:      isDebug,
-	}
+	// wire up other dependencies
+	b.RouteBuilder = rb
+	b.mux = rb.mux
+	b.App.Render = renderer
+
+	// create controller builder - depends on route builder
+	b.Controllers = newControllerBuilder(rb)
+
+	b.App.Errors = make([]error, 0)
+	b.tls = nil
 
 	if err := loadDotEnv(); err != nil {
 		wrapped := fmt.Errorf("load .env: %w", err)
-		b.logger.Error.Printf("%v", wrapped)
-		b.errs = append(b.errs, wrapped)
+		b.App.Logger.Error.Printf("%v", wrapped)
+		b.App.Errors = append(b.App.Errors, wrapped)
 	}
 
 	return b
@@ -90,37 +96,66 @@ func (b *EpicServerBuilder) Routes(fn func(r *RouteBuilder)) *EpicServerBuilder 
 // Auth wires up OAuth-backed authentication handlers with cookie sessions.
 func (b *EpicServerBuilder) Auth(config *oauth2.Config, opts ...AuthOption) *AuthModule {
 	if config == nil {
-		b.errs = append(b.errs, errors.New("oauth2 config is required"))
+		b.App.Errors = append(b.App.Errors, errors.New("oauth2 config is required"))
 		return nil
 	}
 	return newAuthModule(b.mux, b.RouteBuilder.middleware, config, opts...)
 }
 
 // start server with system cancel listening for cancel.
-func (b *EpicServerBuilder) Start() error {
-	if len(b.errs) > 0 {
-		return errors.Join(b.errs...)
+func (b *EpicServerBuilder) Start(app *EZApp) error {
+	// log app name
+	if b.App.Config.AppName != "" {
+		b.App.Logger.Info.Printf("Starting %s", b.App.Config.AppName)
+	}
+
+	if len(b.App.Errors) > 0 {
+		return errors.Join(b.App.Errors...)
 	}
 
 	// need to pass injectables
-	b.Controllers.Build(EZApp{Server: *b, Render: b.Renderer, Logger: b.logger})
+	b.Controllers.Build(app)
+
+	// check if auth is enabled
+	if b.App.Config.Features.EnableAuth {
+		b.App.Logger.Info.Printf("Auth is enabled")
+
+		// setup simple auth
+		authModule, _ := configureAuth(b)
+		if authModule == nil {
+			b.App.Logger.Warn.Printf("Auth is enabled but not configured, please fix")
+			return nil
+		}
+
+		// session middleware loader
+		b.Use(authModule.SessionLoaderMiddleware())
+	}
+
+	b.App.Logger.Info.Printf("Starting server")
 
 	if err := b.RouteBuilder.apply(); err != nil {
-		b.errs = append(b.errs, err)
+		b.App.Errors = append(b.App.Errors, err)
 	}
 
-	if len(b.errs) > 0 {
-		return errors.Join(b.errs...)
+	if len(b.App.Errors) > 0 {
+		return errors.Join(b.App.Errors...)
 	}
 
-	b.logger.Info.Printf("Starting server")
+	host := "localhost"
+	port := 8080
+	if b.App.Config.Server.Host != "" {
+		host = b.App.Config.Server.Host
+	}
+	if b.App.Config.Server.Port != 0 {
+		port = b.App.Config.Server.Port
+	}
 
 	httpServer := &http.Server{
-		Addr:    net.JoinHostPort("localhost", "8080"),
+		Addr:    net.JoinHostPort(host, strconv.Itoa(port)),
 		Handler: b.mux,
 	}
 
-	// ctrl + c
+	// setup cancel on system signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -130,6 +165,7 @@ func (b *EpicServerBuilder) Start() error {
 		_ = httpServer.Shutdown(ctx)
 	}()
 
+	// start server
 	log.Printf("listening on %s\n", httpServer.Addr)
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
@@ -217,4 +253,61 @@ func parseDotEnvFile(path string) error {
 	}
 
 	return nil
+}
+
+const (
+	authEnvPrefix    = "BULLET_AUTH"
+	authLoginPath    = "/auth/login"
+	authCallbackPath = "/auth/callback"
+	authLogoutPath   = "/auth/logout"
+)
+
+func configureAuth(srv *EpicServerBuilder) (*AuthModule, error) {
+	if !authEnvConfigured(authEnvPrefix) {
+		return nil, nil
+	}
+
+	config, err := AuthConfigFromEnv(authEnvPrefix)
+	if err != nil {
+		panic("auth config error: " + err.Error())
+	}
+
+	options := []AuthOption{
+		WithLoginPath(authLoginPath),
+		WithCallbackPath(authCallbackPath),
+		WithLogoutPath(authLogoutPath),
+		WithLoginRedirect("/"),
+		WithLogoutRedirect("/"),
+		WithFailureRedirect("/"),
+	}
+
+	// INSECURE: allow cookies over HTTP for local dev
+	options = append(options, WithInsecureCookies())
+
+	module := srv.Auth(config, options...)
+	return module, nil
+}
+
+func authEnvConfigured(prefix string) bool {
+	prefix = strings.TrimSuffix(prefix, "_")
+	prefix = strings.ToUpper(prefix)
+
+	lookup := func(suffix string) bool {
+		_, ok := os.LookupEnv(prefix + "_" + suffix)
+		return ok
+	}
+
+	idOK := lookup("CLIENT_ID")
+	secretOK := lookup("CLIENT_SECRET")
+	if !idOK || !secretOK {
+		return false
+	}
+
+	if lookup("PROVIDER") {
+		return true
+	}
+
+	authURL := lookup("AUTH_URL")
+	tokenURL := lookup("TOKEN_URL")
+	return authURL && tokenURL
 }
