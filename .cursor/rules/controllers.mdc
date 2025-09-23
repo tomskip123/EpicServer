@@ -1,0 +1,20 @@
+---
+globs: controllers/**/*.go
+---
+## Controllers Guide
+
+- **Interface** (from [`controller.go`](mdc:controller.go)):
+  - Implement methods returning `Route`-compatible handlers (e.g., `http.Handler`):
+    - `Index`, `Show`, `Edit`, `Post`, `Put`, `Delete`, `Patch`.
+  - Optional `Middleware(app *EZApp) MiddlewareMap` when implementing `ControllerWithMiddleware`.
+- **Registration**:
+  - Generated apps register controllers in `main.go` after creating `srv := epicserver.New(...)`.
+  - The CLI adds: `srv.Controllers.Register("<route>", &controllers.<Name>Controller{})` and ensures `import "<module>/controllers"` exists.
+- **Generator** (`epic controller <name>`):
+  - Creates `controllers/<name>.go` with a `<PascalName>Controller` type and stub methods.
+  - Adds import and registration in `main.go` using simple text edits; re-run with `--force` to overwrite.
+- **Routing**:
+  - Resource routes map to conventional verbs and paths under the registered base route (e.g., `/widgets`, `/widgets/:id`).
+- **View rendering**:
+  - For quick responses, use helpers like `HTML(w, status, markup)`.
+  - For template pages, use `app.Render` handlers (see templates rule).

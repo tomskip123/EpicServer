@@ -1,0 +1,27 @@
+---
+alwaysApply: true
+---
+## EpicServer Project Structure
+
+- **Entry points**:
+  - `cmd/epic/main.go`: CLI entry for `epic` generator.
+  - Library package root exposes server APIs used by generated apps.
+- **CLI**: See [`internal/epiccli`](mdc:internal/epiccli) for commands:
+  - `init`: scaffolds a new EpicServer app (creates `main.go`, `go.mod`, `templates/**`, `controllers/`, `middleware/`, `.env`, and `config.yaml`).
+  - `controller` (`g:controller`, `g:c`): generates a controller and registers it in app `main.go`.
+  - `validate`: loads and validates a config file.
+- **Core types**:
+  - See [`types.go`](mdc:types.go) for envelopes like `Fields`, `Msg`, `Err`, `Envelope`, `List`, `Page`.
+  - See [`controller.go`](mdc:controller.go) for the `Controller` interface and optional `ControllerWithMiddleware`.
+- **Templates**:
+  - Renderer lives in [`template.go`](mdc:template.go). Default tree under `templates/` with subdirs: `layouts/`, `components/`, `pages/`, `lazy/`.
+  - Layout `base` renders full pages; HTMX partials render only the `content` block.
+- **Router / mounting**:
+  - Use `Renderer.MountGet(route, page, dataFn)` for static pages and `Renderer.LazyHandler`/`MountLazyHTML` for lazy fragments.
+
+### Generated app layout (by `epic init`)
+- `main.go`: creates `srv := epicserver.New(...)`, mounts routes, calls `srv.Start`.
+- `templates/layouts/base.html`: defines `{{define "base"}}` with `{{block "content" .}}`.
+- `templates/pages/home.html`: defines `{{define "content"}} ... {{end}}`.
+- `templates/components/nav.html`: `{{define "components/nav"}}`.
+- `templates/lazy/hello.html`: lazy fragment `{{define "hello.html"}}`.

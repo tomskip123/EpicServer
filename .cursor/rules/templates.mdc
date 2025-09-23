@@ -1,0 +1,34 @@
+---
+globs: templates/**/*.html
+---
+## Templates Conventions
+
+- **Layout**:
+  - Define a main layout in `templates/layouts/base.html` using Go template blocks:
+    {{define "base"}}
+    <html>
+      <head>{{block "head" .}}{{end}}</head>
+      <body>
+        {{template "components/nav" .}}
+        <main>{{block "content" .}}{{end}}</main>
+        {{block "scripts" .}}{{end}}
+      </body>
+    </html>
+    {{end}}
+- **Components**:
+  - Place reusable parts in `templates/components/*.html`.
+  - Each file should `{{define "components/name"}} ... {{end}}` and be included via `{{template "components/name" .}}`.
+- **Pages**:
+  - Place page templates in `templates/pages/*.html`.
+  - Each page must define at least `{{define "content"}} ... {{end}}` to render within the base layout.
+- **Lazy fragments**:
+  - Place in `templates/lazy/*.html` and render via `Renderer.RenderLazyHTML` or `Renderer.LazyHandler`.
+  - Files may define `{{define "fileName.html"}} ... {{end}}` and are executed by their base filename.
+- **HTMX-aware rendering**:
+  - Full render executes layout `base`.
+  - Partial render (HTMX request and not boosted) executes only the `content` block.
+  - Map-like data (e.g., `H`, `Fields`, `map[string]any`) is auto-augmented with `.HX` from request headers.
+- **Helper funcs** (available in templates):
+  - `concat(args...) string`: concatenates values.
+  - `attr(map) HTML`: prints HTML attributes from `map[string]string` or `map[string]any`.
+  - `partial(name, data) HTML`: renders a named partial from the shared set.
