@@ -25,12 +25,14 @@ type RouteBuilder struct {
 	mux        chi.Router
 	base       string
 	middleware []Middleware
+	Logger     *Logger
 }
 
-func newRouteBuilder(mux chi.Router, mw []Middleware) *RouteBuilder {
+func newRouteBuilder(mux chi.Router, mw []Middleware, logger *Logger) *RouteBuilder {
 	return &RouteBuilder{
 		mux:        mux,
 		middleware: append([]Middleware(nil), mw...),
+		Logger:     logger,
 	}
 }
 
@@ -85,8 +87,7 @@ func (r *RouteBuilder) Any(p string, h Route) *RouteBuilder {
 // on method registers the handler for the given method and path.
 // It checks for duplicates and records them to be handled in apply().
 func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
-	logger.Printf("Route registry: %v", routeRegistry)
-	logger.Printf("Route structurer.on: method=%s, path=%s", method, p)
+	r.Logger.Info.Printf("Route: method=%s, path=%s", method, p)
 
 	full := r.join(r.base, p)
 	if _, ok := routeRegistry[full]; !ok {
@@ -98,7 +99,7 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 	}
 
 	if _, ok := routeRegistry[full].Methods[method]; ok {
-		logger.Printf("exists = %v", ok)
+		r.Logger.Info.Printf("exists = %v", ok)
 		routeRegistry[full].Methods[method] = duplicateHandler()
 		return r
 	}

@@ -13,35 +13,31 @@ type ControllerBuilder interface {
 type controllerBuilder struct {
 	controllers  map[string]Controller
 	routeBuilder *RouteBuilder
+	logger       *Logger
 }
 
 func newControllerBuilder(rb *RouteBuilder) ControllerBuilder {
 	return &controllerBuilder{
 		controllers:  make(map[string]Controller),
 		routeBuilder: rb,
+		logger:       rb.Logger, // controller relies on route builder so we can rely on routebuilder logger
 	}
 }
 
 func (b *controllerBuilder) Register(name string, c Controller) {
-	if IsDebug {
-		logger.Println("Registered controller:", name)
-	}
+	logName := fmt.Sprintf("%T", c)
+	b.logger.Info.Printf("Registered controller: %v", logName)
 
 	b.controllers[name] = c
 }
 
 func (b *controllerBuilder) Build(app EZApp) error {
 	for name, c := range b.controllers {
-		if IsDebug {
-			logger.Println("Building controller:", name, c)
-		}
-
 		var hasAny bool
 
 		// Load optional middleware map
 		var m MiddlewareMap
 		if cm, ok := c.(ControllerWithMiddleware); ok {
-			logger.Println("Controller has middleware:", name)
 			m = cm.Middleware(app)
 		}
 
@@ -86,9 +82,7 @@ func (b *controllerBuilder) Build(app EZApp) error {
 		}
 
 		if !hasAny {
-			if IsDebug {
-				logger.Println("Controller has no methods:", name)
-			}
+			b.logger.Info.Println("Controller has no methods:", name)
 			return fmt.Errorf("controller %q has no methods", name)
 		}
 	}

@@ -23,7 +23,7 @@ import (
 type EZApp struct {
 	Server EpicServerBuilder
 	Render *Renderer
-	Logger *log.Logger
+	Logger *Logger
 }
 
 // EpicServer builder struct
@@ -31,25 +31,21 @@ type EpicServerBuilder struct {
 	mux          chi.Router
 	port         uint16
 	tls          *tls.Config
-	logger       *log.Logger
+	logger       *Logger
 	errs         []error
 	Controllers  ControllerBuilder
 	RouteBuilder *RouteBuilder
 	Renderer     *Renderer
+	IsDebug      bool
 }
 
-var (
-	logger  *log.Logger
-	IsDebug = false
-)
-
 // return new instance of EpicServerBuilder
-func New(viewOption ...ViewOption) *EpicServerBuilder {
-	logger = log.New(os.Stdout, "", log.LstdFlags)
+func New(isDebug bool, viewOption ...ViewOption) *EpicServerBuilder {
+	logger := NewLogger(isDebug)
 
-	rb := newRouteBuilder(chi.NewRouter(), nil)
+	rb := newRouteBuilder(chi.NewRouter(), nil, logger)
 	// with default view for easy mounting
-	renderer := NewRenderer(rb.mux, rb.middleware, rb, viewOption...)
+	renderer := NewRenderer(rb.mux, rb.middleware, rb, logger, viewOption...)
 
 	b := &EpicServerBuilder{
 		mux:          rb.mux,
@@ -59,11 +55,12 @@ func New(viewOption ...ViewOption) *EpicServerBuilder {
 		Controllers:  newControllerBuilder(rb),
 		RouteBuilder: rb,
 		Renderer:     renderer,
+		IsDebug:      isDebug,
 	}
 
 	if err := loadDotEnv(); err != nil {
 		wrapped := fmt.Errorf("load .env: %w", err)
-		b.logger.Printf("%v", wrapped)
+		b.logger.Error.Printf("%v", wrapped)
 		b.errs = append(b.errs, wrapped)
 	}
 
@@ -107,7 +104,7 @@ func (b *EpicServerBuilder) Start() error {
 		return errors.Join(b.errs...)
 	}
 
-	b.logger.Printf("Starting server")
+	b.logger.Info.Printf("Starting server")
 
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort("localhost", "8080"),

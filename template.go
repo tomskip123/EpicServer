@@ -58,6 +58,8 @@ type Renderer struct {
 	pageCache map[string]*template.Template // page name -> compiled set (shared+page)
 
 	routeBuilder *RouteBuilder
+
+	Logger *Logger
 }
 
 // ViewOption configures a View.
@@ -90,7 +92,7 @@ func WithFuncs(fn template.FuncMap) ViewOption {
 
 // NewRenderer creates a View bound to an optional mux and middleware chain.
 // If mux is nil, you can still use r.Render and r.Handler to get handlers for registration elsewhere.
-func NewRenderer(mux chi.Router, mw []Middleware, rb *RouteBuilder, opts ...ViewOption) *Renderer {
+func NewRenderer(mux chi.Router, mw []Middleware, rb *RouteBuilder, logger *Logger, opts ...ViewOption) *Renderer {
 	r := &Renderer{
 		BaseDir:       "templates",
 		PagesDir:      "pages",
@@ -105,6 +107,8 @@ func NewRenderer(mux chi.Router, mw []Middleware, rb *RouteBuilder, opts ...View
 		routeBuilder:  rb,
 
 		mu: sync.RWMutex{},
+
+		Logger: logger,
 	}
 	// default helpers
 	r.addDefaultFuncs()
