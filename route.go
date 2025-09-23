@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/tomskip123/EpicServer/config"
 )
 
 type Route = http.Handler
@@ -26,13 +27,15 @@ type RouteBuilder struct {
 	base       string
 	middleware []Middleware
 	Logger     *Logger
+	Config     *config.Config
 }
 
-func newRouteBuilder(mux chi.Router, mw []Middleware, logger *Logger) *RouteBuilder {
+func newRouteBuilder(mux chi.Router, mw []Middleware, logger *Logger, cfg *config.Config) *RouteBuilder {
 	return &RouteBuilder{
 		mux:        mux,
 		middleware: append([]Middleware(nil), mw...),
 		Logger:     logger,
+		Config:     cfg,
 	}
 }
 

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/tomskip123/EpicServer/config"
 	"golang.org/x/oauth2"
 )
 
@@ -28,6 +29,7 @@ type EZApp struct {
 
 // EpicServer builder struct
 type EpicServerBuilder struct {
+	Config       *config.Config
 	mux          chi.Router
 	port         uint16
 	tls          *tls.Config
@@ -43,11 +45,18 @@ type EpicServerBuilder struct {
 func New(isDebug bool, viewOption ...ViewOption) *EpicServerBuilder {
 	logger := NewLogger(isDebug)
 
-	rb := newRouteBuilder(chi.NewRouter(), nil, logger)
+	// first we try loading from config files.
+	cfg, err := config.Load("config.yaml")
+	if err != nil {
+		log.Printf("warning: load config: %v", err)
+	}
+
+	rb := newRouteBuilder(chi.NewRouter(), nil, logger, &cfg)
 	// with default view for easy mounting
 	renderer := NewRenderer(rb.mux, rb.middleware, rb, logger, viewOption...)
 
 	b := &EpicServerBuilder{
+		Config:       &cfg,
 		mux:          rb.mux,
 		port:         8080,
 		logger:       logger,

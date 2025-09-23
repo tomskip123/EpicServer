@@ -3,6 +3,8 @@ package epicserver
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/tomskip123/EpicServer/config"
 )
 
 type ControllerBuilder interface {
@@ -14,6 +16,7 @@ type controllerBuilder struct {
 	controllers  map[string]Controller
 	routeBuilder *RouteBuilder
 	logger       *Logger
+	Config       *config.Config
 }
 
 func newControllerBuilder(rb *RouteBuilder) ControllerBuilder {
@@ -21,6 +24,7 @@ func newControllerBuilder(rb *RouteBuilder) ControllerBuilder {
 		controllers:  make(map[string]Controller),
 		routeBuilder: rb,
 		logger:       rb.Logger, // controller relies on route builder so we can rely on routebuilder logger
+		Config:       rb.Config, // controller relies on route builder so we can rely on routebuilder config
 	}
 }
 
