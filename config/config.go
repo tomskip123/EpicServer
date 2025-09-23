@@ -19,6 +19,7 @@ type Config struct {
 	Logger   LoggerConfig `json:"logger" yaml:"logger"`
 	Database DBConfig     `json:"database" yaml:"database"`
 	Features Features     `json:"features" yaml:"features"`
+	Auth     AuthConfig   `json:"auth" yaml:"auth"`
 }
 
 type ServerConfig struct {
@@ -51,10 +52,18 @@ type Features struct {
 type OAuth2Provider struct {
 	ClientID     string `json:"clientId" yaml:"clientId"`
 	ClientSecret string `json:"clientSecret" yaml:"clientSecret"`
+	// Either set a well-known provider name (github, gitlab, google, microsoft)
+	// or specify explicit auth/token URLs below.
+	Provider    string   `json:"provider" yaml:"provider"`
+	AuthURL     string   `json:"authUrl" yaml:"authUrl"`
+	TokenURL    string   `json:"tokenUrl" yaml:"tokenUrl"`
+	RedirectURL string   `json:"redirectUrl" yaml:"redirectUrl"`
+	Scopes      []string `json:"scopes" yaml:"scopes"`
 }
 
 type AuthConfig struct {
 	OAuth2Providers map[string]OAuth2Provider `json:"oauth2Providers" yaml:"oauth2Providers"`
+	DefaultProvider string                    `json:"defaultProvider" yaml:"defaultProvider"`
 }
 
 func Default() Config {
@@ -82,6 +91,10 @@ func Default() Config {
 		Features: Features{
 			EnableMetrics: true,
 			EnablePprof:   false,
+		},
+		Auth: AuthConfig{
+			OAuth2Providers: map[string]OAuth2Provider{},
+			DefaultProvider: "",
 		},
 	}
 }

@@ -89,7 +89,9 @@ func (r *RouteBuilder) Any(p string, h Route) *RouteBuilder {
 // on method registers the handler for the given method and path.
 // It checks for duplicates and records them to be handled in apply().
 func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
-	r.Logger.Info.Printf("Route: method=%s, path=%s", method, p)
+	if r.Config != nil && r.Config.Logger.IsDebug {
+		r.Logger.Debug.Printf("Route: method=%s, path=%s", method, p)
+	}
 
 	full := r.join(r.base, p)
 	if _, ok := routeRegistry[full]; !ok {
@@ -101,7 +103,11 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 	}
 
 	if _, ok := routeRegistry[full].Methods[method]; ok {
-		r.Logger.Info.Printf("exists = %v", ok)
+		if r.Config != nil && r.Config.Logger.IsDebug {
+			r.Logger.Debug.Printf("duplicate route detected: method=%s, path=%s", method, full)
+		} else {
+			r.Logger.Warn.Printf("duplicate route detected: %s %s", method, full)
+		}
 		routeRegistry[full].Methods[method] = duplicateHandler()
 		return r
 	}

@@ -5,16 +5,17 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
+	"expvar"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/tomskip123/EpicServer/config"
@@ -131,6 +132,20 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 		b.Use(authModule.SessionLoaderMiddleware())
 	}
 
+	// debug/metrics endpoints based on feature flags
+	if b.App.Config.Features.EnablePprof {
+		b.App.Logger.Info.Printf("pprof is enabled at /debug/pprof")
+		b.mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+		b.mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+		b.mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+		b.mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+		b.mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+	}
+	if b.App.Config.Features.EnableMetrics {
+		b.App.Logger.Info.Printf("expvar metrics enabled at /debug/vars")
+		b.mux.Handle("/debug/vars", expvar.Handler())
+	}
+
 	b.App.Logger.Info.Printf("Starting server")
 
 	if err := b.RouteBuilder.apply(); err != nil {
@@ -151,16 +166,20 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 	}
 
 	httpServer := &http.Server{
-		Addr:    net.JoinHostPort(host, strconv.Itoa(port)),
-		Handler: b.mux,
+		Addr:         net.JoinHostPort(host, strconv.Itoa(port)),
+		Handler:      b.mux,
+		ReadTimeout:  b.App.Config.Server.ReadTimeout,
+		WriteTimeout: b.App.Config.Server.WriteTimeout,
 	}
+	// route server errors through our logger
+	httpServer.ErrorLog = log.New(b.App.Logger.Error.Writer(), "", 0)
 
 	// setup cancel on system signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), b.App.Config.Server.ShutdownTimeout)
 		defer cancel()
 		_ = httpServer.Shutdown(ctx)
 	}()
@@ -263,11 +282,30 @@ const (
 )
 
 func configureAuth(srv *EpicServerBuilder) (*AuthModule, error) {
+	// Prefer config-driven auth if present
+	if cfg, err := oauthConfigFromAppConfig(srv.App.Config); err != nil {
+		srv.App.Logger.Error.Printf("auth config error: %v", err)
+	} else if cfg != nil {
+		options := []AuthOption{
+			WithLoginPath(authLoginPath),
+			WithCallbackPath(authCallbackPath),
+			WithLogoutPath(authLogoutPath),
+			WithLoginRedirect("/"),
+			WithLogoutRedirect("/"),
+			WithFailureRedirect("/"),
+		}
+		// INSECURE: allow cookies over HTTP for local dev
+		options = append(options, WithInsecureCookies())
+		module := srv.Auth(cfg, options...)
+		return module, nil
+	}
+
+	// Fallback to environment-based auth
 	if !authEnvConfigured(authEnvPrefix) {
 		return nil, nil
 	}
 
-	config, err := AuthConfigFromEnv(authEnvPrefix)
+	cfg, err := AuthConfigFromEnv(authEnvPrefix)
 	if err != nil {
 		panic("auth config error: " + err.Error())
 	}
@@ -280,12 +318,79 @@ func configureAuth(srv *EpicServerBuilder) (*AuthModule, error) {
 		WithLogoutRedirect("/"),
 		WithFailureRedirect("/"),
 	}
-
 	// INSECURE: allow cookies over HTTP for local dev
 	options = append(options, WithInsecureCookies())
-
-	module := srv.Auth(config, options...)
+	module := srv.Auth(cfg, options...)
 	return module, nil
+}
+
+// oauthConfigFromAppConfig constructs an oauth2.Config from app Config if possible.
+func oauthConfigFromAppConfig(c *config.Config) (*oauth2.Config, error) {
+	if c == nil {
+		return nil, nil
+	}
+	if len(c.Auth.OAuth2Providers) == 0 {
+		return nil, nil
+	}
+
+	// Pick the default provider if set, otherwise the first with credentials.
+	var p config.OAuth2Provider
+	var ok bool
+	name := strings.ToLower(strings.TrimSpace(c.Auth.DefaultProvider))
+	if name != "" {
+		if prov, exists := c.Auth.OAuth2Providers[name]; exists {
+			p = prov
+			ok = true
+		}
+	}
+	if !ok {
+		for _, cand := range c.Auth.OAuth2Providers {
+			if strings.TrimSpace(cand.ClientID) != "" && strings.TrimSpace(cand.ClientSecret) != "" {
+				p = cand
+				ok = true
+				break
+			}
+		}
+	}
+	if !ok {
+		return nil, nil
+	}
+
+	// Resolve endpoint
+	var endpoint oauth2.Endpoint
+	if strings.TrimSpace(p.AuthURL) != "" || strings.TrimSpace(p.TokenURL) != "" {
+		if strings.TrimSpace(p.AuthURL) == "" || strings.TrimSpace(p.TokenURL) == "" {
+			return nil, fmt.Errorf("auth provider requires both authUrl and tokenUrl when set explicitly")
+		}
+		endpoint = oauth2.Endpoint{AuthURL: p.AuthURL, TokenURL: p.TokenURL}
+	} else if prov := strings.ToLower(strings.TrimSpace(p.Provider)); prov != "" {
+		ep, exists := wellKnownProviderEndpoints[prov]
+		if !exists {
+			return nil, fmt.Errorf("unknown auth provider %q", p.Provider)
+		}
+		endpoint = ep
+	} else {
+		return nil, fmt.Errorf("auth provider missing provider name or explicit URLs")
+	}
+
+	// Resolve scopes
+	scopes := append([]string(nil), p.Scopes...)
+	if len(scopes) == 0 && strings.TrimSpace(p.Provider) != "" {
+		if defaults, ok := wellKnownProviderScopes[strings.ToLower(p.Provider)]; ok {
+			scopes = append(scopes, defaults...)
+		}
+	}
+
+	cfg := &oauth2.Config{
+		ClientID:     strings.TrimSpace(p.ClientID),
+		ClientSecret: strings.TrimSpace(p.ClientSecret),
+		Endpoint:     endpoint,
+		Scopes:       scopes,
+	}
+	if ru := strings.TrimSpace(p.RedirectURL); ru != "" {
+		cfg.RedirectURL = ru
+	}
+	return cfg, nil
 }
 
 func authEnvConfigured(prefix string) bool {

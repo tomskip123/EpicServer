@@ -16,9 +16,8 @@ type Logger struct {
 
 func NewLogger(cfg *config.LoggerConfig) *Logger {
 	flags := log.LstdFlags | log.Lmsgprefix
-
-	if !cfg.IsDebug {
-		flags &^= log.Lshortfile
+	if cfg.IsDebug {
+		flags |= log.Lshortfile
 	}
 
 	return &Logger{
