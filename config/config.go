@@ -47,6 +47,7 @@ type Features struct {
 	EnableMetrics bool `json:"enableMetrics" yaml:"enableMetrics"` // not used
 	EnablePprof   bool `json:"enablePprof" yaml:"enablePprof"`     // not used
 	EnableAuth    bool `json:"enableAuth" yaml:"enableAuth"`       // not used
+	EnableDB      bool `json:"enableDB" yaml:"enableDB"`
 }
 
 type OAuth2Provider struct {
@@ -91,6 +92,7 @@ func Default() Config {
 		Features: Features{
 			EnableMetrics: true,
 			EnablePprof:   false,
+			EnableDB:      false,
 		},
 		Auth: AuthConfig{
 			OAuth2Providers: map[string]OAuth2Provider{},

@@ -23,11 +23,12 @@ import (
 )
 
 type EZApp struct {
-	Render  *Renderer
-	Logger  *Logger
-	IsDebug bool
-	Config  *config.Config
-	Errors  []error
+	Render   *Renderer
+	Database *EpicServerDatabase
+	Logger   *Logger
+	IsDebug  bool
+	Config   *config.Config
+	Errors   []error
 }
 
 // EpicServer builder struct
@@ -78,6 +79,17 @@ func New(configPath string, viewOption ...ViewOption) *EpicServerBuilder {
 		wrapped := fmt.Errorf("load .env: %w", err)
 		b.App.Logger.Error.Printf("%v", wrapped)
 		b.App.Errors = append(b.App.Errors, wrapped)
+	}
+
+	if cfg.Features.EnableDB {
+		db := EpicServerDatabase{Config: b.App.Config}
+
+		epicServerDatabase, dbError := db.Connect()
+		if dbError != nil {
+			b.App.Errors = append(b.App.Errors, dbError)
+		}
+
+		b.App.Database = epicServerDatabase
 	}
 
 	return b
