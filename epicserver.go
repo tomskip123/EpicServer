@@ -25,6 +25,7 @@ import (
 type EZApp struct {
 	Render   *Renderer
 	Database *EpicServerDatabase
+	User     *UserManagement
 	Logger   *Logger
 	IsDebug  bool
 	Config   *config.Config
@@ -53,6 +54,7 @@ func New(configPath string, viewOption ...ViewOption) *EpicServerBuilder {
 
 	// create builder
 	b := &EpicServerBuilder{}
+
 	// create app context
 	b.App = &EZApp{Logger: logger, IsDebug: cfg.Logger.IsDebug, Config: &cfg}
 
@@ -73,6 +75,7 @@ func New(configPath string, viewOption ...ViewOption) *EpicServerBuilder {
 	b.Controllers = newControllerBuilder(rb)
 
 	b.App.Errors = make([]error, 0)
+
 	b.tls = nil
 
 	if err := loadDotEnv(); err != nil {
@@ -90,6 +93,19 @@ func New(configPath string, viewOption ...ViewOption) *EpicServerBuilder {
 		}
 
 		b.App.Database = epicServerDatabase
+	}
+
+	// check user managment registration, depends on DB and Auth features.
+	if cfg.Features.EnableUserMng {
+		if !cfg.Features.EnableDB {
+			b.App.Errors = append(b.App.Errors, errors.New("please enable database support"))
+		}
+
+		if !cfg.Features.EnableAuth {
+			b.App.Errors = append(b.App.Errors, errors.New("please enable and configure auth support"))
+		}
+
+		b.App.User = NewUserManagement(b.App.Database)
 	}
 
 	return b
@@ -128,6 +144,14 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 
 	// need to pass injectables
 	b.Controllers.Build(app)
+
+	// if user module is enabled and the database enabled etc
+	// we run the user migrations
+	if b.App.Config.Features.EnableUserMng && b.App.Config.Features.EnableDB && b.App.Config.Features.EnableAuth {
+		if b.App.User != nil {
+			b.App.User.MigrateUserModel()
+		}
+	}
 
 	// check if auth is enabled
 	if b.App.Config.Features.EnableAuth {
