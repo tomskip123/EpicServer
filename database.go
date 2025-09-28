@@ -16,9 +16,8 @@ const (
 // we use gorm under the hood, so this is a lightweight direct connector to gorm.
 // lets extend the gorm.DB
 type EpicServerDatabase struct {
-	Config       *config.Config
-	Client       *gorm.DB
-	DirectClient *gorm.DB // this client is recommended for use for direct connections, not through a pooler. should be used for migrations
+	Config *config.Config
+	Client *gorm.DB
 }
 
 type EpicServerModel struct {
@@ -51,25 +50,5 @@ func (es *EpicServerDatabase) Connect() (*EpicServerDatabase, error) {
 	log.Println("Successful pinged pooler database")
 
 	es.Client = db
-
-	// now setup the direct client connection
-	directDb, err := gorm.Open(postgres.Open(es.Config.Database.DirectDSN), &gorm.Config{})
-	if err != nil {
-		return nil, err
-	}
-
-	DirectDbClient, err := db.DB()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := DirectDbClient.Ping(); err != nil {
-		return nil, err
-	}
-
-	log.Println("Successful pinged session database")
-
-	es.DirectClient = directDb
-
 	return es, err
 }

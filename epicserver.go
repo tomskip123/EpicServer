@@ -123,12 +123,12 @@ func (b *EpicServerBuilder) Routes(fn func(r *RouteBuilder)) *EpicServerBuilder 
 }
 
 // Auth wires up OAuth-backed authentication handlers with cookie sessions.
-func (b *EpicServerBuilder) Auth(config *oauth2.Config, opts ...AuthOption) *AuthModule {
+func (b *EpicServerBuilder) Auth(config *oauth2.Config, app *EZApp, opts ...AuthOption) *AuthModule {
 	if config == nil {
 		b.App.Errors = append(b.App.Errors, errors.New("oauth2 config is required"))
 		return nil
 	}
-	return newAuthModule(b.mux, b.RouteBuilder.middleware, config, opts...)
+	return newAuthModule(b.mux, b.RouteBuilder.middleware, config, app, opts...)
 }
 
 // start server with system cancel listening for cancel.
@@ -177,6 +177,7 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 		b.mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
 		b.mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 	}
+
 	if b.App.Config.Features.EnableMetrics {
 		b.App.Logger.Info.Printf("expvar metrics enabled at /debug/vars")
 		b.mux.Handle("/debug/vars", expvar.Handler())
@@ -332,7 +333,7 @@ func configureAuth(srv *EpicServerBuilder) (*AuthModule, error) {
 		}
 		// INSECURE: allow cookies over HTTP for local dev
 		options = append(options, WithInsecureCookies())
-		module := srv.Auth(cfg, options...)
+		module := srv.Auth(cfg, srv.App, options...)
 		return module, nil
 	}
 
@@ -356,7 +357,7 @@ func configureAuth(srv *EpicServerBuilder) (*AuthModule, error) {
 	}
 	// INSECURE: allow cookies over HTTP for local dev
 	options = append(options, WithInsecureCookies())
-	module := srv.Auth(cfg, options...)
+	module := srv.Auth(cfg, srv.App, options...)
 	return module, nil
 }
 

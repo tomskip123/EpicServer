@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -45,6 +47,10 @@ var wellKnownProviderScopes = map[string][]string{
 	"gitlab":    {"read_user"},
 	"google":    {"openid", "profile", "email"},
 	"microsoft": {"openid", "profile", "email"},
+}
+
+var userInfoEndpoints = map[string]string{
+	"google": "https://www.googleapis.com/oauth2/v3/userinfo",
 }
 
 // AuthConfigFromEnv builds an oauth2.Config using environment variables.
@@ -147,6 +153,7 @@ func AuthConfigFromEnv(prefix string) (*oauth2.Config, error) {
 type AuthModule struct {
 	mux        chi.Router
 	middleware []Middleware
+	App        *EZApp
 
 	config *oauth2.Config
 
@@ -173,11 +180,12 @@ type AuthModule struct {
 	now      func() time.Time
 }
 
-func newAuthModule(mux chi.Router, mw []Middleware, config *oauth2.Config, opts ...AuthOption) *AuthModule {
+func newAuthModule(mux chi.Router, mw []Middleware, config *oauth2.Config, app *EZApp, opts ...AuthOption) *AuthModule {
 	module := &AuthModule{
 		mux:        mux,
 		middleware: append([]Middleware(nil), mw...),
 		config:     config,
+		App:        app,
 
 		loginPath:    "/auth/login",
 		callbackPath: "/auth/callback",
@@ -316,8 +324,58 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, err)
 		return
 	}
+
+	userInfo, err := a.getUserInfo(r.Context(), token)
+	if err != nil {
+		a.App.Logger.Error.Fatal(err)
+	}
+
+	if a.App.User.IsEnabled() {
+		_, err = a.App.User.RegisterUser(r.Context(), userInfo)
+		if err != nil {
+			a.App.Logger.Info.Println(err)
+		}
+	}
+
 	a.writeSessionCookie(w, session)
 	a.redirect(w, r, a.loginRedirectURL)
+}
+
+// getUserInfo is there to get user info from the oauth provider.
+func (a *AuthModule) getUserInfo(ctx context.Context, token *oauth2.Token) (*User, error) {
+	provider := strings.ToLower(strings.TrimSpace(a.App.Config.Auth.DefaultProvider))
+	endpoint, ok := userInfoEndpoints[provider]
+	if !ok {
+		return nil, fmt.Errorf("no userinfo endpoint configured for provider %q", provider)
+	}
+
+	client := a.config.Client(ctx, token)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("build userinfo request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch userinfo: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<10))
+		return nil, fmt.Errorf("userinfo %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+
+	var payload struct {
+		Subject string `json:"sub"`
+		Name    string `json:"name"`
+		Email   string `json:"email"`
+		Picture string `json:"picture"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("decode userinfo: %w", err)
+	}
+
+	return &User{Name: payload.Name, Email: payload.Email, Picture: payload.Picture}, nil
 }
 
 func (a *AuthModule) handleLogout(w http.ResponseWriter, r *http.Request) {

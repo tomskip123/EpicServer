@@ -38,7 +38,6 @@ type LoggerConfig struct {
 type DBConfig struct {
 	Driver          string `json:"driver" yaml:"driver"` // "postgres","mysql","sqlite" // not used
 	DSN             string `json:"dsn" yaml:"dsn"`
-	DirectDSN       string `json:"direct_dsn" yaml:"direct_dsn"`
 	MaxOpenConns    int    `json:"maxOpenConns" yaml:"maxOpenConns"`       // not used
 	MaxIdleConns    int    `json:"maxIdleConns" yaml:"maxIdleConns"`       // not used
 	ConnMaxLifetime string `json:"connMaxLifetime" yaml:"connMaxLifetime"` // e.g. "30m" // not used
@@ -87,7 +86,6 @@ func Default() Config {
 		Database: DBConfig{
 			Driver:          "sqlite",
 			DSN:             "file:epic.db?_busy_timeout=5000",
-			DirectDSN:       "",
 			MaxOpenConns:    10,
 			MaxIdleConns:    5,
 			ConnMaxLifetime: "30m",
@@ -189,9 +187,6 @@ func applyEnvOverrides(c *Config) {
 	}
 	if v := os.Getenv("DB_DSN"); v != "" {
 		c.Database.DSN = v
-	}
-	if v := os.Getenv("DB_DIRECT_DSN"); v != "" {
-		c.Database.DirectDSN = v
 	}
 	if v := os.Getenv("DB_MAX_OPEN_CONNS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
