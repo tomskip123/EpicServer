@@ -325,7 +325,7 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userInfo, err := a.getUserInfo(r.Context(), token)
+	userInfo, err := a.GetUserInfo(r.Context(), token)
 	if err != nil {
 		a.App.Logger.Error.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 // getUserInfo is there to get user info from the oauth provider.
-func (a *AuthModule) getUserInfo(ctx context.Context, token *oauth2.Token) (*StatelessUser, error) {
+func (a *AuthModule) GetUserInfo(ctx context.Context, token *oauth2.Token) (*StatelessUser, error) {
 	provider := strings.ToLower(strings.TrimSpace(a.App.Config.Auth.DefaultProvider))
 	endpoint, ok := userInfoEndpoints[provider]
 	if !ok {

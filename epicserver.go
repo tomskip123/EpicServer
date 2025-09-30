@@ -23,6 +23,7 @@ import (
 )
 
 type EZApp struct {
+	Auth     *AuthModule
 	Render   *Renderer
 	Database *EpicServerDatabase
 	User     *UserManagement
@@ -158,6 +159,9 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 
 		// session middleware loader
 		b.Use(authModule.SessionLoaderMiddleware())
+
+		// setup auth module for rest of application to use
+		b.App.Auth = authModule
 	}
 
 	// debug/metrics endpoints based on feature flags
