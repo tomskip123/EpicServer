@@ -24,7 +24,7 @@ type Err struct {
 }
 
 // Envelope wraps a single value under a "data" key.
-// Example: Envelope[User]{Data: user}
+// Example: Envelope[StatelessUser]{Data: user}
 type Envelope[T any] struct {
 	Data T `json:"data"`
 }

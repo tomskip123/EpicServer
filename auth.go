@@ -342,7 +342,7 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 // getUserInfo is there to get user info from the oauth provider.
-func (a *AuthModule) getUserInfo(ctx context.Context, token *oauth2.Token) (*User, error) {
+func (a *AuthModule) getUserInfo(ctx context.Context, token *oauth2.Token) (*StatelessUser, error) {
 	provider := strings.ToLower(strings.TrimSpace(a.App.Config.Auth.DefaultProvider))
 	endpoint, ok := userInfoEndpoints[provider]
 	if !ok {
@@ -375,7 +375,7 @@ func (a *AuthModule) getUserInfo(ctx context.Context, token *oauth2.Token) (*Use
 		return nil, fmt.Errorf("decode userinfo: %w", err)
 	}
 
-	return &User{Name: payload.Name, Email: payload.Email, Picture: payload.Picture}, nil
+	return &StatelessUser{Name: payload.Name, Email: payload.Email, Picture: payload.Picture}, nil
 }
 
 func (a *AuthModule) handleLogout(w http.ResponseWriter, r *http.Request) {

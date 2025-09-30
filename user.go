@@ -2,51 +2,39 @@ package epicserver
 
 import (
 	"context"
-	"errors"
-
-	"gorm.io/gorm"
 )
 
-type User struct {
-	EpicServerModel
+type UserManagementHooks interface {
+	Register(ctx context.Context, user StatelessUser) (any, error)
+}
 
+type StatelessUser struct {
 	Name    string
 	Email   string
 	Picture string
 }
 
 type UserManagement struct {
-	db *EpicServerDatabase
+	db     *EpicServerDatabase
+	Hooks  UserManagementHooks
+	Logger *Logger
 }
 
-func NewUserManagement(db *EpicServerDatabase) *UserManagement {
+func NewUserManagement(db *EpicServerDatabase, logger *Logger) *UserManagement {
 	return &UserManagement{
-		db: db,
+		db:     db,
+		Logger: logger,
 	}
 }
 
-func (usr *UserManagement) RegisterUser(ctx context.Context, user *User) (any, error) {
-	if usr.db.Client == nil {
-		return nil, errors.New("please establish gorm client")
+func (usr *UserManagement) RegisterUser(ctx context.Context, user *StatelessUser) (any, error) {
+	if usr.Hooks == nil {
+		usr.Logger.Error.Println("please add UserManagementHooks")
 	}
 
-	result, _ := gorm.G[User](usr.db.Client).Where("email = ?", user.Email).Take(ctx)
-	if result.Email != "" {
-		return nil, errors.New("User exists")
-	}
-
-	err := gorm.G[User](usr.db.Client).Create(ctx, user)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
+	return usr.Hooks.Register(ctx, *user)
 }
 
 func (usr *UserManagement) IsEnabled() bool {
 	return usr.db.Config.Features.EnableAuth && usr.db.Config.Features.EnableDB && usr.db.Config.Features.EnableUserMng
-}
-
-func (usr *UserManagement) MigrateUserModel() error {
-	return usr.db.Client.AutoMigrate(&User{})
 }
