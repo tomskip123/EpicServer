@@ -274,19 +274,26 @@ func (a *AuthModule) mountHandlers() {
 }
 
 func (a *AuthModule) handleLogin(w http.ResponseWriter, r *http.Request) {
-	state, err := a.states.New(a.stateTTL, a.now)
+	// if there is a next parameter in the url query, add that to state for callback to handle.
+	next := r.URL.Query().Get("next")
+
+	// then we set up a state store.
+	state, err := a.states.New(a.stateTTL, a.now, next)
 	if err != nil {
 		http.Error(w, "failed to initiate oauth flow", http.StatusInternalServerError)
 		return
 	}
+
 	redirectURL := a.config.RedirectURL
 	if redirectURL == "" {
 		redirectURL = a.resolveRedirectURL(r)
 	}
+
 	options := []oauth2.AuthCodeOption{oauth2.AccessTypeOffline}
 	if redirectURL != "" {
 		options = append(options, oauth2.SetAuthURLParam("redirect_uri", redirectURL))
 	}
+
 	authURL := a.config.AuthCodeURL(state, options...)
 	http.Redirect(w, r, authURL, http.StatusFound)
 }
@@ -296,29 +303,36 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 		a.fail(w, r, errors.New(errParam))
 		return
 	}
+
 	state := r.URL.Query().Get("state")
-	if state == "" || !a.states.Consume(state, a.now()) {
+	stateItem := a.states.Consume(state, a.now())
+	if state == "" || stateItem == nil {
 		a.fail(w, r, errors.New("invalid oauth state"))
 		return
 	}
+
 	code := r.URL.Query().Get("code")
 	if code == "" {
 		a.fail(w, r, errors.New("missing oauth code"))
 		return
 	}
+
 	redirectURL := a.config.RedirectURL
 	if redirectURL == "" {
 		redirectURL = a.resolveRedirectURL(r)
 	}
+
 	var exchangeOpts []oauth2.AuthCodeOption
 	if redirectURL != "" {
 		exchangeOpts = append(exchangeOpts, oauth2.SetAuthURLParam("redirect_uri", redirectURL))
 	}
+
 	token, err := a.config.Exchange(r.Context(), code, exchangeOpts...)
 	if err != nil {
 		a.fail(w, r, err)
 		return
 	}
+
 	session, err := a.sessions.Create(token, a.sessionTTL, a.now())
 	if err != nil {
 		a.fail(w, r, err)
@@ -337,8 +351,14 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// if redirect exists on the state item we redirect there instead.
+	redirectPath := a.loginRedirectURL
+	if stateItem.Redirect != "" {
+		redirectPath = stateItem.Redirect
+	}
+
 	a.writeSessionCookie(w, session)
-	a.redirect(w, r, a.loginRedirectURL)
+	a.redirect(w, r, redirectPath)
 }
 
 // getUserInfo is there to get user info from the oauth provider.
@@ -662,38 +682,56 @@ func (s *sessionStore) Delete(id string) {
 	s.mu.Unlock()
 }
 
+type StateStoreItem struct {
+	Expiry   time.Time
+	Redirect string
+}
+
+// TODO: do we provide more options than just an in-memory store for temporarily storing
+// state between auth2 redirects?
 type stateStore struct {
 	mu    sync.Mutex
-	items map[string]time.Time
+	items map[string]StateStoreItem
 }
 
 func newStateStore() *stateStore {
-	return &stateStore{items: make(map[string]time.Time)}
+	return &stateStore{items: make(map[string]StateStoreItem)}
 }
 
-func (s *stateStore) New(ttl time.Duration, now func() time.Time) (string, error) {
+// set a value based off a random string.
+func (s *stateStore) New(ttl time.Duration, now func() time.Time, redirect string) (string, error) {
 	value, err := randomString(32)
 	if err != nil {
 		return "", err
 	}
+
 	expires := now().Add(ttl)
 	s.mu.Lock()
-	s.items[value] = expires
+
+	s.items[value] = StateStoreItem{
+		Expiry:   expires,
+		Redirect: redirect,
+	}
+
 	s.mu.Unlock()
 	return value, nil
 }
 
-func (s *stateStore) Consume(value string, now time.Time) bool {
+// Once a value has been read, it is destroyed.
+func (s *stateStore) Consume(value string, now time.Time) *StateStoreItem {
 	s.mu.Lock()
-	expires, ok := s.items[value]
+
+	stateItem, ok := s.items[value]
 	if ok {
 		delete(s.items, value)
 	}
+
 	s.mu.Unlock()
 	if !ok {
-		return false
+		return nil
 	}
-	return now.Before(expires)
+
+	return &stateItem
 }
 
 func randomString(length int) (string, error) {
