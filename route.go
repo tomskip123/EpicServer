@@ -86,6 +86,11 @@ func (r *RouteBuilder) Any(p string, h Route) *RouteBuilder {
 		on(http.MethodHead, p, http.HandlerFunc(h.ServeHTTP))
 }
 
+// simple wrapper for chi's UrlParam
+func GetParam(r *http.Request, name string) string {
+	return chi.URLParam(r, name)
+}
+
 // on method registers the handler for the given method and path.
 // It checks for duplicates and records them to be handled in apply().
 func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
