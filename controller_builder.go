@@ -96,6 +96,13 @@ func (b *controllerBuilder) Build(app *EZApp) error {
 			b.routeBuilder.Patch("/"+name+"/:id", Chain(h, collect("patch", http.MethodPatch)...))
 		}
 
+		// Look through extension method defined routes.
+		if extensions := c.Extend(app); extensions != nil {
+			// TODO: extract method from map key,
+			// register the route with any middleware added via the collect method.
+			app.Logger.Info.Println(extensions)
+		}
+
 		if !hasAny {
 			b.logger.Info.Println("Controller has no methods:", name)
 			errs = append(errs, fmt.Errorf("controller %q has no methods", name))
