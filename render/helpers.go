@@ -1,4 +1,4 @@
-package epicserver
+package render
 
 import "net/http"
 
@@ -10,5 +10,5 @@ func (r *Renderer) FlashResponse(w http.ResponseWriter, message string) {
 	HXReswap(w, "none")
 	HXTrigger(w, data)
 
-	w.Write([]byte{})
+	_, _ = w.Write([]byte{})
 }
