@@ -2,16 +2,12 @@ package epicserver
 
 import (
 	"context"
+
+	"github.com/tomskip123/EpicServer/auth"
 )
 
 type UserManagementHooks interface {
-	Register(ctx context.Context, user StatelessUser) (any, error)
-}
-
-type StatelessUser struct {
-	Name    string
-	Email   string
-	Picture string
+	Register(ctx context.Context, user auth.StatelessUser) (any, error)
 }
 
 type UserManagement struct {
@@ -27,7 +23,7 @@ func NewUserManagement(db *EpicServerDatabase, logger *Logger) *UserManagement {
 	}
 }
 
-func (usr *UserManagement) RegisterUser(ctx context.Context, user *StatelessUser) (any, error) {
+func (usr *UserManagement) RegisterUser(ctx context.Context, user *auth.StatelessUser) (any, error) {
 	if usr.Hooks == nil {
 		usr.Logger.Error.Println("please add UserManagementHooks")
 	}

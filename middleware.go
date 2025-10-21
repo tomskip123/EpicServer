@@ -1,9 +1,13 @@
 package epicserver
 
-import "net/http"
+import (
+	"net/http"
+
+	authpkg "github.com/tomskip123/EpicServer/auth"
+)
 
 // Middleware composes an http.Handler.
-type Middleware func(http.Handler) http.Handler
+type Middleware = authpkg.Middleware
 
 // Chain applies middlewares in order so mws[0] is outermost.
 func Chain(h http.Handler, mws ...Middleware) http.Handler {
