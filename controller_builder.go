@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/tomskip123/EpicServer/config"
 )
@@ -48,7 +49,6 @@ func (b *controllerBuilder) Build(app *EZApp) error {
 
 	for _, name := range names {
 		c := b.controllers[name]
-		var hasAny bool
 
 		// Load optional middleware map
 		var m MiddlewareMap
@@ -67,45 +67,38 @@ func (b *controllerBuilder) Build(app *EZApp) error {
 			return out
 		}
 
-		if h := c.Index(app); h != nil {
-			hasAny = true
-			b.routeBuilder.Get("/"+name, Chain(h, collect("index", http.MethodGet)...))
-		}
-		if h := c.Show(app); h != nil {
-			hasAny = true
-			b.routeBuilder.Get("/"+name+"/:id", Chain(h, collect("show", http.MethodGet)...))
-		}
-		if h := c.Edit(app); h != nil {
-			hasAny = true
-			b.routeBuilder.Get("/"+name+"/:id/edit", Chain(h, collect("edit", http.MethodGet)...))
-		}
-		if h := c.Post(app); h != nil {
-			hasAny = true
-			b.routeBuilder.Post("/"+name, Chain(h, collect("post", http.MethodPost)...))
-		}
-		if h := c.Put(app); h != nil {
-			hasAny = true
-			b.routeBuilder.Put("/"+name+"/:id", Chain(h, collect("put", http.MethodPut)...))
-		}
-		if h := c.Delete(app); h != nil {
-			hasAny = true
-			b.routeBuilder.Delete("/"+name+"/:id", Chain(h, collect("delete", http.MethodDelete)...))
-		}
-		if h := c.Patch(app); h != nil {
-			hasAny = true
-			b.routeBuilder.Patch("/"+name+"/:id", Chain(h, collect("patch", http.MethodPatch)...))
-		}
-
 		// Look through extension method defined routes.
-		if extensions := c.Extend(app); extensions != nil {
+		if routes := c.Routes(app); routes != nil {
 			// TODO: extract method from map key,
 			// register the route with any middleware added via the collect method.
-			app.Logger.Info.Println(extensions)
-		}
+			app.Logger.Info.Println(routes)
+			for key, route := range routes {
+				routeSplit := strings.Split(key, " ")
+				if len(routeSplit) != 2 {
+					app.Logger.Error.Printf("route format incorrect for %v", key)
+					continue
+				}
 
-		if !hasAny {
-			b.logger.Info.Println("Controller has no methods:", name)
-			errs = append(errs, fmt.Errorf("controller %q has no methods", name))
+				method := routeSplit[0]
+				path := fmt.Sprintf("/%v%v", name, routeSplit[1])
+
+				if b.isValidMethod(method) {
+					switch method {
+					case "GET":
+						b.routeBuilder.Get(path, Chain(route, collect(key, http.MethodGet)...))
+					case "POST":
+						b.routeBuilder.Post(path, Chain(route, collect(key, http.MethodPost)...))
+					case "PUT":
+						b.routeBuilder.Put(path, Chain(route, collect(key, http.MethodPut)...))
+					case "PATCH":
+						b.routeBuilder.Patch(path, Chain(route, collect(key, http.MethodPatch)...))
+					case "DELETE":
+						b.routeBuilder.Delete(path, Chain(route, collect(key, http.MethodDelete)...))
+					default:
+						app.Logger.Error.Printf("method %v is not a valid method", method)
+					}
+				}
+			}
 		}
 	}
 
@@ -114,4 +107,8 @@ func (b *controllerBuilder) Build(app *EZApp) error {
 	}
 
 	return nil
+}
+
+func (b *controllerBuilder) isValidMethod(meth string) bool {
+	return meth == "GET" || meth == "POST" || meth == "PATCH" || meth == "PUT" || meth == "DELETE"
 }

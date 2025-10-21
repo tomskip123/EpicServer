@@ -1,11 +1,13 @@
 package epicserver
 
 import (
+	"maps"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -84,9 +86,7 @@ func WithFuncs(fn template.FuncMap) ViewOption {
 		if r.Funcs == nil {
 			r.Funcs = template.FuncMap{}
 		}
-		for k, f := range fn {
-			r.Funcs[k] = f
-		}
+		maps.Copy(r.Funcs, fn)
 	}
 }
 
@@ -287,6 +287,7 @@ func (r *Renderer) resolveLazyPath(name string) string {
 		}
 		return name
 	}
+
 	return filepath.Join(r.BaseDir, r.LazyDir, filepath.FromSlash(name)+r.Ext)
 }
 
@@ -451,19 +452,6 @@ func (r *Renderer) LazyHandler(name string, dataFn ViewDataFunc) http.Handler {
 				"lazy template error: "+template.HTMLEscapeString(err.Error()))
 		}
 	}))
-}
-
-func (r *Renderer) LazyHandlerFunc(name string, dataFn ViewDataFunc) http.HandlerFunc {
-	h := r.LazyHandler(name, dataFn)
-	return func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r)
-	}
-}
-
-func (r *Renderer) MountLazyHTML(route string, name string, dataFn ViewDataFunc) *Renderer {
-	h := r.LazyHandler(name, dataFn)
-	r.routeBuilder.Get(route, h)
-	return r
 }
 
 // wrap applies the View's middleware chain to the final handler.
