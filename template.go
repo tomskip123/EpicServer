@@ -1,13 +1,12 @@
 package epicserver
 
 import (
-	"maps"
 	"bytes"
 	"encoding/json"
 	"errors"
 	"html/template"
 	"io/fs"
-	"log"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -431,8 +430,14 @@ func (r *Renderer) RenderLazyHTML(w http.ResponseWriter, req *http.Request, name
 	}
 	data = r.injectHX(data, req)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// Execute template by base filename so lazy files can either be raw markup or wrap a define.
-	return t.ExecuteTemplate(w, filepath.Base(name), data)
+
+	base := filepath.Base(name)
+	root := filepath.Base(r.resolveLazyPath(name))
+
+	if t.Lookup(base) != nil {
+		return t.ExecuteTemplate(w, base, data)
+	}
+	return t.ExecuteTemplate(w, root, data)
 }
 
 func (r *Renderer) LazyHandler(name string, dataFn ViewDataFunc) http.Handler {
