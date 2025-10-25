@@ -3,6 +3,8 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
+	"net/http"
 	"path"
 	"strings"
 )
@@ -27,4 +29,26 @@ func sanitizePath(p string) string {
 		return "/"
 	}
 	return cleaned
+}
+
+func GetUserFromReq(auth *AuthModule, r *http.Request) (*StatelessUser, error) {
+	session, authenticated := SessionFromContext(r.Context())
+	if !authenticated {
+		return nil, errors.New("not authenticated")
+	}
+
+	userinfo := userInfoCache.Get(session.Email)
+	if userinfo != nil {
+		return userinfo, nil
+	}
+
+	userinfo, err := auth.GetUserInfo(r.Context(), session.Token)
+	if err != nil {
+		return nil, errors.New("can't get stateless user from request")
+	}
+
+	// if not found add user to cache
+	userInfoCache.Add(userinfo)
+
+	return userinfo, nil
 }

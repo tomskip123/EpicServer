@@ -69,18 +69,22 @@ func (a *AuthModule) handleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := a.sessions.Create(token, a.sessionTTL, a.now())
-	if err != nil {
-		a.fail(w, r, err)
-		return
-	}
-
+	// no email before this point, so email param is blank
 	userInfo, err := a.GetUserInfo(r.Context(), token)
 	if err != nil {
 		if a.loggers.Error != nil {
 			a.loggers.Error.Fatal(err)
 		}
 	}
+
+	session, err := a.sessions.Create(token, a.sessionTTL, a.now(), userInfo.Email)
+	if err != nil {
+		a.fail(w, r, err)
+		return
+	}
+
+	// add user to cache on sign in
+	userInfoCache.Add(userInfo)
 
 	if a.user != nil && a.user.IsEnabled() {
 		if _, err = a.user.RegisterUser(r.Context(), userInfo); err != nil {
