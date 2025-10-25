@@ -115,7 +115,7 @@ func New(configPath string, viewOption ...ViewOption) *EpicServerBuilder {
 
 // Use appends global middleware applied to all routes/views created after this call.
 func (b *EpicServerBuilder) Use(mw ...Middleware) *EpicServerBuilder {
-	b.RouteBuilder.middleware = append(b.RouteBuilder.middleware, mw...)
+	b.RouteBuilder.Use(mw...)
 	return b
 }
 

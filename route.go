@@ -16,7 +16,13 @@ type Route = http.Handler
 type RouteSpec struct {
 	Name    string
 	Path    string
-	Methods map[string]Route
+	Methods map[string]routeMethod
+}
+
+type routeMethod struct {
+	Handler http.Handler
+	Wrap    Middleware
+	Force   bool
 }
 
 var routeRegistry = make(map[string]*RouteSpec)
@@ -26,6 +32,8 @@ type RouteBuilder struct {
 	mux        chi.Router
 	base       string
 	middleware []Middleware
+	wrapChain  Middleware
+	forceChain bool
 	Logger     *Logger
 	Config     *config.Config
 }
@@ -40,6 +48,7 @@ func newRouteBuilder(mux chi.Router, app *EZApp) *RouteBuilder {
 
 func (r *RouteBuilder) Use(mw ...Middleware) *RouteBuilder {
 	r.middleware = append(r.middleware, mw...)
+	r.rebuildMiddleware()
 	return r
 }
 
@@ -56,6 +65,16 @@ func (r *RouteBuilder) Group(prefix string, fn func(*RouteBuilder)) *RouteBuilde
 	if child.base == "." {
 		child.base = "/"
 	}
+	fn(&child)
+	return r
+}
+
+// WithoutMiddleware runs fn with a copy of the builder that has no middleware.
+func (r *RouteBuilder) WithoutMiddleware(fn func(*RouteBuilder)) *RouteBuilder {
+	child := *r
+	child.middleware = nil
+	child.forceChain = true
+	child.rebuildMiddleware()
 	fn(&child)
 	return r
 }
@@ -103,7 +122,7 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 		routeRegistry[full] = &RouteSpec{
 			Name:    full,
 			Path:    full,
-			Methods: make(map[string]http.Handler),
+			Methods: make(map[string]routeMethod),
 		}
 	}
 
@@ -113,11 +132,20 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 		} else {
 			r.Logger.Warn.Printf("duplicate route detected: %s %s", method, full)
 		}
-		routeRegistry[full].Methods[method] = duplicateHandler()
+		routeRegistry[full].Methods[method] = routeMethod{
+			Handler: duplicateHandler(),
+		}
 		return r
 	}
 
-	routeRegistry[full].Methods[method] = http.HandlerFunc(h)
+	entry := routeMethod{
+		Handler: http.HandlerFunc(h),
+	}
+	if r.forceChain {
+		entry.Wrap = r.wrapChain
+		entry.Force = true
+	}
+	routeRegistry[full].Methods[method] = entry
 	return r
 }
 
@@ -129,8 +157,8 @@ func (r *RouteBuilder) apply() error {
 
 	// detect duplicates flagged above
 	for p, spec := range routeRegistry {
-		for m, h := range spec.Methods {
-			if h == duplicateHandler() {
+		for m, entry := range spec.Methods {
+			if entry.Handler == duplicateHandler() {
 				errs = append(errs, errors.New("duplicate route "+m+" "+p))
 			}
 		}
@@ -152,11 +180,19 @@ func (r *RouteBuilder) apply() error {
 		allowByPattern[chiPattern] = allowHeader
 
 		// register each method for this pattern
-		for m, h := range spec.Methods {
-			if h == duplicateHandler() {
+		for m, entry := range spec.Methods {
+			if entry.Handler == duplicateHandler() {
 				continue
 			}
-			r.mux.Method(m, chiPattern, r.wrap(h))
+			handler := entry.Handler
+			if entry.Force {
+				if entry.Wrap != nil {
+					handler = entry.Wrap(handler)
+				}
+			} else {
+				handler = r.wrap(handler)
+			}
+			r.mux.Method(m, chiPattern, handler)
 		}
 	}
 
@@ -194,10 +230,14 @@ func (r *RouteBuilder) apply() error {
 
 // wrap applies the middleware stack to the given handler.
 func (r *RouteBuilder) wrap(next http.Handler) http.Handler {
-	for i := len(r.middleware) - 1; i >= 0; i-- {
-		next = r.middleware[i](next)
+	if r.wrapChain == nil {
+		return next
 	}
-	return next
+	return r.wrapChain(next)
+}
+
+func (r *RouteBuilder) rebuildMiddleware() {
+	r.wrapChain = CombineMiddleware(r.middleware...)
 }
 
 func (r *RouteBuilder) join(base, p string) string {

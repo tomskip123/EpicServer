@@ -3,13 +3,31 @@ package epicserver
 import (
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
+
+var statusRecorderPool = sync.Pool{
+	New: func() any { return &statusRecorder{} },
+}
 
 type statusRecorder struct {
 	http.ResponseWriter
 	status  int
 	written int
+}
+
+func acquireStatusRecorder(w http.ResponseWriter) *statusRecorder {
+	rec := statusRecorderPool.Get().(*statusRecorder)
+	rec.ResponseWriter = w
+	rec.status = http.StatusOK
+	rec.written = 0
+	return rec
+}
+
+func releaseStatusRecorder(rec *statusRecorder) {
+	rec.ResponseWriter = nil
+	statusRecorderPool.Put(rec)
 }
 
 func (r *statusRecorder) WriteHeader(code int) {
@@ -30,17 +48,28 @@ func (r *statusRecorder) Write(b []byte) (int, error) {
 // - detailed: method path status duration bytes remoteAddr userAgent headers
 // - auto:     detailed if isDebug is true, otherwise concise
 func RequestLogger(l *Logger, isDebug bool, format string) Middleware {
-	eff := strings.ToLower(strings.TrimSpace(format))
-	if eff == "" {
-		eff = "off"
+	mode := strings.ToLower(strings.TrimSpace(format))
+	if mode == "" {
+		mode = "off"
 	}
-	return func(next http.Handler) http.Handler {
-		if eff == "off" {
-			return next
+	if mode == "auto" {
+		if isDebug {
+			mode = "detailed"
+		} else {
+			mode = "concise"
 		}
+	}
+	if mode == "detailed" && !isDebug {
+		mode = "concise"
+	}
+	if mode == "off" {
+		return func(next http.Handler) http.Handler { return next }
+	}
+
+	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			start := time.Now()
-			rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+			rec := acquireStatusRecorder(w)
 			next.ServeHTTP(rec, req)
 			dur := time.Since(start)
 
@@ -49,34 +78,22 @@ func RequestLogger(l *Logger, isDebug bool, format string) Middleware {
 				path += "?" + q
 			}
 
-			mode := eff
-			if mode == "auto" {
-				if isDebug {
-					mode = "detailed"
-				} else {
-					mode = "concise"
-				}
-			}
-
 			switch mode {
 			case "simple":
 				l.Info.Printf("%s %s %d", req.Method, path, rec.status)
 			case "concise":
 				l.Info.Printf("%s %s %d %s %d", req.Method, path, rec.status, dur, rec.written)
 			case "detailed":
-				if isDebug {
-					l.Debug.Printf(
-						"REQ %s %s status=%d dur=%s bytes=%d from=%s ua=%q headers=%v",
-						req.Method, path, rec.status, dur, rec.written, req.RemoteAddr, req.UserAgent(), req.Header,
-					)
-				} else {
-					// Fall back to concise in non-debug mode
-					l.Info.Printf("%s %s %d %s %d", req.Method, path, rec.status, dur, rec.written)
-				}
+				l.Debug.Printf(
+					"REQ %s %s status=%d dur=%s bytes=%d from=%s ua=%q headers=%v",
+					req.Method, path, rec.status, dur, rec.written, req.RemoteAddr, req.UserAgent(), req.Header,
+				)
 			default:
 				// Unknown format: default to concise
 				l.Info.Printf("%s %s %d %s %d", req.Method, path, rec.status, dur, rec.written)
 			}
+
+			releaseStatusRecorder(rec)
 		})
 	}
 }

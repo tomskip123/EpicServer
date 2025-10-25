@@ -18,3 +18,22 @@ func Chain(h http.Handler, mws ...Middleware) http.Handler {
 	}
 	return h
 }
+
+// CombineMiddleware collapses middlewares into a single middleware wrapper.
+func CombineMiddleware(mws ...Middleware) Middleware {
+	filtered := make([]Middleware, 0, len(mws))
+	for _, mw := range mws {
+		if mw != nil {
+			filtered = append(filtered, mw)
+		}
+	}
+	if len(filtered) == 0 {
+		return nil
+	}
+	return func(next http.Handler) http.Handler {
+		for i := len(filtered) - 1; i >= 0; i-- {
+			next = filtered[i](next)
+		}
+		return next
+	}
+}
