@@ -7,12 +7,14 @@ import (
 	"golang.org/x/oauth2"
 )
 
+// STORED IN MEMORY
 // Session contains the OAuth token and expiry metadata.
 type Session struct {
 	ID        string
 	Token     *oauth2.Token
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	Email     string
 }
 
 // Valid reports whether the session is still active.
@@ -29,7 +31,7 @@ func newSessionStore() *sessionStore {
 	return &sessionStore{sessions: make(map[string]*Session)}
 }
 
-func (s *sessionStore) Create(token *oauth2.Token, ttl time.Duration, now time.Time) (*Session, error) {
+func (s *sessionStore) Create(token *oauth2.Token, ttl time.Duration, now time.Time, email string) (*Session, error) {
 	id, err := randomString(32)
 	if err != nil {
 		return nil, err
@@ -43,6 +45,7 @@ func (s *sessionStore) Create(token *oauth2.Token, ttl time.Duration, now time.T
 		Token:     token,
 		CreatedAt: now,
 		ExpiresAt: expiry,
+		Email:     email,
 	}
 	s.mu.Lock()
 	s.sessions[id] = session
