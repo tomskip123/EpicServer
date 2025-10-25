@@ -36,11 +36,14 @@ type LoggerConfig struct {
 }
 
 type DBConfig struct {
-	Driver          string `json:"driver" yaml:"driver"` // "postgres","mysql","sqlite" // not used
-	DSN             string `json:"dsn" yaml:"dsn"`
-	MaxOpenConns    int    `json:"maxOpenConns" yaml:"maxOpenConns"`       // not used
-	MaxIdleConns    int    `json:"maxIdleConns" yaml:"maxIdleConns"`       // not used
-	ConnMaxLifetime string `json:"connMaxLifetime" yaml:"connMaxLifetime"` // e.g. "30m" // not used
+	Driver               string `json:"driver" yaml:"driver"` // "postgres","mysql","sqlite" // not used
+	DSN                  string `json:"dsn" yaml:"dsn"`
+	MaxOpenConns         int    `json:"maxOpenConns" yaml:"maxOpenConns"`       // not used
+	MaxIdleConns         int    `json:"maxIdleConns" yaml:"maxIdleConns"`       // not used
+	ConnMaxLifetime      string `json:"connMaxLifetime" yaml:"connMaxLifetime"` // e.g. "30m" // not used
+	QueryCacheEnabled    bool   `json:"queryCacheEnabled" yaml:"queryCacheEnabled"`
+	QueryCacheTTL        string `json:"queryCacheTTL" yaml:"queryCacheTTL"`
+	QueryCacheMaxEntries int    `json:"queryCacheMaxEntries" yaml:"queryCacheMaxEntries"`
 }
 
 type Features struct {
@@ -84,11 +87,14 @@ func Default() Config {
 			RequestLogFormat: "off",
 		},
 		Database: DBConfig{
-			Driver:          "sqlite",
-			DSN:             "file:epic.db?_busy_timeout=5000",
-			MaxOpenConns:    10,
-			MaxIdleConns:    5,
-			ConnMaxLifetime: "30m",
+			Driver:               "sqlite",
+			DSN:                  "file:epic.db?_busy_timeout=5000",
+			MaxOpenConns:         10,
+			MaxIdleConns:         5,
+			ConnMaxLifetime:      "30m",
+			QueryCacheEnabled:    false,
+			QueryCacheTTL:        "30s",
+			QueryCacheMaxEntries: 0,
 		},
 		Features: Features{
 			EnableMetrics: true,
@@ -196,6 +202,19 @@ func applyEnvOverrides(c *Config) {
 	if v := os.Getenv("DB_MAX_IDLE_CONNS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			c.Database.MaxIdleConns = n
+		}
+	}
+	if v := os.Getenv("DB_QUERY_CACHE_ENABLED"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			c.Database.QueryCacheEnabled = b
+		}
+	}
+	if v := os.Getenv("DB_QUERY_CACHE_TTL"); v != "" {
+		c.Database.QueryCacheTTL = v
+	}
+	if v := os.Getenv("DB_QUERY_CACHE_MAX_ENTRIES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.Database.QueryCacheMaxEntries = n
 		}
 	}
 	if v := os.Getenv("DB_CONN_MAX_LIFETIME"); v != "" {

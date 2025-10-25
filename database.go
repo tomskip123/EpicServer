@@ -3,6 +3,7 @@ package epicserver
 import (
 	"errors"
 	"log"
+	"time"
 
 	"github.com/tomskip123/EpicServer/config"
 	"gorm.io/driver/postgres"
@@ -49,6 +50,27 @@ func (es *EpicServerDatabase) Connect() (*EpicServerDatabase, error) {
 
 	log.Println("Successful pinged pooler database")
 
+	if es.Config.Database.QueryCacheEnabled {
+		ttl := parseQueryCacheTTL(es.Config.Database.QueryCacheTTL)
+		cache := newQueryCache(ttl, es.Config.Database.QueryCacheMaxEntries)
+		if err := db.Use(newQueryCachePlugin(cache, es.Config.Logger.IsDebug)); err != nil {
+			return nil, err
+		}
+	}
+
 	es.Client = db
 	return es, err
+}
+
+func parseQueryCacheTTL(raw string) time.Duration {
+	if raw == "" {
+		return 30 * time.Second
+	}
+
+	ttl, err := time.ParseDuration(raw)
+	if err != nil || ttl <= 0 {
+		log.Printf("invalid query cache ttl %q, falling back to 30s", raw)
+		return 30 * time.Second
+	}
+	return ttl
 }
