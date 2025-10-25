@@ -86,12 +86,13 @@ func (r *Renderer) Render(w http.ResponseWriter, req *http.Request, page string,
 	if err != nil {
 		return err
 	}
+	hx := HTMXFromRequest(req)
 	// Inject HX info into map data for template convenience.
-	data = r.injectHX(data, req)
+	data = r.injectHX(data, hx)
 
 	// Choose render mode.
 	if mode == RenderAuto {
-		if IsHTMX(req) && !IsHTMXBoosted(req) {
+		if hx.Request && !hx.Boosted {
 			mode = RenderPartial
 		} else {
 			mode = RenderFull

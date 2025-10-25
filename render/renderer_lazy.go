@@ -11,7 +11,8 @@ func (r *Renderer) RenderLazyHTML(w http.ResponseWriter, req *http.Request, name
 	if err != nil {
 		return err
 	}
-	data = r.injectHX(data, req)
+	hx := HTMXFromRequest(req)
+	data = r.injectHX(data, hx)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	base := filepath.Base(name)

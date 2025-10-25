@@ -110,8 +110,7 @@ func setHXTriggerHeader(w http.ResponseWriter, key string, req any) {
 	}
 }
 
-func (r *Renderer) injectHX(data any, req *http.Request) any {
-	hx := HTMXFromRequest(req)
+func (r *Renderer) injectHX(data any, hx HTMX) any {
 	if injectHXIntoMap(data, hx) {
 		return data
 	}
@@ -119,6 +118,12 @@ func (r *Renderer) injectHX(data any, req *http.Request) any {
 }
 
 func injectHXIntoMap(data any, hx HTMX) bool {
+	switch m := data.(type) {
+	case map[string]any:
+		return injectHXIntoStringAnyMap(m, hx)
+	case map[string]HTMX:
+		return injectHXIntoStringHTMXMap(m, hx)
+	}
 	if data == nil {
 		return false
 	}
@@ -146,6 +151,28 @@ func injectHXIntoMap(data any, hx HTMX) bool {
 	default:
 		return false
 	}
+}
+
+func injectHXIntoStringAnyMap(m map[string]any, hx HTMX) bool {
+	if m == nil {
+		return false
+	}
+	if _, ok := m["HX"]; ok {
+		return true
+	}
+	m["HX"] = hx
+	return true
+}
+
+func injectHXIntoStringHTMXMap(m map[string]HTMX, hx HTMX) bool {
+	if m == nil {
+		return false
+	}
+	if _, ok := m["HX"]; ok {
+		return true
+	}
+	m["HX"] = hx
+	return true
 }
 
 func writeHTML(w http.ResponseWriter, status int, body string) {
