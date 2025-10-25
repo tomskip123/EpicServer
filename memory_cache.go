@@ -1,9 +1,11 @@
 package epicserver
 
-import "sync"
+import (
+	"sync"
+)
 
 type EpicMemoryCache struct {
-	mu    sync.Mutex
+	mu    sync.RWMutex
 	cache map[string]any
 }
 
@@ -11,12 +13,15 @@ type EpicMemoryCache struct {
 // can be stored in memory - duh
 func NewEpicMemoryCache() *EpicMemoryCache {
 	return &EpicMemoryCache{
-		mu:    sync.Mutex{},
+		mu:    sync.RWMutex{},
 		cache: make(map[string]any),
 	}
 }
 
+// we use RLock and RUnlock in readers for concurrency
 func (emc *EpicMemoryCache) Get(key string) any {
+	emc.mu.RLock()
+	defer emc.mu.RUnlock()
 	return emc.cache[key]
 }
 
