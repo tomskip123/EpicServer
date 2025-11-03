@@ -10,35 +10,37 @@ import (
 	"github.com/tomskip123/EpicServer/config"
 )
 
-type ControllerBuilder interface {
-	Register(name string, c Controller)
-	Build(app *EZApp) error
+type ControllerBuilderWith[T any] interface {
+	Register(name string, c ControllerWith[T])
+	Build(app *EZAppWith[T]) error
 }
 
-type controllerBuilder struct {
-	controllers  map[string]Controller
-	routeBuilder *RouteBuilder
+type ControllerBuilder = ControllerBuilderWith[struct{}]
+
+type controllerBuilder[T any] struct {
+	controllers  map[string]ControllerWith[T]
+	routeBuilder *RouteBuilderWith[T]
 	logger       *Logger
-	Config       *config.Config
+	Config       *config.ConfigWith[T]
 }
 
-func newControllerBuilder(rb *RouteBuilder) ControllerBuilder {
-	return &controllerBuilder{
-		controllers:  make(map[string]Controller),
+func newControllerBuilder[T any](rb *RouteBuilderWith[T]) ControllerBuilderWith[T] {
+	return &controllerBuilder[T]{
+		controllers:  make(map[string]ControllerWith[T]),
 		routeBuilder: rb,
 		logger:       rb.Logger, // controller relies on route builder so we can rely on routebuilder logger
 		Config:       rb.Config, // controller relies on route builder so we can rely on routebuilder config
 	}
 }
 
-func (b *controllerBuilder) Register(name string, c Controller) {
+func (b *controllerBuilder[T]) Register(name string, c ControllerWith[T]) {
 	logName := fmt.Sprintf("%T", c)
 	b.logger.Info.Printf("Registered controller: %v", logName)
 
 	b.controllers[name] = c
 }
 
-func (b *controllerBuilder) Build(app *EZApp) error {
+func (b *controllerBuilder[T]) Build(app *EZAppWith[T]) error {
 	names := make([]string, 0, len(b.controllers))
 	for name := range b.controllers {
 		names = append(names, name)
@@ -52,7 +54,7 @@ func (b *controllerBuilder) Build(app *EZApp) error {
 
 		// Load optional middleware map
 		var m MiddlewareMap
-		if cm, ok := c.(ControllerWithMiddleware); ok {
+		if cm, ok := c.(ControllerWithMiddlewareFor[T]); ok {
 			m = cm.Middleware(app)
 		}
 
@@ -109,6 +111,6 @@ func (b *controllerBuilder) Build(app *EZApp) error {
 	return nil
 }
 
-func (b *controllerBuilder) isValidMethod(meth string) bool {
+func (b *controllerBuilder[T]) isValidMethod(meth string) bool {
 	return meth == "GET" || meth == "POST" || meth == "PATCH" || meth == "PUT" || meth == "DELETE"
 }

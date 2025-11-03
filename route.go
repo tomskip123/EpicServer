@@ -27,32 +27,34 @@ type routeMethod struct {
 
 var routeRegistry = make(map[string]*RouteSpec)
 
-// similar to view, follows a simpler approach.
-type RouteBuilder struct {
+// RouteBuilderWith wires routes to chi while keeping access to the typed config.
+type RouteBuilderWith[T any] struct {
 	mux        chi.Router
 	base       string
 	middleware []Middleware
 	wrapChain  Middleware
 	forceChain bool
 	Logger     *Logger
-	Config     *config.Config
+	Config     *config.ConfigWith[T]
 }
 
-func newRouteBuilder(mux chi.Router, app *EZApp) *RouteBuilder {
-	return &RouteBuilder{
+type RouteBuilder = RouteBuilderWith[struct{}]
+
+func newRouteBuilder[T any](mux chi.Router, app *EZAppWith[T]) *RouteBuilderWith[T] {
+	return &RouteBuilderWith[T]{
 		mux:    mux,
 		Logger: app.Logger,
 		Config: app.Config,
 	}
 }
 
-func (r *RouteBuilder) Use(mw ...Middleware) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Use(mw ...Middleware) *RouteBuilderWith[T] {
 	r.middleware = append(r.middleware, mw...)
 	r.rebuildMiddleware()
 	return r
 }
 
-func (r *RouteBuilder) Group(prefix string, fn func(*RouteBuilder)) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Group(prefix string, fn func(*RouteBuilderWith[T])) *RouteBuilderWith[T] {
 	child := *r
 	if prefix == "" {
 		fn(&child)
@@ -70,7 +72,7 @@ func (r *RouteBuilder) Group(prefix string, fn func(*RouteBuilder)) *RouteBuilde
 }
 
 // WithoutMiddleware runs fn with a copy of the builder that has no middleware.
-func (r *RouteBuilder) WithoutMiddleware(fn func(*RouteBuilder)) *RouteBuilder {
+func (r *RouteBuilderWith[T]) WithoutMiddleware(fn func(*RouteBuilderWith[T])) *RouteBuilderWith[T] {
 	child := *r
 	child.middleware = nil
 	child.forceChain = true
@@ -79,22 +81,22 @@ func (r *RouteBuilder) WithoutMiddleware(fn func(*RouteBuilder)) *RouteBuilder {
 	return r
 }
 
-func (r *RouteBuilder) Get(p string, h Route) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Get(p string, h Route) *RouteBuilderWith[T] {
 	return r.on(http.MethodGet, p, http.HandlerFunc(h.ServeHTTP))
 }
-func (r *RouteBuilder) Post(p string, h Route) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Post(p string, h Route) *RouteBuilderWith[T] {
 	return r.on(http.MethodPost, p, http.HandlerFunc(h.ServeHTTP))
 }
-func (r *RouteBuilder) Put(p string, h Route) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Put(p string, h Route) *RouteBuilderWith[T] {
 	return r.on(http.MethodPut, p, http.HandlerFunc(h.ServeHTTP))
 }
-func (r *RouteBuilder) Patch(p string, h Route) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Patch(p string, h Route) *RouteBuilderWith[T] {
 	return r.on(http.MethodPatch, p, http.HandlerFunc(h.ServeHTTP))
 }
-func (r *RouteBuilder) Delete(p string, h Route) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Delete(p string, h Route) *RouteBuilderWith[T] {
 	return r.on(http.MethodDelete, p, http.HandlerFunc(h.ServeHTTP))
 }
-func (r *RouteBuilder) Any(p string, h Route) *RouteBuilder {
+func (r *RouteBuilderWith[T]) Any(p string, h Route) *RouteBuilderWith[T] {
 	return r.
 		on(http.MethodGet, p, http.HandlerFunc(h.ServeHTTP)).
 		on(http.MethodPost, p, http.HandlerFunc(h.ServeHTTP)).
@@ -112,7 +114,7 @@ func GetParam(r *http.Request, name string) string {
 
 // on method registers the handler for the given method and path.
 // It checks for duplicates and records them to be handled in apply().
-func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
+func (r *RouteBuilderWith[T]) on(method, p string, h http.HandlerFunc) *RouteBuilderWith[T] {
 	if r.Config != nil && r.Config.Logger.IsDebug {
 		r.Logger.Debug.Printf("Route: method=%s, path=%s", method, p)
 	}
@@ -152,7 +154,7 @@ func (r *RouteBuilder) on(method, p string, h http.HandlerFunc) *RouteBuilder {
 // Apply loops through r.routes recorded in on() and registers them with chi.
 // It also wraps them with the middleware stack and sets up method dispatching.
 // If duplicates were detected, it returns an error listing them.
-func (r *RouteBuilder) apply() error {
+func (r *RouteBuilderWith[T]) apply() error {
 	var errs []error
 
 	// detect duplicates flagged above
@@ -229,18 +231,18 @@ func (r *RouteBuilder) apply() error {
 }
 
 // wrap applies the middleware stack to the given handler.
-func (r *RouteBuilder) wrap(next http.Handler) http.Handler {
+func (r *RouteBuilderWith[T]) wrap(next http.Handler) http.Handler {
 	if r.wrapChain == nil {
 		return next
 	}
 	return r.wrapChain(next)
 }
 
-func (r *RouteBuilder) rebuildMiddleware() {
+func (r *RouteBuilderWith[T]) rebuildMiddleware() {
 	r.wrapChain = CombineMiddleware(r.middleware...)
 }
 
-func (r *RouteBuilder) join(base, p string) string {
+func (r *RouteBuilderWith[T]) join(base, p string) string {
 	if p == "" {
 		p = "/"
 	}

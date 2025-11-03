@@ -23,109 +23,111 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type EZApp struct {
+type EZAppWith[T any] struct {
 	Auth     *auth.AuthModule
 	Render   *Renderer
-	Database *EpicServerDatabase
-	User     *UserManagement
+	Database *EpicServerDatabaseWith[T]
+	User     *UserManagementWith[T]
 	Logger   *Logger
 	IsDebug  bool
-	Config   *config.Config
+	Config   *config.ConfigWith[T]
 	Errors   []error
 }
 
-// EpicServer builder struct
-type EpicServerBuilder struct {
-	App          *EZApp
+type EZApp = EZAppWith[struct{}]
+
+// EpicServerBuilderWith wires all dependencies together for the given config type.
+type EpicServerBuilderWith[T any] struct {
+	App          *EZAppWith[T]
 	mux          chi.Router
 	tls          *tls.Config
-	Controllers  ControllerBuilder
-	RouteBuilder *RouteBuilder
+	Controllers  ControllerBuilderWith[T]
+	RouteBuilder *RouteBuilderWith[T]
 }
 
-// return new instance of EpicServerBuilder
+type EpicServerBuilder = EpicServerBuilderWith[struct{}]
+
+// New keeps the original behaviour without custom config fields.
 func New(configPath string, viewOption ...ViewOption) *EpicServerBuilder {
-	// first we try loading from config files.
-	cfg, err := config.Load(configPath)
+	return NewWithConfig(configPath, struct{}{}, viewOption...)
+}
+
+// NewWithConfig loads configuration into the provided custom struct and wires
+// the server with the typed config flowing through route builders, controllers,
+// and middleware.
+func NewWithConfig[T any](configPath string, customDefaults T, viewOption ...ViewOption) *EpicServerBuilderWith[T] {
+	cfg, err := config.LoadWith(configPath, customDefaults)
 	if err != nil {
 		log.Printf("warning: load config: %v", err)
 	}
 
-	// create logger instance
 	logger := NewLogger(&cfg.Logger)
 
-	// create builder
-	b := &EpicServerBuilder{}
+	builder := &EpicServerBuilderWith[T]{}
+	builder.App = &EZAppWith[T]{
+		Logger:  logger,
+		IsDebug: cfg.Logger.IsDebug,
+		Config:  &cfg,
+	}
 
-	// create app context
-	b.App = &EZApp{Logger: logger, IsDebug: cfg.Logger.IsDebug, Config: &cfg}
-
-	// create route builder
-	rb := newRouteBuilder(chi.NewRouter(), b.App)
+	rb := newRouteBuilder[T](chi.NewRouter(), builder.App)
 	if f := strings.ToLower(strings.TrimSpace(cfg.Logger.RequestLogFormat)); f != "" && f != "off" {
 		rb.Use(RequestLogger(logger, cfg.Logger.IsDebug, f))
 	}
-	// create renderer - depends on route builder
-	renderer := NewRenderer(rb.mux, rb.middleware, rb, logger, viewOption...)
 
-	// wire up other dependencies
-	b.RouteBuilder = rb
-	b.mux = rb.mux
-	b.App.Render = renderer
+	renderer := NewRenderer[T](rb.mux, rb.middleware, rb, logger, viewOption...)
 
-	// create controller builder - depends on route builder
-	b.Controllers = newControllerBuilder(rb)
-
-	b.App.Errors = make([]error, 0)
-
-	b.tls = nil
+	builder.RouteBuilder = rb
+	builder.mux = rb.mux
+	builder.App.Render = renderer
+	builder.Controllers = newControllerBuilder[T](rb)
+	builder.App.Errors = make([]error, 0)
+	builder.tls = nil
 
 	if err := loadDotEnv(); err != nil {
 		wrapped := fmt.Errorf("load .env: %w", err)
-		b.App.Logger.Error.Printf("%v", wrapped)
-		b.App.Errors = append(b.App.Errors, wrapped)
+		builder.App.Logger.Error.Printf("%v", wrapped)
+		builder.App.Errors = append(builder.App.Errors, wrapped)
 	}
 
 	if cfg.Features.EnableDB {
-		db := EpicServerDatabase{Config: b.App.Config}
-
-		epicServerDatabase, dbError := db.Connect()
-		if dbError != nil {
-			b.App.Errors = append(b.App.Errors, dbError)
+		db := EpicServerDatabaseWith[T]{Config: builder.App.Config}
+		epicServerDatabase, dbErr := db.Connect()
+		if dbErr != nil {
+			builder.App.Errors = append(builder.App.Errors, dbErr)
+		} else {
+			builder.App.Database = epicServerDatabase
 		}
-
-		b.App.Database = epicServerDatabase
 	}
 
-	// check user managment registration, depends on DB and Auth features.
 	if cfg.Features.EnableUserMng {
 		if !cfg.Features.EnableDB {
-			b.App.Errors = append(b.App.Errors, errors.New("please enable database support"))
+			builder.App.Errors = append(builder.App.Errors, errors.New("please enable database support"))
 		}
 
 		if !cfg.Features.EnableAuth {
-			b.App.Errors = append(b.App.Errors, errors.New("please enable and configure auth support"))
+			builder.App.Errors = append(builder.App.Errors, errors.New("please enable and configure auth support"))
 		}
 
-		b.App.User = NewUserManagement(b.App.Database, logger)
+		builder.App.User = NewUserManagement[T](builder.App.Database, logger)
 	}
 
-	return b
+	return builder
 }
 
 // Use appends global middleware applied to all routes/views created after this call.
-func (b *EpicServerBuilder) Use(mw ...Middleware) *EpicServerBuilder {
+func (b *EpicServerBuilderWith[T]) Use(mw ...Middleware) *EpicServerBuilderWith[T] {
 	b.RouteBuilder.Use(mw...)
 	return b
 }
 
-func (b *EpicServerBuilder) Routes(fn func(r *RouteBuilder)) *EpicServerBuilder {
+func (b *EpicServerBuilderWith[T]) Routes(fn func(r *RouteBuilderWith[T])) *EpicServerBuilderWith[T] {
 	fn(b.RouteBuilder)
 	return b
 }
 
 // Auth wires up OAuth-backed authentication handlers with cookie sessions.
-func (b *EpicServerBuilder) Auth(config *oauth2.Config, app *EZApp, opts ...auth.AuthOption) *auth.AuthModule {
+func (b *EpicServerBuilderWith[T]) Auth(config *oauth2.Config, app *EZAppWith[T], opts ...auth.AuthOption) *auth.AuthModule {
 	if config == nil {
 		b.App.Errors = append(b.App.Errors, errors.New("oauth2 config is required"))
 		return nil
@@ -146,9 +148,8 @@ func (b *EpicServerBuilder) Auth(config *oauth2.Config, app *EZApp, opts ...auth
 	return auth.New(b.mux, b.RouteBuilder.middleware, config, deps, opts...)
 }
 
-// start server with system cancel listening for cancel.
-func (b *EpicServerBuilder) Start(app *EZApp) error {
-	// log app name
+// Start boots the HTTP server after ensuring the configuration and dependencies are valid.
+func (b *EpicServerBuilderWith[T]) Start(app *EZAppWith[T]) error {
 	if b.App.Config.AppName != "" {
 		b.App.Logger.Info.Printf("Starting %s", b.App.Config.AppName)
 	}
@@ -160,25 +161,19 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 	// need to pass injectables
 	b.Controllers.Build(app)
 
-	// check if auth is enabled
 	if b.App.Config.Features.EnableAuth {
 		b.App.Logger.Info.Printf("Auth is enabled")
 
-		// setup simple auth
-		authModule, _ := configureAuth(b)
+		authModule, _ := configureAuth[T](b)
 		if authModule == nil {
 			b.App.Logger.Warn.Printf("Auth is enabled but not configured, please fix")
 			return nil
 		}
 
-		// session middleware loader
 		b.Use(authModule.SessionLoaderMiddleware())
-
-		// setup auth module for rest of application to use
 		b.App.Auth = authModule
 	}
 
-	// debug/metrics endpoints based on feature flags
 	if b.App.Config.Features.EnablePprof {
 		b.App.Logger.Info.Printf("pprof is enabled at /debug/pprof")
 		b.mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
@@ -218,10 +213,8 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 		ReadTimeout:  b.App.Config.Server.ReadTimeout,
 		WriteTimeout: b.App.Config.Server.WriteTimeout,
 	}
-	// route server errors through our logger
 	httpServer.ErrorLog = log.New(b.App.Logger.Error.Writer(), "", 0)
 
-	// setup cancel on system signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -231,7 +224,6 @@ func (b *EpicServerBuilder) Start(app *EZApp) error {
 		_ = httpServer.Shutdown(ctx)
 	}()
 
-	// start server
 	log.Printf("listening on %s\n", httpServer.Addr)
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		fmt.Fprintf(os.Stderr, "error listening and serving: %s\n", err)
@@ -328,9 +320,8 @@ const (
 	authLogoutPath   = "/auth/logout"
 )
 
-func configureAuth(srv *EpicServerBuilder) (*auth.AuthModule, error) {
-	// Prefer config-driven auth if present
-	if cfg, err := oauthConfigFromAppConfig(srv.App.Config); err != nil {
+func configureAuth[T any](srv *EpicServerBuilderWith[T]) (*auth.AuthModule, error) {
+	if cfg, err := oauthConfigFromAppConfig[T](srv.App.Config); err != nil {
 		srv.App.Logger.Error.Printf("auth config error: %v", err)
 	} else if cfg != nil {
 		options := []auth.AuthOption{
@@ -341,13 +332,11 @@ func configureAuth(srv *EpicServerBuilder) (*auth.AuthModule, error) {
 			auth.WithLogoutRedirect("/"),
 			auth.WithFailureRedirect("/"),
 		}
-		// INSECURE: allow cookies over HTTP for local dev
 		options = append(options, auth.WithInsecureCookies())
 		module := srv.Auth(cfg, srv.App, options...)
 		return module, nil
 	}
 
-	// Fallback to environment-based auth
 	if !authEnvConfigured(authEnvPrefix) {
 		return nil, nil
 	}
@@ -365,14 +354,13 @@ func configureAuth(srv *EpicServerBuilder) (*auth.AuthModule, error) {
 		auth.WithLogoutRedirect("/"),
 		auth.WithFailureRedirect("/"),
 	}
-	// INSECURE: allow cookies over HTTP for local dev
 	options = append(options, auth.WithInsecureCookies())
 	module := srv.Auth(cfg, srv.App, options...)
 	return module, nil
 }
 
 // oauthConfigFromAppConfig constructs an oauth2.Config from app Config if possible.
-func oauthConfigFromAppConfig(c *config.Config) (*oauth2.Config, error) {
+func oauthConfigFromAppConfig[T any](c *config.ConfigWith[T]) (*oauth2.Config, error) {
 	if c == nil {
 		return nil, nil
 	}
@@ -380,7 +368,6 @@ func oauthConfigFromAppConfig(c *config.Config) (*oauth2.Config, error) {
 		return nil, nil
 	}
 
-	// Pick the default provider if set, otherwise the first with credentials.
 	var p config.OAuth2Provider
 	var ok bool
 	name := strings.ToLower(strings.TrimSpace(c.Auth.DefaultProvider))
@@ -403,7 +390,6 @@ func oauthConfigFromAppConfig(c *config.Config) (*oauth2.Config, error) {
 		return nil, nil
 	}
 
-	// Resolve endpoint
 	var endpoint oauth2.Endpoint
 	providerName := strings.TrimSpace(p.Provider)
 	if strings.TrimSpace(p.AuthURL) != "" || strings.TrimSpace(p.TokenURL) != "" {
@@ -421,7 +407,6 @@ func oauthConfigFromAppConfig(c *config.Config) (*oauth2.Config, error) {
 		return nil, fmt.Errorf("auth provider missing provider name or explicit URLs")
 	}
 
-	// Resolve scopes
 	scopes := append([]string(nil), p.Scopes...)
 	if len(scopes) == 0 && providerName != "" {
 		if defaults := auth.DefaultScopesForProvider(providerName); len(defaults) > 0 {

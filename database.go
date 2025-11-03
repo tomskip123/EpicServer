@@ -13,19 +13,23 @@ const (
 	DatabaseEmptyConnectionString = "empty_dsn"
 )
 
-// we use gorm under the hood, so this is a lightweight direct connector to gorm.
-// lets extend the gorm.DB
-type EpicServerDatabase struct {
-	Config *config.Config
+// EpicServerDatabaseWith keeps a reference to the application's config so
+// downstream features can work with the caller's custom fields.
+type EpicServerDatabaseWith[T any] struct {
+	Config *config.ConfigWith[T]
 	Client *gorm.DB
 }
+
+// EpicServerDatabase maintains the previous non-generic identifier.
+type EpicServerDatabase = EpicServerDatabaseWith[struct{}]
 
 type EpicServerModel struct {
 	gorm.Model
 }
 
-// here we should add more support for other databases.
-func (es *EpicServerDatabase) Connect() (*EpicServerDatabase, error) {
+// Connect currently supports postgres and validates connectivity before
+// returning the database handle.
+func (es *EpicServerDatabaseWith[T]) Connect() (*EpicServerDatabaseWith[T], error) {
 	if es.Config.Database.DSN == "" {
 		return nil, errors.New(DatabaseEmptyConnectionString)
 	}

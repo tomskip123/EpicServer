@@ -1,8 +1,10 @@
 package epicserver
 
-type Controller interface {
-	Routes(app *EZApp) RouteMap
+type ControllerWith[T any] interface {
+	Routes(app *EZAppWith[T]) RouteMap
 }
+
+type Controller = ControllerWith[struct{}]
 
 // Optional: map-based per-controller middleware.
 // Keys: "*", HTTP methods ("GET","POST","PUT","PATCH","DELETE"),
@@ -15,7 +17,9 @@ type MiddlewareMap map[string][]Middleware
 // POST /route
 type RouteMap map[string]Route
 
-type ControllerWithMiddleware interface {
-	Controller
-	Middleware(app *EZApp) MiddlewareMap
+type ControllerWithMiddlewareFor[T any] interface {
+	ControllerWith[T]
+	Middleware(app *EZAppWith[T]) MiddlewareMap
 }
+
+type ControllerWithMiddleware = ControllerWithMiddlewareFor[struct{}]

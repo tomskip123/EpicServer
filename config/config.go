@@ -12,7 +12,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type Config struct {
+// ConfigWith augments the built-in configuration with caller-defined fields that
+// travel through the framework with type safety.
+type ConfigWith[T any] struct {
 	AppName  string       `json:"appName" yaml:"appName"`
 	Env      string       `json:"env" yaml:"env"` // "dev", "staging", "prod"
 	Server   ServerConfig `json:"server" yaml:"server"`
@@ -20,7 +22,12 @@ type Config struct {
 	Database DBConfig     `json:"database" yaml:"database"`
 	Features Features     `json:"features" yaml:"features"`
 	Auth     AuthConfig   `json:"auth" yaml:"auth"`
+	Custom   T            `json:"custom,omitempty" yaml:"custom,omitempty"`
 }
+
+// Config preserves the previous zero-custom behaviour for callers that do not
+// need extra fields.
+type Config = ConfigWith[struct{}]
 
 type ServerConfig struct {
 	Host            string        `json:"host" yaml:"host"`
@@ -69,7 +76,11 @@ type AuthConfig struct {
 }
 
 func Default() Config {
-	return Config{
+	return DefaultWith(struct{}{})
+}
+
+func DefaultWith[T any](customDefaults T) ConfigWith[T] {
+	return ConfigWith[T]{
 		AppName: "epicserver",
 		Env:     "dev",
 		Server: ServerConfig{
@@ -99,10 +110,11 @@ func Default() Config {
 			OAuth2Providers: map[string]OAuth2Provider{},
 			DefaultProvider: "",
 		},
+		Custom: customDefaults,
 	}
 }
 
-func (c *Config) Validate() error {
+func (c *ConfigWith[T]) Validate() error {
 	if c.Server.Port <= 0 || c.Server.Port > 65535 {
 		return fmt.Errorf("server.port must be 1..65535")
 	}
@@ -114,7 +126,11 @@ func (c *Config) Validate() error {
 }
 
 func Load(path string) (Config, error) {
-	cfg := Default()
+	return LoadWith(path, struct{}{})
+}
+
+func LoadWith[T any](path string, customDefaults T) (ConfigWith[T], error) {
+	cfg := DefaultWith(customDefaults)
 
 	if path != "" {
 		b, err := os.ReadFile(path)
@@ -127,12 +143,9 @@ func Load(path string) (Config, error) {
 				return cfg, fmt.Errorf("parse json: %w", err)
 			}
 		case ".yaml", ".yml":
-			var y struct{}
-			_ = y // avoid import cycles in snippet
 			if err := yaml.Unmarshal(b, &cfg); err != nil {
 				return cfg, fmt.Errorf("parse yaml: %w", err)
 			}
-			return cfg, nil
 		default:
 			return cfg, fmt.Errorf("unsupported config extension: %s", ext)
 		}
@@ -154,7 +167,7 @@ func Getenv(key, def string) string {
 	return v
 }
 
-func applyEnvOverrides(c *Config) {
+func applyEnvOverrides[T any](c *ConfigWith[T]) {
 	// Examples (add whatever you need):
 	if v := os.Getenv("APP_NAME"); v != "" {
 		c.AppName = v
@@ -201,5 +214,4 @@ func applyEnvOverrides(c *Config) {
 	if v := os.Getenv("DB_CONN_MAX_LIFETIME"); v != "" {
 		c.Database.ConnMaxLifetime = v
 	}
-
 }

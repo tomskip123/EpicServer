@@ -31,7 +31,7 @@ func WithLayoutName(name string) ViewOption { return render.WithLayoutName(name)
 
 func WithFuncs(fn template.FuncMap) ViewOption { return render.WithFuncs(fn) }
 
-func NewRenderer(_ chi.Router, _ []Middleware, rb *RouteBuilder, _ *Logger, opts ...ViewOption) *Renderer {
+func NewRenderer[T any](_ chi.Router, _ []Middleware, rb *RouteBuilderWith[T], _ *Logger, opts ...ViewOption) *Renderer {
 	var deps render.Dependencies
 	if rb != nil {
 		deps.Wrap = rb.wrap
